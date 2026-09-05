@@ -29,6 +29,28 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido (2026-09-05, primer arranque real)
+- **Puntero del mouse invisible al iniciar sesion.** `dotfiles/bspwm/bspwmrc`
+  nunca definia el cursor del root, asi que el puntero no se veia hasta
+  entrar a una ventana cliente (bug clasico de WMs minimalistas). Ahora
+  `bspwmrc` carga `~/.Xresources` con `xrdb -merge` y fija
+  `xsetroot -cursor_name left_ptr`. `install/40-tema.sh` pasa a escribir
+  `~/.Xresources` (`Xcursor.theme`/`Xcursor.size`), `~/.icons/default/index.theme`
+  (`Inherits=`) y `XCURSOR_THEME`/`XCURSOR_SIZE` en `~/.xprofile`, con
+  fallback a `Adwaita` si Bibata no quedo instalado. `docs/DESIGN.md`
+  prometia el `~/.Xresources` pero el codigo no lo generaba.
+- **El sidebar de eww solo abria con clic en "&#8250;", no por hover.** El
+  sensor del borde (`toggle-tab`) envolvia un `button` de GTK dentro del
+  `eventbox`; el `button` tiene ventana de input propia y se comia los
+  eventos enter/leave, asi que el `:onhover` del `eventbox` no se disparaba.
+  Ahora el hijo es un `box` (no captura esos eventos) y el `:onhover`/`:onclick`
+  van en el propio `eventbox`. El sensor pasa a ser una tira fina a lo alto
+  de toda la pantalla (8 px) para que el hover funcione a cualquier altura
+  del borde, no solo en los 64 px centrales.
+- `install/40-tema.sh`: `xsettingsd.conf` escribia `Gtk/CursorThemeName
+  "Bibata-Modern-Ice"` aunque `NEBULA_CURSOR=0` o la descarga fallara; ahora
+  usa el cursor efectivo resuelto (`Bibata-Modern-Ice` o `Adwaita`).
+
 ### Anadido (2026-09-05)
 - **UX del sidebar de eww: hover, no clic.** `dotfiles/eww/eww.yuck` ahora
   despliega el panel acercando el mouse al sensor del borde izquierdo

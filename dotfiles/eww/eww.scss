@@ -42,20 +42,25 @@ $cian:    #22d3ee;
   }
 }
 
+// Tira fina a lo alto de toda la pantalla, pegada al borde izquierdo. Es el
+// sensor de hover (dotfiles/eww/eww.yuck): discreta en reposo -apenas una
+// hairline violeta- y se ilumina apenas el puntero la toca, confirmando que
+// el borde "esta vivo" antes de que el sidebar termine de abrir.
 .toggle-tab {
-  background-color: $panel;
-  border-right: 1px solid $violeta;
-  border-top-right-radius: 6px;
-  border-bottom-right-radius: 6px;
+  background-color: rgba(124, 58, 237, 0.14);
+  border-right: 1px solid rgba(124, 58, 237, 0.55);
   color: $cian;
 
-  // El :hover llega igual estando dentro del eventbox del sensor de hover
-  // (dotfiles/eww/eww.yuck): confirma visualmente que el borde "esta vivo"
-  // apenas el mouse lo toca, antes incluso de que el sidebar termine de abrir.
   &:hover {
     background-color: $violeta;
-    color: $bg;
+
+    .toggle-chevron { color: $bg; }
   }
+}
+
+.toggle-chevron {
+  color: rgba(34, 211, 238, 0.55);
+  font-size: 11px;
 }
 
 .cat-title {

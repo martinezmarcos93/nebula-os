@@ -109,6 +109,52 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Resolucion del cursor para TODA la sesion X (no solo apps GTK).
+#
+# Sin esto, el puntero del root queda invisible al iniciar bspwm y rofi /
+# ventanas X puras usan el cursor core feo. Tres mecanismos, del mas general
+# al mas especifico:
+#   1. ~/.icons/default/index.theme  -> lo lee libXcursor/Xorg/Qt por defecto.
+#   2. ~/.Xresources (Xcursor.*)     -> lo carga bspwmrc con `xrdb -merge` y lo
+#                                       usa `xsetroot -cursor_name left_ptr`.
+#   3. XCURSOR_THEME/SIZE en ~/.xprofile -> lo heredan los hijos de la sesion.
+# Si Bibata no quedo instalado (NEBULA_CURSOR=0 o fallo de red) se cae a
+# "Adwaita", que siempre esta presente en Ubuntu: el puntero se ve igual.
+# ---------------------------------------------------------------------------
+CURSOR_NAME="Adwaita"
+[[ "$NEBULA_CURSOR" == "1" && -d "$ICONS_DIR/Bibata-Modern-Ice" ]] && CURSOR_NAME="Bibata-Modern-Ice"
+CURSOR_SIZE=24
+info "cursor efectivo de la sesion: $CURSOR_NAME (${CURSOR_SIZE}px)"
+
+DEFAULT_ICON_THEME="$ICONS_DIR/default/index.theme"
+XRESOURCES="$HOME/.Xresources"
+if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
+    info "[dry-run] escribiria $DEFAULT_ICON_THEME y $XRESOURCES (cursor $CURSOR_NAME)"
+else
+    run mkdir -p "$ICONS_DIR/default"
+    cat > "$DEFAULT_ICON_THEME" <<EOF
+[Icon Theme]
+Name=Default
+Comment=Nebula OS - cursor por defecto de la sesion
+Inherits=$CURSOR_NAME
+EOF
+    info "escrito: $DEFAULT_ICON_THEME (Inherits=$CURSOR_NAME)"
+
+    [[ -f "$XRESOURCES" ]] || backup_path "$XRESOURCES"
+    # Reescribe solo las lineas Xcursor.*, deja intacto el resto del archivo.
+    tmp_xr="$(mktemp)"
+    grep -vE '^\s*Xcursor\.(theme|size)\s*:' "$XRESOURCES" 2>/dev/null > "$tmp_xr" || true
+    printf 'Xcursor.theme: %s\nXcursor.size: %s\n' "$CURSOR_NAME" "$CURSOR_SIZE" >> "$tmp_xr"
+    mv "$tmp_xr" "$XRESOURCES"
+    info "actualizado: $XRESOURCES (Xcursor.theme=$CURSOR_NAME)"
+fi
+
+XPROFILE="$HOME/.xprofile"
+[[ -f "$XPROFILE" ]] || backup_path "$XPROFILE"
+ensure_line "export XCURSOR_THEME=$CURSOR_NAME" "$XPROFILE"
+ensure_line "export XCURSOR_SIZE=$CURSOR_SIZE" "$XPROFILE"
+
+# ---------------------------------------------------------------------------
 # Tipografias manuales: Space Grotesk + Nerd Font (idempotente via fc-list;
 # la Nerd Font puede ya estar si corrio 20-panel.sh antes).
 # ---------------------------------------------------------------------------
@@ -159,7 +205,7 @@ if [[ ! -f "$XSETTINGSD_CFG" ]]; then
         cat > "$XSETTINGSD_CFG" <<EOF
 Net/ThemeName "$theme_name"
 Net/IconThemeName "Papirus-Dark"
-Gtk/CursorThemeName "Bibata-Modern-Ice"
+Gtk/CursorThemeName "$CURSOR_NAME"
 Gtk/FontName "Inter 10"
 EOF
         info "escrito: $XSETTINGSD_CFG"

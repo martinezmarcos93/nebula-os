@@ -107,18 +107,24 @@
   :wm-ignore true
   (sidebar-content))
 
-;; Pestaña angosta, siempre presente en el borde izquierdo: es el sensor de
-;; hover. Acercar el mouse (:onhover) despliega "sidebar" sin clic; el clic
-;; en "›" queda como respaldo manual por si el hover no llega a dispararse.
-;; Al abrir el sidebar queda tapada por este (no molesta la vista).
+;; Tira fina, SIEMPRE presente pegada al borde izquierdo y a lo alto de toda
+;; la pantalla: es el sensor de hover. Acercar el puntero al borde en
+;; cualquier altura (:onhover) despliega "sidebar" sin clic; el :onclick
+;; queda como respaldo manual.
+;;
+;; Importante: el :onhover va en el PROPIO eventbox y su hijo es un `box`,
+;; no un `button`. Un `button` de GTK tiene su propia ventana de input y se
+;; come los eventos enter/leave, asi que el :onhover del eventbox padre no
+;; se dispara de forma fiable (era el bug: el sidebar solo abria con el
+;; clic en "›"). Un `box` no captura esos eventos y el hover llega siempre.
 (defwidget toggle-tab []
-  (eventbox :onhover "eww open sidebar"
-    (button :class "toggle-tab" :onclick "eww open sidebar"
-      (label :text "›"))))
+  (eventbox :onhover "eww open sidebar" :onclick "eww open sidebar"
+    (box :class "toggle-tab" :vexpand true :hexpand true
+      (label :class "toggle-chevron" :valign "center" :text "›"))))
 
 (defwindow toggle-tab
   :monitor 0
-  :geometry (geometry :x "0" :y "0" :width "16px" :height "64px" :anchor "left center")
+  :geometry (geometry :x "0" :y "0" :width "8px" :height "100%" :anchor "left center")
   :stacking "fg"
   :exclusive false
   :wm-ignore true

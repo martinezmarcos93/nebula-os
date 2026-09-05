@@ -9,6 +9,18 @@ _run() {
     "$@" &
 }
 
+# --- Puntero del mouse --------------------------------------------------
+# Sin esto, el cursor del root queda INVISIBLE hasta que el puntero entra
+# a una ventana cliente (bug clasico de WMs minimalistas: nadie define el
+# cursor del root). Primero cargamos ~/.Xresources (trae Xcursor.theme /
+# Xcursor.size que escribe install/40-tema.sh) y despues fijamos la flecha
+# estandar, ya resuelta contra ese tema para clientes no-GTK (rofi, root,
+# ventanas X puras). Las apps GTK toman el cursor de xsettingsd aparte.
+if command -v xrdb >/dev/null 2>&1 && [[ -f "$HOME/.Xresources" ]]; then
+    xrdb -merge "$HOME/.Xresources"
+fi
+command -v xsetroot >/dev/null 2>&1 && xsetroot -cursor_name left_ptr
+
 # --- Autostart ------------------------------------------------------------
 pgrep -x sxhkd >/dev/null 2>&1 || sxhkd &
 _run picom --config "$HOME/.config/picom/picom.conf"
