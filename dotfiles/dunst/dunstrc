@@ -4,9 +4,14 @@
     monitor = 0
     follow = mouse
     width = 340
-    height = (0, 200)
+    # dunst 1.9.x (Ubuntu 24.04) toma 'height' como un entero = alto maximo.
+    # La tupla (min, max) recien existe desde dunst 1.10; con 1.9.x tira
+    # "No digits found" y descarta el valor.
+    height = 200
     origin = top-right
-    offset = (16, 48)
+    # Forma "NxN": la acepta dunst 1.9.x sin quejarse. La tupla (x, y) tira
+    # "Offset has two values, separated by an 'x'" en esta version.
+    offset = 16x48
     padding = 12
     horizontal_padding = 14
     frame_width = 1

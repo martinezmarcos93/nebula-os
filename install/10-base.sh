@@ -25,7 +25,7 @@ step "10-base - Xorg + WM + sesion"
 PKGS_BASE=(
     xserver-xorg-core xinit x11-xserver-utils
     bspwm sxhkd picom rofi alacritty dunst
-    feh brightnessctl playerctl
+    feh brightnessctl playerctl lm-sensors
     network-manager-gnome pavucontrol
     pipewire pipewire-pulse wireplumber
     lxpolkit i3lock xss-lock

@@ -48,8 +48,16 @@
   ;; onhoverlost cierra el sidebar apenas el mouse sale de TODA esta caja
   ;; (header + lista + stats). Mientras el mouse siga adentro, se queda
   ;; abierto sin importar cuanto tiempo pase.
-  (eventbox :onhoverlost "eww close sidebar"
-   (box :class "sidebar" :orientation "v" :space-evenly false :spacing 4
+  ;;
+  ;; El eventbox y su hijo llevan hexpand/vexpand para OCUPAR TODA la ventana
+  ;; de 220px: sin eso el `box` toma su ancho natural y queda un margen
+  ;; transparente entre el borde del eventbox y el borde de la ventana; el
+  ;; puntero podia estar "dentro de la ventana pero fuera del eventbox", y el
+  ;; leave-notify se disparaba a destiempo (o no se disparaba al salir), que
+  ;; era el bug de "no se contrae". Con expand, estar en la ventana == estar
+  ;; en el eventbox, y salir de la ventana == onhoverlost siempre.
+  (eventbox :onhoverlost "eww close sidebar" :hexpand true :vexpand true
+   (box :class "sidebar" :orientation "v" :space-evenly false :spacing 4 :hexpand true :vexpand true
     (box :class "sidebar-header" :orientation "h" :space-evenly false :spacing 8
       (image :path "${EWW_CONFIG_DIR}/../nebula/icons/brand-mark.png" :image-width 26 :image-height 26 :preserve-aspect-ratio true)
       (label :class "brand" :halign "start" :hexpand true :text "NEBULA")
@@ -103,7 +111,10 @@
   :monitor 0
   :geometry (geometry :x "0" :y "0" :width "220px" :height "100%" :anchor "left center")
   :stacking "fg"
-  :exclusive true
+  ;; SIN :exclusive: reservar strut (_NET_WM_STRUT) contradice :wm-ignore true
+  ;; y ensuciaba los eventos de cruce del puntero -> el panel quedaba pegado
+  ;; abierto. Es un panel transitorio por hover, no necesita reservar espacio.
+  :exclusive false
   :wm-ignore true
   (sidebar-content))
 
