@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# nebula-window-switcher - Selector de ventanas OCULTAS de bspwm.
+#   bspwm no tiene "minimizar": Super+D hace `bspc node -g hidden=on`, que
+#   saca la ventana del arbol de tiling y la desmapea sin perder su estado.
+#   Este script lista esas ventanas ocultas en un menu rofi; al elegir una
+#   la restaura (`hidden=off`) y le da el foco. Es el mecanismo de
+#   "restaurar minimizada" mientras el sidebar esta pendiente de rediseno.
+# Uso: nebula-window-switcher [--help]
+set -uo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    sed -n '2,8p' "$0"
+    exit 0
+fi
+
+notify() {
+    command -v notify-send >/dev/null 2>&1 && notify-send -a "Nebula" "$1" "${2:-}" || true
+}
+
+for _c in bspc rofi xprop; do
+    command -v "$_c" >/dev/null 2>&1 || { notify "Window switcher" "Falta '$_c' en el PATH."; exit 1; }
+done
+
+# --- Recolectar ventanas ocultas -----------------------------------------
+mapfile -t ids < <(bspc query -N -n .hidden.window)
+
+if [[ "${#ids[@]}" -eq 0 ]]; then
+    notify "Ventanas ocultas" "No hay ninguna ventana oculta."
+    exit 0
+fi
+
+# Etiqueta legible por ventana: "Clase — Titulo   [desktop N]"
+labels=()
+for id in "${ids[@]}"; do
+    cls="$(xprop -id "$id" WM_CLASS 2>/dev/null \
+        | sed -n 's/.*= "[^"]*", "\([^"]*\)".*/\1/p')"
+    name="$(xprop -id "$id" _NET_WM_NAME 2>/dev/null \
+        | sed -n 's/^_NET_WM_NAME([^)]*) = "\(.*\)"$/\1/p')"
+    [[ -z "$name" ]] && name="$(xprop -id "$id" WM_NAME 2>/dev/null \
+        | sed -n 's/^WM_NAME([^)]*) = "\(.*\)"$/\1/p')"
+    desk="$(bspc query -D -n "$id" --names 2>/dev/null)"
+    [[ -z "$cls"  ]] && cls="?"
+    [[ -z "$name" ]] && name="(sin titulo)"
+    labels+=("${cls} — ${name}   [${desk:-?}]")
+done
+
+# --- Menu rofi: -format i devuelve el indice 0-based de la seleccion ------
+sel="$(printf '%s\n' "${labels[@]}" \
+    | rofi -dmenu -i -p "Restaurar ventana" -format 'i' -no-custom)" || exit 0
+[[ -z "$sel" ]] && exit 0
+
+target="${ids[$sel]}"
+[[ -z "$target" ]] && exit 0
+
+bspc node "$target" -g hidden=off
+bspc node "$target" -f

@@ -525,30 +525,61 @@ Cada fase = uno o dos scripts + criterio de aceptación verificable. No se avanz
 [ ] F5  dotfiles/nebula/known-good/ poblado
 ```
 
-### 14.2. Matriz de atajos `sxhkd` (propuesta inicial)
+### 14.2. Matriz de atajos `sxhkd` (FASE 1 cerrada — 2026-09-05)
+
+Sincronizada con `dotfiles/sxhkd/sxhkdrc` real. Sin colisiones: ninguna
+combinación queda asignada a dos acciones.
+
+**Lanzadores**
 
 | Atajo | Acción |
 |---|---|
 | `Super + Enter` | Terminal (Alacritty) |
 | `Super + Space` | `rofi -show drun` |
-| `Super + C` | `rofi` por categorías (`categories.toml`) |
-| `Super + Shift + C` | Regenerar panel + recargar categorías |
-| `Super + W` | Cerrar ventana (`bspc node -c`) |
-| `Super + {1-9,0}` | Ir al escritorio N |
-| `Super + Shift + {1-9,0}` | Mover ventana al escritorio N |
-| `Super + {h,j,k,l}` | Foco dirección |
-| `Super + Shift + {h,j,k,l}` | Mover ventana |
-| `Super + M` | Alternar `monocle` |
-| `Super + T` | Alternar `tiled/floating` |
-| `Super + F` | **Modo Foco** (`nebula-focus-mode`) |
-| `Super + Shift + G` | **Modo Juego** (`nebula-game-mode`) |
-| `Super + A` | **Chat IA** (`nebula-ai-chat`) |
-| `Super + H` | **HUD de recursos** (`nebula-resource-hud`) |
-| `Super + Ctrl + R` | **Rescate** (`nebula-rescue`) |
+| `Super + C` / `Super + Shift + C` | Menú rofi de categorías / regenerar panel (`nebula-gen-panel`) |
+| `Super + B` | Toggle sidebar eww (no-op hasta FASE 3) |
+
+**Funciones Nebula**
+
+| Atajo | Acción |
+|---|---|
+| `Super + F` | Modo Foco (`nebula-focus-mode`) |
+| `Super + Shift + G` | Modo Juego (`nebula-game-mode`) |
+| `Super + A` | Chat IA (`nebula-ai-chat`) |
+| `Super + H` | HUD de recursos (`nebula-resource-hud`) — **única, ya no colisiona con foco** |
+| `Super + Ctrl + R` | Rescate (`nebula-rescue`) |
+
+**Ventanas**
+
+| Atajo | Acción |
+|---|---|
+| `Super + W` | Cerrar ventana (`bspc node -c`) — equivalente de Alt+F4 |
+| `Super + {←↓↑→}` | Foco direccional (`bspc node -f {west,south,north,east}`) |
+| `Super + Shift + {←↓↑→}` | Swap/mover la ventana en esa dirección (`bspc node -s … --follow`) |
+| `Super + Tab` | Volver a la última ventana enfocada (`bspc node -f last`) |
+| `Super + D` | Ocultar ventana (`bspc node -g hidden=on`) |
+| `Super + Shift + D` | Selector rofi de ventanas ocultas → restaura + enfoca (`nebula-window-switcher`) |
+| `Super + Ctrl + {←↓↑→}` | Redimensionar ~32px (flotante: siempre; tiled: ajusta split, no-op si no aplica) |
+| `Super + Shift + F` | Toggle fullscreen (`bspc node -t ~fullscreen`) |
+| `Super + M` | Layout del desktop: monocle ↔ tiled (**no es "minimizar"**) |
+| `Super + T` | Ventana flotante ↔ tiled (`bspc node -t ~floating`) |
+| `Super + {1-6}` / `Super + Shift + {1-6}` | Ir a / enviar ventana a escritorio N (6 desktops: I–VI) |
+
+**Sesión**
+
+| Atajo | Acción |
+|---|---|
 | `Super + Shift + R` | Recargar `bspwm` (`bspc wm -r`) |
+| `Super + Shift + X` | Bloquear pantalla (`i3lock`) |
 | `Super + Escape` | Recargar `sxhkd` (`pkill -USR1 -x sxhkd`) |
-| `XF86Audio*` / `XF86MonBrightness*` | Volumen y brillo (`wpctl`, `playerctl`, `brightnessctl`) |
-| `Super + Shift + X` | Bloquear pantalla (`i3lock`) — `Super + L` queda para foco a la derecha |
+| `XF86Audio*` / `XF86MonBrightness*` | Volumen / brillo / media (`wpctl`, `playerctl`, `brightnessctl`) |
+
+**Mouse** (bspwm `pointer_action`, sin cambios): `Super + arrastre izq` = mover ·
+`Super + arrastre medio` = redimensionar lado · `Super + arrastre der` = redimensionar esquina.
+Sólo mueve/redimensiona libremente ventanas **flotantes**; en tiled reordena el árbol.
+
+`focus_follows_pointer` = **false** desde FASE 1: el foco sólo cambia con clic
+o teclado, para que los widgets interactivos no lo roben al pasar el mouse.
 
 ### 14.3. Referencias upstream
 

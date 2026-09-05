@@ -12,6 +12,12 @@ super + c
 super + shift + c
     nebula-gen-panel
 
+# Sidebar de eww: ademas del hover (ver dotfiles/eww/eww.yuck), toggle
+# explicito por teclado. sxhkd no puede bindear Super sola sin xcape, asi
+# que se usa Super + b (barra). Sirve de escape si el hover queda pegado.
+super + b
+    eww -c "$HOME/.config/eww" open --toggle sidebar
+
 # --- Funciones unicas de Nebula --------------------------------------
 super + f
     nebula-focus-mode
@@ -24,19 +30,66 @@ super + h
 super + ctrl + r
     nebula-rescue
 
-# --- Ventanas / escritorios ----------------------------------------
+# --- Ventanas --------------------------------------------------------
+# Cerrar la ventana enfocada (equivalente funcional de Alt+F4)
 super + w
     bspc node -c
+
+# Foco direccional entre ventanas (reemplaza al viejo super + h/j/k/l)
+super + {Left,Down,Up,Right}
+    bspc node -f {west,south,north,east}
+
+# Mover / intercambiar la ventana enfocada con su vecina en esa direccion.
+# En tiling esto es un SWAP de posiciones en el arbol, NO un "mover a
+# cualquier lado" (eso solo existe con la ventana flotante + Super+arrastre).
+# --follow mantiene el foco sobre la ventana que se movio.
+super + shift + {Left,Down,Up,Right}
+    bspc node -s {west,south,north,east} --follow
+
+# Volver a la ultima ventana enfocada (cambio rapido de 1 nivel, no es un
+# selector visual tipo Alt+Tab completo: eso queda para una etapa posterior)
+super + Tab
+    bspc node -f last
+
+# Ocultar la ventana enfocada. Mecanismo nativo de bspwm: la saca del arbol
+# de tiling y la desmapea SIN perder su estado. Se restaura con Super+Shift+D.
+super + d
+    bspc node -g hidden=on
+
+# Selector rofi de ventanas ocultas -> restaura y enfoca la elegida
+super + shift + d
+    nebula-window-switcher
+
+# Redimensionar la ventana enfocada (empuja el borde ~32px). Flotante:
+# siempre. Tiled: mueve el ratio del split del padre; si en ese eje no hay
+# un split ajustable (ventana unica, o borde contra la pantalla) es no-op.
+super + ctrl + Right
+    bspc node -z right 32 0 || bspc node -z left 32 0
+super + ctrl + Left
+    bspc node -z right -32 0 || bspc node -z left -32 0
+super + ctrl + Down
+    bspc node -z bottom 0 32 || bspc node -z top 0 32
+super + ctrl + Up
+    bspc node -z bottom 0 -32 || bspc node -z top 0 -32
+
+# Fullscreen toggle (juegos, Steam, mpv, ventanas flotantes). ~ alterna
+# contra el estado previo de la ventana.
+super + shift + f
+    bspc node -t ~fullscreen
+
+# Layout del desktop: alterna monocle <-> tiled. NO es "minimizar".
 super + m
     bspc desktop -l next
+
+# Flotante <-> tiled de la ventana enfocada
 super + t
-    bspc node -t "~"{floating,tiled}
+    bspc node -t ~floating
+
+# Ir a (super) / enviar la ventana a (super+shift) el escritorio 1..6
 super + {_,shift + }{1-6}
     bspc {desktop -f,node -d} '^{1-6}'
-super + {h,j,k,l}
-    bspc node -f {west,south,north,east}
-super + shift + {h,j,k,l}
-    bspc node -s {west,south,north,east}
+
+# --- Sesion --------------------------------------------------------
 super + shift + r
     bspc wm -r
 super + shift + x
