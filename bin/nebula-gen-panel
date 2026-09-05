@@ -70,6 +70,18 @@ do_gen() {
         printf '%s' "$s"
     }
 
+    # Una app esta "disponible" si su ejecutable (primer token del exec) esta
+    # en el PATH. Los propios comandos de Nebula (nebula-*) se asumen siempre
+    # disponibles: los instala install/50-funciones.sh, que corre DESPUES de
+    # este generador, asi que aun no estarian en el PATH al generar.
+    app_available() {
+        local bin="${1%% *}"
+        case "$bin" in
+            nebula-*) return 0 ;;
+        esac
+        command -v "$bin" >/dev/null 2>&1
+    }
+
     local block="" cur="" cat name ex slug icon_path
     while IFS=$'\t' read -r cat name ex; do
         [[ -n "$cat" ]] || continue
@@ -87,7 +99,12 @@ do_gen() {
             fi
             cur="$cat"
         fi
-        block+="        (launcher :label \"$name\" :cmd \"$ex &\")"$'\n'
+        if app_available "$ex"; then
+            block+="        (launcher :label \"$name\" :cmd \"$ex &\")"$'\n'
+        else
+            # Sin :onclick: se ve la fila pero no lanza nada roto.
+            block+="        (launcher-off :label \"$name\")"$'\n'
+        fi
     done < <(parse)
 
     local tmp

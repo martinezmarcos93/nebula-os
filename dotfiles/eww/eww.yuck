@@ -1,13 +1,14 @@
 ;; dotfiles/eww/eww.yuck - Nebula OS  "Cosmic Dark"
-;; Panel lateral izquierdo (220 px). La lista de categorias/apps la regenera
+;; Panel lateral izquierdo (260 px). La lista de categorias/apps la regenera
 ;; el generador a partir de dotfiles/nebula/categories.toml. NO edites el
 ;; bloque autogenerado (delimitado por los marcadores dentro del widget).
 ;;
-;; UX: el panel se despliega por HOVER, no por clic. La ventana "toggle-tab"
-;; es un sensor angosto siempre presente en el borde izquierdo; acercar el
-;; mouse ahi (:onhover) abre "sidebar", y alejar el mouse de todo el sidebar
-;; (:onhoverlost) lo vuelve a esconder. El boton "‹" del header sigue
-;; sirviendo para cerrarlo a mano sin esperar a que el mouse se aleje.
+;; UX: UNA sola ventana ("nebula-sidebar"), sin sensor de hover ni ventana
+;; secundaria. Se abre y se cierra con Super + B (`eww open --toggle
+;; nebula-sidebar`, ver dotfiles/sxhkd/sxhkdrc). El boton "‹" del header la
+;; cierra a mano. El daemon de eww lo arranca dotfiles/bspwm/bspwmrc al
+;; iniciar sesion (sin abrir ninguna ventana), asi el primer Super+B
+;; responde al instante.
 
 (defpoll TIME :interval "10s" :initial "--:--" "date '+%H:%M'")
 (defpoll DATE :interval "60s" :initial ""      "date '+%a %d %b'")
@@ -36,6 +37,13 @@
   (button :class "app" :halign "fill" :onclick cmd
     (label :halign "start" :text label)))
 
+;; Igual que `launcher` pero para apps que NO estan instaladas: sin :onclick,
+;; en gris. El generador (bin/nebula-gen-panel) decide cual usar segun
+;; `command -v` del ejecutable.
+(defwidget launcher-off [label]
+  (box :class "app app-off" :halign "fill"
+    (label :halign "start" :text label)))
+
 (defwidget stat-row [icon label value pct]
   (box :class "stat-row" :orientation "v" :space-evenly false :spacing 2
     (box :orientation "h" :space-evenly false :spacing 6
@@ -45,23 +53,11 @@
     (progress :class "stat-bar" :value pct :orientation "horizontal")))
 
 (defwidget sidebar-content []
-  ;; onhoverlost cierra el sidebar apenas el mouse sale de TODA esta caja
-  ;; (header + lista + stats). Mientras el mouse siga adentro, se queda
-  ;; abierto sin importar cuanto tiempo pase.
-  ;;
-  ;; El eventbox y su hijo llevan hexpand/vexpand para OCUPAR TODA la ventana
-  ;; de 220px: sin eso el `box` toma su ancho natural y queda un margen
-  ;; transparente entre el borde del eventbox y el borde de la ventana; el
-  ;; puntero podia estar "dentro de la ventana pero fuera del eventbox", y el
-  ;; leave-notify se disparaba a destiempo (o no se disparaba al salir), que
-  ;; era el bug de "no se contrae". Con expand, estar en la ventana == estar
-  ;; en el eventbox, y salir de la ventana == onhoverlost siempre.
-  (eventbox :onhoverlost "eww close sidebar" :hexpand true :vexpand true
-   (box :class "sidebar" :orientation "v" :space-evenly false :spacing 4 :hexpand true :vexpand true
+  (box :class "sidebar" :orientation "v" :space-evenly false :spacing 4 :hexpand true :vexpand true
     (box :class "sidebar-header" :orientation "h" :space-evenly false :spacing 8
       (image :path "${EWW_CONFIG_DIR}/../nebula/icons/brand-mark.png" :image-width 26 :image-height 26 :preserve-aspect-ratio true)
       (label :class "brand" :halign "start" :hexpand true :text "NEBULA")
-      (button :class "hide-btn" :onclick "eww close sidebar" (label :text "‹")))
+      (button :class "hide-btn" :onclick "eww close nebula-sidebar" (label :text "‹")))
 
     (scroll :vscroll true :hscroll false :vexpand true
       (box :orientation "v" :space-evenly false :spacing 2
@@ -105,38 +101,16 @@
       (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/gpu.png" :label "GPU" :value "${GPU}%" :pct {GPU})
       (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/gpu.png" :label "VRAM" :value "${VRAM}MB" :pct {VRAM_PCT})
       (label :halign "start" :class "temp-label" :text {TEMP != "" ? "TEMP ${TEMP}" : ""})
-      (label :halign "start" :class "clock" :text "${DATE}  ${TIME}")))))
+      (label :halign "start" :class "clock" :text "${DATE}  ${TIME}"))))
 
-(defwindow sidebar
+;; UNA sola ventana. Sin :exclusive (no reserva strut, no empuja las ventanas
+;; tiled) y con :wm-ignore (bspwm no la gestiona). :focusable false para que
+;; nunca robe el foco del teclado (coherente con focus_follows_pointer false).
+(defwindow nebula-sidebar
   :monitor 0
-  :geometry (geometry :x "0" :y "0" :width "220px" :height "100%" :anchor "left center")
+  :geometry (geometry :x "0" :y "0" :width "260px" :height "100%" :anchor "left center")
   :stacking "fg"
-  ;; SIN :exclusive: reservar strut (_NET_WM_STRUT) contradice :wm-ignore true
-  ;; y ensuciaba los eventos de cruce del puntero -> el panel quedaba pegado
-  ;; abierto. Es un panel transitorio por hover, no necesita reservar espacio.
   :exclusive false
+  :focusable false
   :wm-ignore true
   (sidebar-content))
-
-;; Tira fina, SIEMPRE presente pegada al borde izquierdo y a lo alto de toda
-;; la pantalla: es el sensor de hover. Acercar el puntero al borde en
-;; cualquier altura (:onhover) despliega "sidebar" sin clic; el :onclick
-;; queda como respaldo manual.
-;;
-;; Importante: el :onhover va en el PROPIO eventbox y su hijo es un `box`,
-;; no un `button`. Un `button` de GTK tiene su propia ventana de input y se
-;; come los eventos enter/leave, asi que el :onhover del eventbox padre no
-;; se dispara de forma fiable (era el bug: el sidebar solo abria con el
-;; clic en "›"). Un `box` no captura esos eventos y el hover llega siempre.
-(defwidget toggle-tab []
-  (eventbox :onhover "eww open sidebar" :onclick "eww open sidebar"
-    (box :class "toggle-tab" :vexpand true :hexpand true
-      (label :class "toggle-chevron" :valign "center" :text "›"))))
-
-(defwindow toggle-tab
-  :monitor 0
-  :geometry (geometry :x "0" :y "0" :width "8px" :height "100%" :anchor "left center")
-  :stacking "fg"
-  :exclusive false
-  :wm-ignore true
-  (toggle-tab))

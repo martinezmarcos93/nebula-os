@@ -12,11 +12,11 @@ super + c
 super + shift + c
     nebula-gen-panel
 
-# Sidebar de eww: ademas del hover (ver dotfiles/eww/eww.yuck), toggle
-# explicito por teclado. sxhkd no puede bindear Super sola sin xcape, asi
-# que se usa Super + b (barra). Sirve de escape si el hover queda pegado.
+# Sidebar de eww: unico mecanismo para abrirlo/cerrarlo. Una sola ventana
+# ("nebula-sidebar"), sin hover ni ventana-sensor. El daemon lo arranca
+# bspwmrc al iniciar sesion, asi este toggle responde al instante.
 super + b
-    eww -c "$HOME/.config/eww" open --toggle sidebar
+    eww -c "$HOME/.config/eww" open --toggle nebula-sidebar
 
 # --- Funciones unicas de Nebula --------------------------------------
 super + f

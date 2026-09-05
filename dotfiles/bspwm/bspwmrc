@@ -42,17 +42,15 @@ else
     command -v xsetroot >/dev/null 2>&1 && xsetroot -solid '#000000'
 fi
 
-# Panel: DESACTIVADO hasta FASE 3 (rediseno del sidebar de eww).
-# El modelo actual de 2 ventanas superpuestas (toggle-tab 8px + sidebar
-# 220px) entra en loop abrir/cerrar y tapa la pantalla. No se lanza ningun
-# panel en el arranque ni en `bspc wm -r`. Sidebar manual mientras tanto:
-#   eww -c ~/.config/eww open --toggle sidebar   (o Super + b)
-if [[ "${NEBULA_PANEL_ENABLED:-0}" == "1" ]]; then
-    if [[ "${NEBULA_PANEL:-polybar}" == "eww" ]] && command -v eww >/dev/null 2>&1; then
-        eww -c "$HOME/.config/eww" open toggle-tab &
-    elif [[ -x "$HOME/.config/polybar/launch.sh" ]]; then
-        "$HOME/.config/polybar/launch.sh" &
-    fi
+# Panel: se arranca SOLO el daemon de eww (sin abrir ninguna ventana). El
+# sidebar es una unica ventana "nebula-sidebar" que el usuario abre/cierra
+# con Super + b (`eww open --toggle nebula-sidebar`, ver sxhkdrc). Tener el
+# daemon ya vivo hace que el primer Super+b responda al instante.
+# `pidof -q` evita levantar un segundo daemon en cada `bspc wm -r`.
+if [[ "${NEBULA_PANEL:-eww}" == "eww" ]] && command -v eww >/dev/null 2>&1; then
+    pidof -q eww || eww -c "$HOME/.config/eww" daemon &
+elif [[ -x "$HOME/.config/polybar/launch.sh" ]]; then
+    "$HOME/.config/polybar/launch.sh" &
 fi
 
 # --- Escritorios (uno por categoria) -----------------------------------

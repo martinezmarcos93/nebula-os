@@ -42,27 +42,6 @@ $cian:    #22d3ee;
   }
 }
 
-// Tira fina a lo alto de toda la pantalla, pegada al borde izquierdo. Es el
-// sensor de hover (dotfiles/eww/eww.yuck): discreta en reposo -apenas una
-// hairline violeta- y se ilumina apenas el puntero la toca, confirmando que
-// el borde "esta vivo" antes de que el sidebar termine de abrir.
-.toggle-tab {
-  background-color: rgba(124, 58, 237, 0.14);
-  border-right: 1px solid rgba(124, 58, 237, 0.55);
-  color: $cian;
-
-  &:hover {
-    background-color: $violeta;
-
-    .toggle-chevron { color: $bg; }
-  }
-}
-
-.toggle-chevron {
-  color: rgba(34, 211, 238, 0.55);
-  font-size: 11px;
-}
-
 .cat-title {
   color: $muted;
   font-size: 11px;
@@ -85,6 +64,14 @@ $cian:    #22d3ee;
     background-color: $violeta;
     color: $bg;
   }
+}
+
+// App no instalada: se lista para que se vea que la categoria la contempla,
+// pero en gris y sin reaccionar al mouse (no tiene :onclick en el .yuck).
+.app-off {
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: rgba(156, 163, 175, 0.45);
 }
 
 .stats {

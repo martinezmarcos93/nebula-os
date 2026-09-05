@@ -51,13 +51,12 @@ if command -v nebula_panel_stop >/dev/null 2>&1; then
     nebula_panel_start
 else
     # lib/nebula-runtime.sh no disponible (rescate corriendo antes de que
-    # 50-funciones.sh la haya desplegado): abrimos igual sidebar+toggle-tab
-    # a mano para no dejar el panel de eww sin el sensor de hover del borde.
+    # 50-funciones.sh la haya desplegado): con eww basta con dejar el daemon
+    # vivo para que Super+b vuelva a funcionar; la ventana la abre el usuario.
     pkill -x polybar >/dev/null 2>&1 || true
-    command -v eww >/dev/null 2>&1 && eww -c "$CFG/eww" close sidebar >/dev/null 2>&1 || true
-    if [[ "${NEBULA_PANEL:-polybar}" == "eww" ]] && command -v eww >/dev/null 2>&1; then
-        eww -c "$CFG/eww" open sidebar    >/dev/null 2>&1 || true
-        eww -c "$CFG/eww" open toggle-tab >/dev/null 2>&1 || true
+    if [[ "${NEBULA_PANEL:-eww}" == "eww" ]] && command -v eww >/dev/null 2>&1; then
+        eww -c "$CFG/eww" close nebula-sidebar >/dev/null 2>&1 || true
+        pidof -q eww || eww -c "$CFG/eww" daemon >/dev/null 2>&1 &
     elif [[ -x "$CFG/polybar/launch.sh" ]]; then
         "$CFG/polybar/launch.sh" >/dev/null 2>&1 || true
     fi

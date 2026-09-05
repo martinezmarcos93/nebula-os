@@ -29,6 +29,44 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Cambiado (2026-09-05, tercera pasada — sidebar de una sola ventana)
+- **El sidebar de eww se reescribio a UNA sola ventana (`nebula-sidebar`).**
+  Se eliminaron `defwindow toggle-tab` / `defwidget toggle-tab` y todo el
+  modelo de hover (`:onhover` / `:onhoverlost`), que entraba en loop
+  abrir/cerrar: al abrir, el `sidebar` de 220 px tapaba el sensor de 8 px y
+  los eventos de cruce del puntero disparaban cierre -> reexposicion del
+  sensor -> apertura, un proceso `eww` por vuelta. Ahora el unico mecanismo
+  es `Super + B` (`eww open --toggle nebula-sidebar`), determinista.
+  `dotfiles/bspwm/bspwmrc` arranca solo el **daemon** de eww al iniciar
+  sesion (`pidof -q eww || eww … daemon &`), sin abrir ninguna ventana, asi
+  el primer `Super + B` responde al instante. Patron tomado de
+  `gh0stzk/dotfiles` y `EndeavourOS-Community-Editions/bspwm` (ningun
+  entorno bspwm+eww serio usa ventana-sensor de hover).
+  - `dotfiles/eww/eww.yuck`: `defwindow sidebar` -> `nebula-sidebar` (260 px,
+    `:focusable false`); sin el `eventbox :onhoverlost`; nuevo widget
+    `launcher-off` (fila gris, sin `:onclick`) para apps no instaladas.
+  - `dotfiles/eww/eww.scss`: fuera `.toggle-tab` / `.toggle-chevron`; nuevo
+    `.app-off`.
+  - `dotfiles/sxhkd/sxhkdrc`: `Super + B` -> `open --toggle nebula-sidebar`.
+  - `lib/nebula-runtime.sh`: `nebula_panel_start` / `nebula_panel_stop`
+    pasan a una sola ventana, simetricas.
+  - `bin/nebula-gen-panel`: verifica `command -v` del ejecutable de cada app
+    (los `nebula-*` se asumen presentes) y emite `launcher` o `launcher-off`.
+  - `bin/nebula-rescue`: la rama fallback solo asegura el daemon de eww.
+  - `docs/DESIGN.md` §6.5 y §14.2 actualizadas.
+
+### Corregido (2026-09-05, segunda pasada — configs vs versiones de Ubuntu 24.04)
+- **picom no arrancaba: sesion sin compositor.** `dotfiles/picom/picom.conf`
+  usaba la sintaxis corta `_NET_WM_STATE@[0] = …` (picom v11); la v10 de
+  Ubuntu 24.04 responde "Target type cannot be determined" y aborta, dejando
+  el escritorio sin sombras, sin esquinas redondeadas y sin vsync (tearing).
+  Corregido a la forma portable en v10: `_NET_WM_STATE@:32a *= '…'`.
+- **dunst descartaba `height` y `offset`.** Las tuplas `(min,max)` / `(x,y)`
+  son de dunst >= 1.10; la instalada es 1.9.x. Vuelto a `height = 200` y
+  `offset = 16x48`.
+- `install/10-base.sh`: se agrega `lm-sensors` (sin el, `sensors` no existe y
+  `TEMP` queda vacio en el sidebar y en `nebula-resource-hud`).
+
 ### Corregido (2026-09-05, primer arranque real)
 - **Puntero del mouse invisible al iniciar sesion.** `dotfiles/bspwm/bspwmrc`
   nunca definia el cursor del root, asi que el puntero no se veia hasta

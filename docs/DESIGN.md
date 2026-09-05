@@ -243,10 +243,10 @@ Reloj · uso de CPU / RAM / GPU (`nvidia-smi --query-gpu=utilization.gpu,memory.
 
 ### 6.5. Interacción
 
-- **Desplegar/ocultar el panel (con `eww`): por mouse, no por teclado.** Un sensor angosto (`toggle-tab`, 8 px de ancho a lo alto de **toda** la pantalla) queda siempre presente pegado al borde izquierdo. Acercar el puntero ahí (`:onhover` en el `eventbox`, cuyo hijo es un `box` — nunca un `button`, que se comería los eventos enter/leave) abre el sidebar (`sidebar`) completo con todas las categorías; alejar el puntero de **todo** el sidebar (`:onhoverlost`) lo vuelve a esconder automáticamente. El botón "‹" del header sigue disponible para cerrarlo a mano sin esperar. No hace falta ningún atajo para esto — ver `dotfiles/eww/eww.yuck`.
+- **Desplegar/ocultar el panel (con `eww`): `Super + B`.** Una **única** ventana (`nebula-sidebar`, 260 px, alto completo, pegada al borde izquierdo; `wm-ignore true`, `exclusive false`, `focusable false`). `Super + B` ejecuta `eww open --toggle nebula-sidebar`: si está abierta la cierra, si está cerrada la abre. El botón "‹" del header la cierra a mano. El daemon de `eww` lo arranca `bspwmrc` al iniciar sesión (`pidof -q eww || eww … daemon &`) sin abrir ninguna ventana, para que el primer `Super + B` responda al instante. **No hay** ventana-sensor ni apertura por hover: ese modelo (`toggle-tab` + `:onhover`/`:onhoverlost`) entraba en loop abrir/cerrar y se descartó — ver `dotfiles/eww/eww.yuck`.
 - `Super + Espacio` → `rofi -show drun` (todas las apps).
-- `Super + C` → `rofi` con las categorías de `categories.toml` (alternativa por teclado a desplegar el panel con el mouse).
-- Con `polybar` (fallback degradado, E1): no hay sidebar ni hover — es una barra inferior fija sin categorías; `Super + C` (rofi) pasa a ser la única forma de navegar por categoría.
+- `Super + C` → `rofi` con las categorías de `categories.toml` (alternativa por teclado al sidebar).
+- Con `polybar` (fallback degradado, E1): no hay sidebar — es una barra inferior fija sin categorías; `Super + C` (rofi) pasa a ser la única forma de navegar por categoría.
 - Secciones colapsables por categoría (estado persistido en `~/.cache/nebula/panel-state`) — pendiente de implementar (hoy `categories.toml` no distingue estado de colapso).
 
 ---
@@ -537,7 +537,7 @@ combinación queda asignada a dos acciones.
 | `Super + Enter` | Terminal (Alacritty) |
 | `Super + Space` | `rofi -show drun` |
 | `Super + C` / `Super + Shift + C` | Menú rofi de categorías / regenerar panel (`nebula-gen-panel`) |
-| `Super + B` | Toggle sidebar eww (no-op hasta FASE 3) |
+| `Super + B` | Toggle del sidebar eww (`eww open --toggle nebula-sidebar`) |
 
 **Funciones Nebula**
 
