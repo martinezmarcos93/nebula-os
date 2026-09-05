@@ -1,0 +1,19 @@
+# Logs y estado en tiempo de ejecucion
+*.log
+/nebula-report.txt
+
+# Backups generados por la instalacion
+nebula-backup-*/
+.config/nebula-backup-*/
+
+# Snapshot local (se regenera; se versiona vacio con .gitkeep)
+dotfiles/nebula/known-good/*
+!dotfiles/nebula/known-good/.gitkeep
+
+# Editor / SO
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/

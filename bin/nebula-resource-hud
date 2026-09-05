@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# nebula-resource-hud - HUD de recursos para Nebula OS (toggle).
+#   Muestra CPU / RAM / GPU / VRAM / temp como notificacion que se
+#   refresca en el lugar. Se auto-oculta si Modo Juego esta activo.
+# Uso: nebula-resource-hud [toggle|once|off]
+set -euo pipefail
+
+STATE="${XDG_CACHE_HOME:-$HOME/.cache}/nebula/hud"
+GAME="${XDG_CACHE_HOME:-$HOME/.cache}/nebula/gamemode"
+INTERVAL="${NEBULA_HUD_INTERVAL:-2}"
+mkdir -p "$(dirname "$STATE")"
+
+hud_line() {
+    local cpu mem gpu vram temp
+    cpu="$(grep 'cpu ' /proc/stat | awk '{printf "%d",($2+$4)*100/($2+$4+$5)}')"
+    mem="$(free | awk '/Mem:/ {printf "%d",$3/$2*100}')"
+    if command -v nvidia-smi >/dev/null 2>&1; then
+        read -r gpu vram < <(nvidia-smi --query-gpu=utilization.gpu,memory.used \
+            --format=csv,noheader,nounits 2>/dev/null | head -n1 | tr -d ',')
+    fi
+    temp="$(sensors 2>/dev/null | awk '/Package id 0/ {print $4; exit}')"
+    printf 'CPU %s%%   RAM %s%%   GPU %s%%   VRAM %sMB   %s' \
+        "${cpu:-?}" "${mem:-?}" "${gpu:-n/d}" "${vram:-n/d}" "${temp:-}"
+}
+
+show_once() {
+    command -v notify-send >/dev/null 2>&1 || { hud_line; echo; return; }
+    notify-send -a "nebula-hud" -t $(( INTERVAL * 1000 + 500 )) \
+        -h string:x-canonical-private-synchronous:nebula-hud \
+        "Recursos" "$(hud_line)"
+}
+
+loop() {
+    while [[ -e "$STATE" ]]; do
+        [[ -e "$GAME" ]] || show_once
+        sleep "$INTERVAL"
+    done
+}
+
+case "${1:-toggle}" in
+    once)   show_once ;;
+    off)    rm -f "$STATE" ;;
+    toggle)
+        if [[ -e "$STATE" ]]; then
+            rm -f "$STATE"
+        else
+            : > "$STATE"
+            ( loop ) >/dev/null 2>&1 &
+        fi ;;
+    -h|--help) sed -n '2,6p' "$0" ;;
+    *) echo "uso: nebula-resource-hud [toggle|once|off]" >&2; exit 2 ;;
+esac

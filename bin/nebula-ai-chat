@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# nebula-ai-chat - Front para modelos locales de Ollama (Nebula OS).
+#   (sin args)      elige modelo en rofi y abre 'ollama run' en una terminal
+#   --serve         arranca 'ollama serve' en segundo plano
+#   --pull          elige/escribe un modelo y lo descarga
+#   --oneshot TEXTO una sola pregunta; respuesta por notificacion + portapapeles
+# Historial: $XDG_DATA_HOME/nebula/ai-history/AAAA-MM-DD.md
+set -euo pipefail
+
+HIST_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/nebula/ai-history"
+mkdir -p "$HIST_DIR"
+HIST="$HIST_DIR/$(date +%F).md"
+TERM_CMD="${NEBULA_TERMINAL:-alacritty -e}"
+
+command -v ollama >/dev/null 2>&1 || { echo "falta 'ollama'" >&2; exit 1; }
+
+ensure_serve() {
+    ollama list >/dev/null 2>&1 && return 0
+    ( ollama serve >/dev/null 2>&1 & )
+    local _i
+    for _i in $(seq 1 20); do
+        ollama list >/dev/null 2>&1 && return 0
+        sleep 0.5
+    done
+    echo "no pude contactar a ollama serve" >&2
+    return 1
+}
+
+pick_model() {
+    local list
+    list="$(ollama list 2>/dev/null | awk 'NR>1 {print $1}')"
+    if [[ -z "$list" ]]; then
+        return 1
+    fi
+    if command -v rofi >/dev/null 2>&1; then
+        printf '%s\n' "$list" | rofi -dmenu -i -p "Modelo"
+    else
+        printf '%s\n' "$list" | head -n1
+    fi
+}
+
+# El umbral se calcula sobre la VRAM TOTAL de la placa, no con un numero fijo.
+# Antes avisaba con "used > 3000 MB", un valor pensado para una GTX 1060 de
+# 6 GB; en la de 3 GB de este equipo (3072 MiB totales) ese aviso no podia
+# dispararse hasta que la GPU ya estaba practicamente llena, que es tarde.
+vram_warn() {
+    command -v nvidia-smi >/dev/null 2>&1 || return 0
+    local used total umbral
+    read -r used total < <(nvidia-smi --query-gpu=memory.used,memory.total \
+        --format=csv,noheader,nounits 2>/dev/null | head -n1 | tr -d ',')
+    [[ "${used:-}" =~ ^[0-9]+$ && "${total:-}" =~ ^[0-9]+$ ]] || return 0
+    (( total > 0 )) || return 0
+
+    # Avisamos a partir de la mitad de la VRAM ocupada: con 3 GB, lo que queda
+    # libre ya no alcanza para cargar un modelo de 3B entero en la GPU.
+    umbral=$(( total / 2 ))
+    if (( used > umbral )); then
+        command -v notify-send >/dev/null 2>&1 && \
+            notify-send -a "Nebula" "IA local" \
+                "VRAM ocupada: ${used} de ${total} MiB. Quedan $(( total - used )) MiB: el modelo puede caer a CPU." || true
+    fi
+}
+
+clip() {
+    if command -v wl-copy >/dev/null 2>&1; then wl-copy
+    elif command -v xclip >/dev/null 2>&1; then xclip -selection clipboard
+    else cat
+    fi
+}
+
+case "${1:-run}" in
+    --serve)
+        ensure_serve && echo "ollama serve OK (http://localhost:11434)" ;;
+    --pull)
+        ensure_serve || exit 1
+        if command -v rofi >/dev/null 2>&1; then
+            m="$(ollama list 2>/dev/null | awk 'NR>1{print $1}' \
+                 | rofi -dmenu -p 'Modelo a descargar (o escribi uno nuevo)')"
+        else
+            read -rp "Modelo a descargar: " m
+        fi
+        if [[ -n "${m:-}" ]]; then
+            ollama pull "$m"
+        fi ;;
+    --oneshot)
+        shift
+        q="$*"
+        [[ -n "$q" ]] || { echo "uso: nebula-ai-chat --oneshot TEXTO" >&2; exit 2; }
+        ensure_serve || exit 1
+        vram_warn
+        model="$(pick_model)" || { echo "sin modelos; usa --pull" >&2; exit 1; }
+        [[ -n "$model" ]] || exit 1
+        ans="$(printf '%s' "$q" | ollama run "$model" 2>/dev/null)"
+        printf '%s' "$ans" | clip
+        command -v notify-send >/dev/null 2>&1 && notify-send -a "Nebula" "IA: $model" "$ans" || true
+        printf '## %s  (%s)\n**Q:** %s\n\n**A:** %s\n\n' "$(date -Is)" "$model" "$q" "$ans" >> "$HIST" ;;
+    run)
+        ensure_serve || exit 1
+        vram_warn
+        model="$(pick_model)" || { echo "sin modelos; usa: nebula-ai-chat --pull" >&2; exit 1; }
+        [[ -n "$model" ]] || exit 1
+        printf '## %s  sesion con %s\n\n' "$(date -Is)" "$model" >> "$HIST"
+        # shellcheck disable=SC2086
+        exec $TERM_CMD ollama run "$model" ;;
+    -h|--help)
+        sed -n '2,9p' "$0" ;;
+    *)
+        echo "uso: nebula-ai-chat [--serve|--pull|--oneshot TEXTO]" >&2; exit 2 ;;
+esac

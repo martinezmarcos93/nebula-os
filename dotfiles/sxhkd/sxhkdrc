@@ -1,0 +1,55 @@
+# dotfiles/sxhkd/sxhkdrc - Nebula OS
+# Recargar en caliente:  pkill -USR1 -x sxhkd   (o Super + Escape)
+# Matriz completa: ver docs/DESIGN.md, seccion 14.2
+
+# --- Lanzadores --------------------------------------------------------
+super + Return
+    alacritty
+super + space
+    rofi -show drun
+super + c
+    nebula-gen-panel --menu
+super + shift + c
+    nebula-gen-panel
+
+# --- Funciones unicas de Nebula --------------------------------------
+super + f
+    nebula-focus-mode
+super + shift + g
+    nebula-game-mode
+super + a
+    nebula-ai-chat
+super + h
+    nebula-resource-hud
+super + ctrl + r
+    nebula-rescue
+
+# --- Ventanas / escritorios ----------------------------------------
+super + w
+    bspc node -c
+super + m
+    bspc desktop -l next
+super + t
+    bspc node -t "~"{floating,tiled}
+super + {_,shift + }{1-6}
+    bspc {desktop -f,node -d} '^{1-6}'
+super + {h,j,k,l}
+    bspc node -f {west,south,north,east}
+super + shift + {h,j,k,l}
+    bspc node -s {west,south,north,east}
+super + shift + r
+    bspc wm -r
+super + shift + x
+    i3lock -n -c 000000
+super + Escape
+    pkill -USR1 -x sxhkd
+
+# --- Audio / brillo / media (PipeWire via wpctl) ------------------
+XF86Audio{RaiseVolume,LowerVolume}
+    wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%{+,-} -l 1.5
+XF86AudioMute
+    wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+XF86Audio{Play,Next,Prev}
+    playerctl {play-pause,next,previous}
+XF86MonBrightness{Up,Down}
+    brightnessctl set 5%{+,-}

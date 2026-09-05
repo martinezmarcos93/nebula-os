@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# nebula-streaming-profile - Lanza el navegador con un perfil dedicado por
+# servicio de streaming (aisla sesiones y DRM). Nebula OS.
+#
+#   nebula-streaming-profile [Netflix|Prime|YouTube|Disney|Twitch]
+#
+# Sin argumento, elige con rofi. El paquete Widevine (DRM) debe estar
+# instalado; la primera vez puede hacer falta activar EME en el perfil.
+set -euo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    sed -n '2,8p' "$0"
+    exit 0
+fi
+
+BROWSER="${NEBULA_BROWSER:-librewolf}"
+command -v "$BROWSER" >/dev/null 2>&1 || BROWSER="firefox"
+command -v "$BROWSER" >/dev/null 2>&1 || { echo "no hay navegador (librewolf/firefox)" >&2; exit 1; }
+
+PROFILE_ROOT="$HOME/.nebula/profiles"
+
+declare -A URL=(
+    [Netflix]="https://www.netflix.com"
+    [Prime]="https://www.primevideo.com"
+    [YouTube]="https://www.youtube.com"
+    [Disney]="https://www.disneyplus.com"
+    [Twitch]="https://www.twitch.tv"
+)
+
+svc="${1:-}"
+if [[ -z "$svc" ]]; then
+    if command -v rofi >/dev/null 2>&1; then
+        svc="$(printf '%s\n' "${!URL[@]}" | sort | rofi -dmenu -i -p 'Streaming')"
+    else
+        PS3="Servicio: "
+        select s in "${!URL[@]}"; do svc="$s"; break; done
+    fi
+fi
+
+[[ -n "${svc:-}" && -n "${URL[$svc]:-}" ]] || { echo "servicio invalido: '${svc:-}'" >&2; exit 2; }
+
+dir="$PROFILE_ROOT/$svc"
+if [[ ! -d "$dir" ]]; then
+    mkdir -p "$dir"
+    echo "Perfil nuevo en $dir. Si el video no carga, activa DRM/EME en ese perfil." >&2
+fi
+
+command -v notify-send >/dev/null 2>&1 && notify-send -a "Nebula" "Streaming" "Abriendo $svc" || true
+
+exec "$BROWSER" --profile "$dir" --new-window "${URL[$svc]}"

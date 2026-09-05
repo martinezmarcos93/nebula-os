@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# nebula-rescue - Restaura el entorno Nebula a un estado usable.
+#   - revierte Modo Juego / Modo Foco
+#   - mata procesos nebula-* colgados
+#   - recarga sxhkd, bspwm, compositor y panel
+#   - si existe snapshot 'known-good', reaplica esas configuraciones
+# Se puede correr desde un TTY (Ctrl+Alt+F2) si el entorno no responde.
+# Uso: nebula-rescue [--help]
+set -uo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    sed -n '2,7p' "$0"
+    exit 0
+fi
+
+CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
+KG="$CFG/nebula/known-good"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/nebula"
+
+for _c in "${XDG_DATA_HOME:-$HOME/.local/share}/nebula/lib/nebula-runtime.sh" \
+          "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/nebula-runtime.sh"; do
+    # shellcheck disable=SC1090  # ruta resuelta en runtime (deploy vs repo)
+    [[ -n "$_c" && -f "$_c" ]] && { source "$_c"; break; }
+done
+unset _c
+
+echo "[nebula-rescue] revirtiendo modos..."
+rm -f "$CACHE/gamemode" "$CACHE/focusmode" "$CACHE/hud"
+pkill -f 'nebula-resource-hud' >/dev/null 2>&1 || true
+
+echo "[nebula-rescue] restaurando configs known-good (si existen)..."
+if [[ -d "$KG" ]]; then
+    for app in bspwm sxhkd picom rofi polybar eww alacritty dunst gtk-3.0; do
+        [[ -d "$KG/$app" ]] || continue
+        mkdir -p "$CFG/$app"
+        cp -a "$KG/$app/." "$CFG/$app/" 2>/dev/null || true
+    done
+fi
+
+echo "[nebula-rescue] recargando servicios..."
+pkill -USR1 -x sxhkd >/dev/null 2>&1 || true
+command -v bspc  >/dev/null 2>&1 && bspc wm -r >/dev/null 2>&1 || true
+
+pkill -x picom >/dev/null 2>&1 || true
+if command -v picom >/dev/null 2>&1; then
+    picom -b --config "$CFG/picom/picom.conf" >/dev/null 2>&1 || true
+fi
+
+if command -v nebula_panel_stop >/dev/null 2>&1; then
+    nebula_panel_stop
+    nebula_panel_start
+else
+    # lib/nebula-runtime.sh no disponible (rescate corriendo antes de que
+    # 50-funciones.sh la haya desplegado): abrimos igual sidebar+toggle-tab
+    # a mano para no dejar el panel de eww sin el sensor de hover del borde.
+    pkill -x polybar >/dev/null 2>&1 || true
+    command -v eww >/dev/null 2>&1 && eww -c "$CFG/eww" close sidebar >/dev/null 2>&1 || true
+    if [[ "${NEBULA_PANEL:-polybar}" == "eww" ]] && command -v eww >/dev/null 2>&1; then
+        eww -c "$CFG/eww" open sidebar    >/dev/null 2>&1 || true
+        eww -c "$CFG/eww" open toggle-tab >/dev/null 2>&1 || true
+    elif [[ -x "$CFG/polybar/launch.sh" ]]; then
+        "$CFG/polybar/launch.sh" >/dev/null 2>&1 || true
+    fi
+fi
+
+command -v notify-send >/dev/null 2>&1 && notify-send -a "Nebula" "Rescate" "Entorno recargado." || true
+echo "[nebula-rescue] listo. Si bspwm sigue sin responder, reinicia la sesion desde el TTY."

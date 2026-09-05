@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# nebula-game-mode - Modo Juego (toggle) para Nebula OS.
+#   ON : detiene panel y compositor, gobernador a performance, sin DPMS,
+#        notificaciones en pausa.
+#   OFF: restaura panel, compositor, DPMS, gobernador y notificaciones.
+#   Estado: $XDG_CACHE_HOME/nebula/gamemode
+# Uso: nebula-game-mode [on|off|toggle|status]
+set -euo pipefail
+
+CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
+STATE="${XDG_CACHE_HOME:-$HOME/.cache}/nebula/gamemode"
+mkdir -p "$(dirname "$STATE")"
+
+for _c in "${XDG_DATA_HOME:-$HOME/.local/share}/nebula/lib/nebula-runtime.sh" \
+          "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/nebula-runtime.sh"; do
+    # shellcheck disable=SC1090  # ruta resuelta en runtime (deploy vs repo)
+    [[ -n "$_c" && -f "$_c" ]] && { source "$_c"; break; }
+done
+unset _c
+command -v nebula_panel_start >/dev/null 2>&1 || { echo "falta lib/nebula-runtime.sh (corre install/50-funciones.sh)" >&2; exit 1; }
+
+notify()      { nebula_notify "$@"; }
+panel_start() { nebula_panel_start; }
+panel_stop()  { nebula_panel_stop; }
+
+governor() {
+    command -v cpupower >/dev/null 2>&1 || return 0
+    sudo -n cpupower frequency-set -g "$1" >/dev/null 2>&1 || true
+}
+
+game_on() {
+    : > "$STATE"
+    # Salvaguarda (docs/DESIGN.md §7.1): si nos matan a mitad de la secuencia
+    # (Ctrl+C, systemd, kill -TERM) restauramos en vez de dejar el governor/
+    # DPMS/notificaciones a medio cambiar. Se desarma al terminar bien.
+    trap 'trap - INT TERM; game_off; exit 1' INT TERM
+    panel_stop
+    pkill -x picom >/dev/null 2>&1 || true
+    command -v bspc >/dev/null 2>&1 && bspc config borderless_monocle true || true
+    command -v xset >/dev/null 2>&1 && xset -dpms s off || true
+    command -v dunstctl >/dev/null 2>&1 && dunstctl set-paused true || true
+    governor performance
+    trap - INT TERM
+    notify "Modo Juego ON" "Panel y compositor detenidos."
+}
+
+game_off() {
+    rm -f "$STATE"
+    if command -v picom >/dev/null 2>&1; then
+        picom -b --config "$CFG/picom/picom.conf" >/dev/null 2>&1 || true
+    fi
+    panel_start
+    command -v bspc >/dev/null 2>&1 && bspc config borderless_monocle false || true
+    command -v xset >/dev/null 2>&1 && xset s on +dpms || true
+    command -v dunstctl >/dev/null 2>&1 && dunstctl set-paused false || true
+    governor schedutil
+    notify "Modo Juego OFF" "Entorno restaurado."
+}
+
+case "${1:-toggle}" in
+    on)         game_on ;;
+    off)        game_off ;;
+    toggle)     if [[ -e "$STATE" ]]; then game_off; else game_on; fi ;;
+    status)     [[ -e "$STATE" ]] && echo "on" || echo "off" ;;
+    -h|--help)  sed -n '2,8p' "$0" ;;
+    *)          echo "uso: nebula-game-mode [on|off|toggle|status]" >&2; exit 2 ;;
+esac

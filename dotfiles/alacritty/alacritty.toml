@@ -1,0 +1,43 @@
+# dotfiles/alacritty/alacritty.toml - Nebula OS  "Cosmic Dark"
+
+[window]
+padding = { x = 14, y = 14 }
+opacity = 0.95
+dynamic_title = true
+
+[font]
+size = 11.0
+normal = { family = "JetBrains Mono", style = "Regular" }
+bold   = { family = "JetBrains Mono", style = "Bold" }
+italic = { family = "JetBrains Mono", style = "Italic" }
+
+[cursor]
+style = { shape = "Beam", blinking = "On" }
+
+[colors.primary]
+background = "#000000"
+foreground = "#e5e7eb"
+
+[colors.cursor]
+cursor = "#22d3ee"
+text   = "#000000"
+
+[colors.normal]
+black   = "#0a0a14"
+red     = "#ef4444"
+green   = "#22d3ee"
+yellow  = "#f59e0b"
+blue    = "#7c3aed"
+magenta = "#e879f9"
+cyan    = "#22d3ee"
+white   = "#9ca3af"
+
+[colors.bright]
+black   = "#1f2937"
+red     = "#ef4444"
+green   = "#67e8f9"
+yellow  = "#fbbf24"
+blue    = "#a78bfa"
+magenta = "#f0abfc"
+cyan    = "#67e8f9"
+white   = "#e5e7eb"

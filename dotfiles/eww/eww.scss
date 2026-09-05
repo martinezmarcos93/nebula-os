@@ -1,0 +1,128 @@
+// dotfiles/eww/eww.scss - Nebula OS  "Cosmic Dark"
+
+$bg:      #000000;
+$panel:   rgba(10, 10, 20, 0.85);
+$fg:      #e5e7eb;
+$muted:   #9ca3af;
+$violeta: #7c3aed;
+$cian:    #22d3ee;
+
+* {
+  all: unset;
+  font-family: "Inter", "Space Grotesk", sans-serif;
+  font-size: 13px;
+}
+
+.sidebar {
+  background-color: $panel;
+  border-right: 1px solid $violeta;
+  padding: 14px 12px;
+  color: $fg;
+}
+
+.sidebar-header {
+  padding-bottom: 8px;
+}
+
+.brand {
+  color: $cian;
+  font-weight: 700;
+  letter-spacing: 3px;
+  padding: 6px 0 12px 0;
+}
+
+.hide-btn {
+  color: $muted;
+  padding: 4px 8px;
+  border-radius: 6px;
+
+  &:hover {
+    background-color: $violeta;
+    color: $bg;
+  }
+}
+
+.toggle-tab {
+  background-color: $panel;
+  border-right: 1px solid $violeta;
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+  color: $cian;
+
+  // El :hover llega igual estando dentro del eventbox del sensor de hover
+  // (dotfiles/eww/eww.yuck): confirma visualmente que el borde "esta vivo"
+  // apenas el mouse lo toca, antes incluso de que el sidebar termine de abrir.
+  &:hover {
+    background-color: $violeta;
+    color: $bg;
+  }
+}
+
+.cat-title {
+  color: $muted;
+  font-size: 11px;
+  margin-top: 10px;
+  margin-bottom: 2px;
+}
+
+.cat-title-icon {
+  color: $muted;
+  font-size: 11px;
+  margin-top: 10px;
+  margin-bottom: 2px;
+}
+
+.app {
+  padding: 6px 8px;
+  border-radius: 8px;
+
+  &:hover {
+    background-color: $violeta;
+    color: $bg;
+  }
+}
+
+.stats {
+  color: $muted;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  margin-top: 8px;
+}
+
+.stat-row {
+  padding: 1px 0;
+}
+
+.stat-label {
+  color: $muted;
+}
+
+.stat-value {
+  color: $fg;
+}
+
+.stat-bar {
+  min-height: 5px;
+
+  trough {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    min-height: 5px;
+  }
+
+  progress {
+    background-image: linear-gradient(90deg, $violeta, $cian);
+    border-radius: 4px;
+    min-height: 5px;
+  }
+}
+
+.temp-label {
+  color: $muted;
+  margin-top: 2px;
+}
+
+.clock {
+  color: $fg;
+  margin-top: 4px;
+}

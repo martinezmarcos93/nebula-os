@@ -1,0 +1,164 @@
+# dotfiles/nebula/categories.toml
+# ---------------------------------------------------------------------------
+# Fuente UNICA de datos del sidebar de eww y del lanzador rofi.
+# El generador `nebula-gen-panel` produce, a partir de este archivo:
+#   - la seccion de categorias del sidebar eww (dotfiles/eww/eww.yuck)
+#   - el menu rofi por categoria (nebula-gen-panel --menu)
+#
+# polybar (fallback degradado si eww no compila, ver docs/DESIGN.md E1) NO lee
+# este archivo: su config.ini es estatico, sin categorias dinamicas.
+#
+# Tras editar:  nebula-gen-panel     (o el atajo Super+Shift+C)
+#
+# `icono` es un token corto; el generador lo mapea a un glyph de Nerd Font.
+# Ver docs/DESIGN.md, seccion 6.
+# ---------------------------------------------------------------------------
+
+[[categoria]]
+nombre = "Desarrollo"
+icono  = "code"
+
+[[categoria.app]]
+nombre = "Terminal"
+exec   = "alacritty"
+icono  = "terminal"
+
+[[categoria.app]]
+nombre = "Editor"
+exec   = "alacritty -e nvim"
+icono  = "edit"
+
+[[categoria.app]]
+nombre = "Git TUI"
+exec   = "alacritty -e lazygit"
+icono  = "git"
+
+[[categoria.app]]
+nombre = "Docker TUI"
+exec   = "alacritty -e lazydocker"
+icono  = "docker"
+
+
+[[categoria]]
+nombre = "Graficos"
+icono  = "image"
+
+[[categoria.app]]
+nombre = "GIMP"
+exec   = "gimp"
+icono  = "gimp"
+
+[[categoria.app]]
+nombre = "Darktable"
+exec   = "darktable"
+icono  = "camera"
+
+[[categoria.app]]
+nombre = "Inkscape"
+exec   = "inkscape"
+icono  = "vector"
+
+[[categoria.app]]
+nombre = "Visor"
+exec   = "nsxiv -t ."
+icono  = "eye"
+
+
+[[categoria]]
+nombre = "Juegos"
+icono  = "gamepad"
+
+[[categoria.app]]
+nombre = "Steam"
+exec   = "steam"
+icono  = "steam"
+
+[[categoria.app]]
+nombre = "Modo Juego"
+exec   = "nebula-game-mode"
+icono  = "rocket"
+
+
+[[categoria]]
+nombre = "Multimedia"
+icono  = "play"
+
+[[categoria.app]]
+nombre = "Navegador"
+exec   = "firefox"
+icono  = "globe"
+
+[[categoria.app]]
+nombre = "Video"
+exec   = "mpv --player-operation-mode=pseudo-gui"
+icono  = "film"
+
+[[categoria.app]]
+nombre = "Musica"
+exec   = "alacritty -e cmus"
+icono  = "music"
+
+[[categoria.app]]
+nombre = "Perfiles de streaming"
+exec   = "nebula-streaming-profile"
+icono  = "tv"
+
+
+[[categoria]]
+nombre = "Sistema"
+icono  = "cog"
+
+[[categoria.app]]
+nombre = "Archivos"
+exec   = "nautilus --new-window"
+icono  = "folder"
+
+[[categoria.app]]
+nombre = "Monitor"
+exec   = "alacritty -e btop"
+icono  = "activity"
+
+[[categoria.app]]
+nombre = "Audio"
+exec   = "pavucontrol"
+icono  = "volume"
+
+[[categoria.app]]
+nombre = "Red"
+exec   = "alacritty -e nmtui"
+icono  = "wifi"
+
+[[categoria.app]]
+nombre = "Apagar"
+exec   = "systemctl poweroff"
+icono  = "power"
+
+[[categoria.app]]
+nombre = "Reiniciar"
+exec   = "systemctl reboot"
+icono  = "refresh"
+
+
+[[categoria]]
+nombre = "IA Local"
+icono  = "brain"
+
+[[categoria.app]]
+nombre = "Iniciar Ollama"
+exec   = "nebula-ai-chat --serve"
+icono  = "server"
+
+[[categoria.app]]
+nombre = "Chat con modelo"
+exec   = "nebula-ai-chat"
+icono  = "message"
+
+[[categoria.app]]
+nombre = "Descargar modelo"
+exec   = "nebula-ai-chat --pull"
+icono  = "download"
+
+[[categoria.app]]
+nombre = "Estado GPU"
+exec   = "alacritty -e watch -n2 nvidia-smi"
+icono  = "gpu"

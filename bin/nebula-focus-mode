@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# nebula-focus-mode - Modo foco (toggle) para Nebula OS.
+#   Oculta el panel, pasa el escritorio a 'monocle' y pausa notificaciones.
+#   Opcional: temporizador Pomodoro que apaga el modo al terminar.
+# Uso: nebula-focus-mode [on|off|toggle] [--pomodoro MIN]
+set -euo pipefail
+
+STATE="${XDG_CACHE_HOME:-$HOME/.cache}/nebula/focusmode"
+mkdir -p "$(dirname "$STATE")"
+
+for _c in "${XDG_DATA_HOME:-$HOME/.local/share}/nebula/lib/nebula-runtime.sh" \
+          "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/nebula-runtime.sh"; do
+    # shellcheck disable=SC1090  # ruta resuelta en runtime (deploy vs repo)
+    [[ -n "$_c" && -f "$_c" ]] && { source "$_c"; break; }
+done
+unset _c
+command -v nebula_panel_start >/dev/null 2>&1 || { echo "falta lib/nebula-runtime.sh (corre install/50-funciones.sh)" >&2; exit 1; }
+
+notify()      { nebula_notify "$@"; }
+panel_start() { nebula_panel_start; }
+panel_stop()  { nebula_panel_stop; }
+
+focus_on() {
+    : > "$STATE"
+    panel_stop
+    command -v bspc >/dev/null 2>&1 && bspc desktop -l monocle || true
+    command -v dunstctl >/dev/null 2>&1 && dunstctl set-paused true || true
+    notify "Modo Foco ON"
+}
+focus_off() {
+    rm -f "$STATE"
+    panel_start
+    command -v bspc >/dev/null 2>&1 && bspc desktop -l tiled || true
+    command -v dunstctl >/dev/null 2>&1 && dunstctl set-paused false || true
+    notify "Modo Foco OFF"
+}
+
+POMODORO=0
+ACTION="toggle"
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        on|off|toggle) ACTION="$1" ;;
+        --pomodoro)    POMODORO="${2:-25}"; shift ;;
+        -h|--help)     sed -n '2,7p' "$0"; exit 0 ;;
+        *)             echo "uso: nebula-focus-mode [on|off|toggle] [--pomodoro MIN]" >&2; exit 2 ;;
+    esac
+    shift
+done
+
+case "$ACTION" in
+    on)     focus_on ;;
+    off)    focus_off ;;
+    toggle) if [[ -e "$STATE" ]]; then focus_off; else focus_on; fi ;;
+esac
+
+if [[ "$POMODORO" != "0" && -e "$STATE" ]]; then
+    ( sleep "$(( POMODORO * 60 ))"
+      "$0" off
+      command -v notify-send >/dev/null 2>&1 && \
+        notify-send -a "Nebula" "Pomodoro" "Fin de $POMODORO min de foco" || true
+    ) >/dev/null 2>&1 &
+    notify "Pomodoro" "$POMODORO min"
+fi

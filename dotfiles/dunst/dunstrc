@@ -1,0 +1,40 @@
+# dotfiles/dunst/dunstrc - Nebula OS  "Cosmic Dark"
+
+[global]
+    monitor = 0
+    follow = mouse
+    width = 340
+    height = (0, 200)
+    origin = top-right
+    offset = (16, 48)
+    padding = 12
+    horizontal_padding = 14
+    frame_width = 1
+    frame_color = "#7c3aed"
+    separator_color = frame
+    corner_radius = 10
+    font = Inter 10
+    markup = full
+    format = "<b>%s</b>\n%b"
+    icon_position = left
+    min_icon_size = 16
+    max_icon_size = 48
+    idle_threshold = 120
+    mouse_left_click = do_action, close_current
+    mouse_right_click = close_all
+
+[urgency_low]
+    background = "#0a0a14"
+    foreground = "#9ca3af"
+    timeout = 6
+
+[urgency_normal]
+    background = "#0a0a14"
+    foreground = "#e5e7eb"
+    timeout = 10
+
+[urgency_critical]
+    background = "#0a0a14"
+    foreground = "#e5e7eb"
+    frame_color = "#ef4444"
+    timeout = 0

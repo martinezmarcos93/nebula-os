@@ -1,0 +1,19 @@
+# Normalizar finales de linea: LF SIEMPRE en el repo.
+# Critico: los scripts .sh con CRLF no arrancan en Linux (shebang roto).
+* text=auto eol=lf
+
+*.sh      text eol=lf
+*.bash    text eol=lf
+Makefile  text eol=lf
+*.toml    text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.md      text eol=lf
+
+# Binarios: sin conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary

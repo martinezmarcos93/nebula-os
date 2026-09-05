@@ -1,0 +1,125 @@
+;; dotfiles/eww/eww.yuck - Nebula OS  "Cosmic Dark"
+;; Panel lateral izquierdo (220 px). La lista de categorias/apps la regenera
+;; el generador a partir de dotfiles/nebula/categories.toml. NO edites el
+;; bloque autogenerado (delimitado por los marcadores dentro del widget).
+;;
+;; UX: el panel se despliega por HOVER, no por clic. La ventana "toggle-tab"
+;; es un sensor angosto siempre presente en el borde izquierdo; acercar el
+;; mouse ahi (:onhover) abre "sidebar", y alejar el mouse de todo el sidebar
+;; (:onhoverlost) lo vuelve a esconder. El boton "‹" del header sigue
+;; sirviendo para cerrarlo a mano sin esperar a que el mouse se aleje.
+
+(defpoll TIME :interval "10s" :initial "--:--" "date '+%H:%M'")
+(defpoll DATE :interval "60s" :initial ""      "date '+%a %d %b'")
+(defpoll CPU  :interval "2s"  :initial "0"
+  "grep 'cpu ' /proc/stat | awk '{u=($2+$4)*100/($2+$4+$5)} END {printf \"%d\", u}'")
+(defpoll MEM  :interval "2s"  :initial "0"
+  "free | awk '/Mem:/ {printf \"%d\", $3/$2*100}'")
+(defpoll GPU  :interval "5s"  :initial "0"
+  "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null | head -n1")
+(defpoll VRAM :interval "5s"  :initial "0"
+  "nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -n1")
+(defpoll VRAM_PCT :interval "5s"  :initial "0"
+  "nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null | head -n1 | awk -F', *' '{ if ($2>0) printf \"%d\", ($1/$2)*100; else print 0 }'")
+(defpoll TEMP :interval "5s"  :initial ""
+  "sensors 2>/dev/null | awk '/Package id 0/ {print $4; exit}'")
+
+(defwidget cat [name]
+  (label :class "cat-title" :halign "start" :text name))
+
+(defwidget cat-icon [name icon]
+  (box :class "cat-title-icon" :orientation "h" :space-evenly false :spacing 6
+    (image :path icon :image-width 16 :image-height 16 :preserve-aspect-ratio true)
+    (label :halign "start" :text name)))
+
+(defwidget launcher [label cmd]
+  (button :class "app" :halign "fill" :onclick cmd
+    (label :halign "start" :text label)))
+
+(defwidget stat-row [icon label value pct]
+  (box :class "stat-row" :orientation "v" :space-evenly false :spacing 2
+    (box :orientation "h" :space-evenly false :spacing 6
+      (image :path icon :image-width 14 :image-height 14 :preserve-aspect-ratio true)
+      (label :class "stat-label" :halign "start" :hexpand true :text label)
+      (label :class "stat-value" :halign "end" :text value))
+    (progress :class "stat-bar" :value pct :orientation "horizontal")))
+
+(defwidget sidebar-content []
+  ;; onhoverlost cierra el sidebar apenas el mouse sale de TODA esta caja
+  ;; (header + lista + stats). Mientras el mouse siga adentro, se queda
+  ;; abierto sin importar cuanto tiempo pase.
+  (eventbox :onhoverlost "eww close sidebar"
+   (box :class "sidebar" :orientation "v" :space-evenly false :spacing 4
+    (box :class "sidebar-header" :orientation "h" :space-evenly false :spacing 8
+      (image :path "${EWW_CONFIG_DIR}/../nebula/icons/brand-mark.png" :image-width 26 :image-height 26 :preserve-aspect-ratio true)
+      (label :class "brand" :halign "start" :hexpand true :text "NEBULA")
+      (button :class "hide-btn" :onclick "eww close sidebar" (label :text "‹")))
+
+    (scroll :vscroll true :hscroll false :vexpand true
+      (box :orientation "v" :space-evenly false :spacing 2
+        ;; --- nebula:autogen BEGIN (no editar) ---
+        (cat-icon :name "Desarrollo" :icon "${EWW_CONFIG_DIR}/../nebula/icons/desarrollo.png")
+        (launcher :label "Terminal" :cmd "alacritty &")
+        (launcher :label "Editor" :cmd "alacritty -e nvim &")
+        (launcher :label "Git TUI" :cmd "alacritty -e lazygit &")
+        (launcher :label "Docker TUI" :cmd "alacritty -e lazydocker &")
+        (cat-icon :name "Graficos" :icon "${EWW_CONFIG_DIR}/../nebula/icons/graficos.png")
+        (launcher :label "GIMP" :cmd "gimp &")
+        (launcher :label "Darktable" :cmd "darktable &")
+        (launcher :label "Inkscape" :cmd "inkscape &")
+        (launcher :label "Visor" :cmd "nsxiv -t . &")
+        (cat-icon :name "Juegos" :icon "${EWW_CONFIG_DIR}/../nebula/icons/juegos.png")
+        (launcher :label "Steam" :cmd "steam &")
+        (launcher :label "Modo Juego" :cmd "nebula-game-mode &")
+        (cat-icon :name "Multimedia" :icon "${EWW_CONFIG_DIR}/../nebula/icons/multimedia.png")
+        (launcher :label "Navegador" :cmd "firefox &")
+        (launcher :label "Video" :cmd "mpv --player-operation-mode=pseudo-gui &")
+        (launcher :label "Musica" :cmd "alacritty -e cmus &")
+        (launcher :label "Perfiles de streaming" :cmd "nebula-streaming-profile &")
+        (cat-icon :name "Sistema" :icon "${EWW_CONFIG_DIR}/../nebula/icons/sistema.png")
+        (launcher :label "Archivos" :cmd "nautilus --new-window &")
+        (launcher :label "Monitor" :cmd "alacritty -e btop &")
+        (launcher :label "Audio" :cmd "pavucontrol &")
+        (launcher :label "Red" :cmd "alacritty -e nmtui &")
+        (launcher :label "Apagar" :cmd "systemctl poweroff &")
+        (launcher :label "Reiniciar" :cmd "systemctl reboot &")
+        (cat-icon :name "IA Local" :icon "${EWW_CONFIG_DIR}/../nebula/icons/ia-local.png")
+        (launcher :label "Iniciar Ollama" :cmd "nebula-ai-chat --serve &")
+        (launcher :label "Chat con modelo" :cmd "nebula-ai-chat &")
+        (launcher :label "Descargar modelo" :cmd "nebula-ai-chat --pull &")
+        (launcher :label "Estado GPU" :cmd "alacritty -e watch -n2 nvidia-smi &")
+        ;; --- nebula:autogen END ---
+        ))
+
+    (box :class "stats" :orientation "v" :space-evenly false :spacing 6
+      (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/cpu.png" :label "CPU" :value "${CPU}%" :pct {CPU})
+      (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/ram.png" :label "RAM" :value "${MEM}%" :pct {MEM})
+      (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/gpu.png" :label "GPU" :value "${GPU}%" :pct {GPU})
+      (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/gpu.png" :label "VRAM" :value "${VRAM}MB" :pct {VRAM_PCT})
+      (label :halign "start" :class "temp-label" :text {TEMP != "" ? "TEMP ${TEMP}" : ""})
+      (label :halign "start" :class "clock" :text "${DATE}  ${TIME}")))))
+
+(defwindow sidebar
+  :monitor 0
+  :geometry (geometry :x "0" :y "0" :width "220px" :height "100%" :anchor "left center")
+  :stacking "fg"
+  :exclusive true
+  :wm-ignore true
+  (sidebar-content))
+
+;; Pestaña angosta, siempre presente en el borde izquierdo: es el sensor de
+;; hover. Acercar el mouse (:onhover) despliega "sidebar" sin clic; el clic
+;; en "›" queda como respaldo manual por si el hover no llega a dispararse.
+;; Al abrir el sidebar queda tapada por este (no molesta la vista).
+(defwidget toggle-tab []
+  (eventbox :onhover "eww open sidebar"
+    (button :class "toggle-tab" :onclick "eww open sidebar"
+      (label :text "›"))))
+
+(defwindow toggle-tab
+  :monitor 0
+  :geometry (geometry :x "0" :y "0" :width "16px" :height "64px" :anchor "left center")
+  :stacking "fg"
+  :exclusive false
+  :wm-ignore true
+  (toggle-tab))

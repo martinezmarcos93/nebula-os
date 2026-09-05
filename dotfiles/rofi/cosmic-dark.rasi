@@ -1,0 +1,48 @@
+/* dotfiles/rofi/cosmic-dark.rasi - Nebula OS  "Cosmic Dark" */
+
+* {
+    bg:      #000000;
+    bg-alt:  #0a0a14;
+    fg:      #e5e7eb;
+    muted:   #9ca3af;
+    accent:  #7c3aed;
+    accent2: #22d3ee;
+
+    background-color: transparent;
+    text-color:       @fg;
+    font:             "Inter 11";
+}
+
+window {
+    background-color: @bg;
+    border:          1px;
+    border-color:    @accent;
+    border-radius:   12px;
+    width:           640px;
+    padding:         16px;
+    location:        center;
+}
+
+mainbox { children: [ inputbar, listview ]; spacing: 12px; }
+
+inputbar {
+    children:         [ prompt, entry ];
+    padding:          8px 10px;
+    spacing:          8px;
+    background-color: @bg-alt;
+    border-radius:    8px;
+}
+prompt { text-color: @accent2; }
+entry  { placeholder: "Buscar..."; placeholder-color: @muted; }
+
+listview { lines: 10; scrollbar: false; }
+
+element         { padding: 8px; spacing: 10px; border-radius: 8px; }
+element normal normal   { text-color: @fg; }
+element alternate normal { text-color: @fg; }
+element selected normal {
+    background-color: @accent;
+    text-color:      @bg;
+}
+element-icon { size: 1.2em; vertical-align: 0.5; }
+element-text { vertical-align: 0.5; }

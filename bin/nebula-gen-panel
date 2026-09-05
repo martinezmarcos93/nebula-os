@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+# nebula-gen-panel - Genera el panel y el menu de categorias de Nebula OS a
+# partir de dotfiles/nebula/categories.toml (fuente unica de datos).
+#
+#   nebula-gen-panel            regenera la seccion de categorias de eww.yuck
+#   nebula-gen-panel --menu     muestra el menu rofi de categorias/apps y lanza
+#
+# Parser minimalista, valido para el formato de categories.toml de este repo.
+set -euo pipefail
+
+CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
+TOML="${NEBULA_CATEGORIES:-$CFG/nebula/categories.toml}"
+[[ -f "$TOML" ]] || { echo "no existe $TOML" >&2; exit 1; }
+
+# Emite lineas:  CATEGORIA <TAB> APP <TAB> EXEC
+parse() {
+    awk '
+        /^\[\[categoria\]\]/       { ctx="cat"; next }
+        /^\[\[categoria\.app\]\]/  { ctx="app"; name=""; ex=""; next }
+        /^[[:space:]]*nombre[[:space:]]*=/ {
+            v=$0; sub(/^[^=]*=[[:space:]]*"/,"",v); sub(/"[[:space:]]*$/,"",v)
+            if (ctx=="cat") cat=v; else name=v
+        }
+        /^[[:space:]]*exec[[:space:]]*=/ {
+            v=$0; sub(/^[^=]*=[[:space:]]*"/,"",v); sub(/"[[:space:]]*$/,"",v)
+            ex=v
+            printf "%s\t%s\t%s\n", cat, name, ex
+        }
+    ' "$TOML"
+}
+
+do_menu() {
+    local rows sel app ex
+    rows="$(parse)"
+    [[ -n "$rows" ]] || { echo "categories.toml vacio" >&2; exit 1; }
+    if ! command -v rofi >/dev/null 2>&1; then
+        printf '%s\n' "$rows"
+        return 0
+    fi
+    sel="$(printf '%s\n' "$rows" \
+        | awk -F'\t' '{printf "%s  -  %s\n",$1,$2}' \
+        | rofi -dmenu -i -p 'Categorias')"
+    [[ -n "$sel" ]] || return 0
+    app="${sel#*  -  }"
+    ex="$(printf '%s\n' "$rows" | awk -F'\t' -v a="$app" '$2==a {print $3; exit}')"
+    [[ -n "$ex" ]] || { echo "no encontre la app '$app'" >&2; exit 1; }
+    setsid -f sh -c "$ex" >/dev/null 2>&1 || sh -c "$ex" &
+}
+
+BEGIN_MARK=';; --- nebula:autogen BEGIN'
+END_MARK=';; --- nebula:autogen END'
+
+do_gen() {
+    local yuck="$CFG/eww/eww.yuck"
+    [[ -f "$yuck" ]] || { echo "sin $yuck; nada que regenerar" >&2; return 0; }
+
+    local nb ne
+    nb="$(grep -cF -- "$BEGIN_MARK" "$yuck" || true)"
+    ne="$(grep -cF -- "$END_MARK"   "$yuck" || true)"
+    if [[ "$nb" != "1" || "$ne" != "1" ]]; then
+        echo "eww.yuck: marcadores autogen ausentes o duplicados (BEGIN=$nb END=$ne); no toco el archivo." >&2
+        return 1
+    fi
+
+    local icons_dir="$CFG/nebula/icons"
+    slugify() {
+        local s="${1,,}"
+        s="$(printf '%s' "$s" | sed 'y/áéíóúñ/aeioun/')"
+        s="${s// /-}"
+        printf '%s' "$s"
+    }
+
+    local block="" cur="" cat name ex slug icon_path
+    while IFS=$'\t' read -r cat name ex; do
+        [[ -n "$cat" ]] || continue
+        if [[ "$cat" != "$cur" ]]; then
+            slug="$(slugify "$cat")"
+            icon_path="$icons_dir/$slug.png"
+            if [[ -f "$icon_path" ]]; then
+                # Ruta portable en el .yuck (${EWW_CONFIG_DIR} la resuelve eww
+                # en runtime): si se escribiera la ruta absoluta de ESTA
+                # maquina ($icon_path), el archivo commiteado en el repo
+                # quedaria roto para cualquier otro usuario/maquina.
+                block+="        (cat-icon :name \"$cat\" :icon \"\${EWW_CONFIG_DIR}/../nebula/icons/$slug.png\")"$'\n'
+            else
+                block+="        (cat :name \"$cat\")"$'\n'
+            fi
+            cur="$cat"
+        fi
+        block+="        (launcher :label \"$name\" :cmd \"$ex &\")"$'\n'
+    done < <(parse)
+
+    local tmp
+    tmp="$(mktemp)"
+    awk -v b="$block" -v bm="$BEGIN_MARK" -v em="$END_MARK" '
+        index($0, bm) { print; printf "%s", b; skip=1; next }
+        index($0, em) { skip=0 }
+        !skip         { print }
+    ' "$yuck" > "$tmp" && mv "$tmp" "$yuck"
+
+    command -v eww >/dev/null 2>&1 && eww -c "$CFG/eww" reload >/dev/null 2>&1 || true
+    echo "eww.yuck: seccion de categorias regenerada."
+}
+
+case "${1:-gen}" in
+    --menu)     do_menu ;;
+    gen)        do_gen ;;
+    -h|--help)  sed -n '2,9p' "$0" ;;
+    *)          echo "uso: nebula-gen-panel [--menu]" >&2; exit 2 ;;
+esac

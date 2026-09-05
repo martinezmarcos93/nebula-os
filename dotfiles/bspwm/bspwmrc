@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# dotfiles/bspwm/bspwmrc - Nebula OS
+# Paleta "Cosmic Dark" (sync con dotfiles/nebula/colors.sh).
+# bspwm lo ejecuta en cada arranque de sesion; debe ser idempotente.
+
+_run() {
+    local name="$1"
+    pgrep -x "$name" >/dev/null 2>&1 && return 0
+    "$@" &
+}
+
+# --- Autostart ------------------------------------------------------------
+pgrep -x sxhkd >/dev/null 2>&1 || sxhkd &
+_run picom --config "$HOME/.config/picom/picom.conf"
+_run dunst
+_run lxpolkit
+_run nm-applet
+_run xsettingsd
+
+# Bloqueo automatico al suspender
+if command -v xss-lock >/dev/null 2>&1; then
+    _run xss-lock -- i3lock -n -c 000000
+fi
+
+# Fondo: negro puro por defecto; feh si hay wallpaper.
+_wall="$HOME/.config/nebula/wallpapers/current"
+if [[ -f "$_wall" ]]; then
+    feh --no-fehbg --bg-fill "$_wall"
+else
+    command -v xsetroot >/dev/null 2>&1 && xsetroot -solid '#000000'
+fi
+
+# Panel: eww (lateral, se despliega acercando el mouse al borde izquierdo -
+# ver dotfiles/eww/eww.yuck) o polybar (barra inferior, modo degradado sin
+# categorias, ver docs/DESIGN.md E1).
+if [[ "${NEBULA_PANEL:-polybar}" == "eww" ]] && command -v eww >/dev/null 2>&1; then
+    eww -c "$HOME/.config/eww" open sidebar &
+    eww -c "$HOME/.config/eww" open toggle-tab &
+elif [[ -x "$HOME/.config/polybar/launch.sh" ]]; then
+    "$HOME/.config/polybar/launch.sh" &
+fi
+
+# --- Escritorios (uno por categoria) -----------------------------------
+bspc monitor -d I II III IV V VI
+
+# --- Estetica ---------------------------------------------------------
+bspc config border_width          2
+bspc config window_gap            10
+bspc config split_ratio           0.52
+bspc config borderless_monocle    true
+bspc config gapless_monocle       true
+bspc config focus_follows_pointer true
+bspc config pointer_follows_focus false
+
+bspc config normal_border_color   "#1f2937"
+bspc config focused_border_color  "#7c3aed"
+bspc config presel_feedback_color "#22d3ee"
+
+# --- Reglas ---------------------------------------------------------
+# Nota: sin reglas para Lutris/Heroic/RetroArch - se descartaron del alcance
+# (solo Steam, ver dotfiles/nebula/categories.toml y memoria de proyecto).
+bspc rule -a Steam           desktop='^3' follow=on
+bspc rule -a steam_app_*     state=fullscreen
+bspc rule -a Pavucontrol     state=floating
+bspc rule -a Nsxiv           state=floating
+bspc rule -a mpv             state=floating
+bspc rule -a "*:Toolkit:Picture-in-Picture" state=floating sticky=on

@@ -1,0 +1,18 @@
+# Nebula OS - configuracion de shellcheck
+# https://www.shellcheck.net/wiki/
+
+# Permitir seguir 'source' con rutas relativas al script.
+external-sources=true
+
+# SC1091: no seguir archivos "source" que el analisis estatico no resuelve
+#         (p. ej. rutas construidas en runtime). Ya usamos directivas
+#         `# shellcheck source=...` donde importa.
+# SC2015: "A && B || C no es if/then/else" - en todo el repo el idioma es
+#         siempre `comando_opcional && accion || true`, donde C es un
+#         `true` deliberado que no le importa si A o B fallaron. La
+#         advertencia no aplica a ese patron tal como lo usamos aca.
+# SC2317: falso positivo en el guard de doble-carga de las libs
+#         (`return 0 2>/dev/null || exit 0` en lib/common.sh y
+#         lib/nebula-runtime.sh): shellcheck no ve que es alcanzable al
+#         sourcear.
+disable=SC1091,SC2015,SC2317

@@ -1,0 +1,13 @@
+// dotfiles/rofi/config.rasi - Nebula OS
+configuration {
+    modes:                "drun,run,window";
+    show-icons:           true;
+    drun-display-format:  "{name}";
+    display-drun:         "Apps";
+    display-run:          "Run";
+    display-window:       "Win";
+    icon-theme:           "Papirus-Dark";
+    kb-cancel:            "Escape,Super+space";
+}
+
+@theme "cosmic-dark"
