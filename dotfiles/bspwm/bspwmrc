@@ -75,13 +75,18 @@ else
     command -v xsetroot >/dev/null 2>&1 && xsetroot -solid '#000000'
 fi
 
-# Panel: se arranca SOLO el daemon de eww (sin abrir ninguna ventana). El
-# sidebar es una unica ventana "nebula-sidebar" que el usuario abre/cierra
-# con Super + b (`eww open --toggle nebula-sidebar`, ver sxhkdrc). Tener el
-# daemon ya vivo hace que el primer Super+b responda al instante.
-# `pidof -q` evita levantar un segundo daemon en cada `bspc wm -r`.
+# Panel eww: se arranca el daemon (sin abrir el sidebar) y la barra de estado
+# superior (nebula-bar, con reloj). El sidebar (nebula-sidebar) queda cerrado:
+# se abre llevando el puntero al borde izquierdo (nebula-edge-sidebar, abajo) o
+# con Super + B. Tener el daemon ya vivo hace que el primer gesto responda al
+# instante. `pidof -q` evita un segundo daemon en cada `bspc wm -r`.
 if [[ "${NEBULA_PANEL:-eww}" == "eww" ]] && command -v eww >/dev/null 2>&1; then
     pidof -q eww || eww -c "$HOME/.config/eww" daemon &
+    eww -c "$HOME/.config/eww" open nebula-bar >/dev/null 2>&1 &
+    # Gesto de borde para el sidebar (polling del puntero, NO el hover de eww).
+    if command -v nebula-edge-sidebar >/dev/null 2>&1; then
+        pgrep -f nebula-edge-sidebar >/dev/null 2>&1 || nebula-edge-sidebar &
+    fi
 elif [[ -x "$HOME/.config/polybar/launch.sh" ]]; then
     "$HOME/.config/polybar/launch.sh" &
 fi

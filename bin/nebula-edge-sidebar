@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# nebula-edge-sidebar - Abre el sidebar de eww al llevar el puntero al borde
+# izquierdo de la pantalla y lo cierra al alejarlo. Es el gesto principal para
+# el sidebar; el atajo Super+B sigue funcionando en paralelo.
+#
+# Usa POLLING de la posicion del puntero (xdotool), NO el `:onhover` de eww:
+# aquel modelo (ventana-sensor + hover del widget) entraba en loop abrir/cerrar
+# porque el sidebar tapaba al sensor (ver CHANGELOG, commit 18aa8fc).
+#
+# Uso: nebula-edge-sidebar [--help]   (corre en loop; lo lanza bspwmrc)
+set -uo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    sed -n '2,10p' "$0"
+    exit 0
+fi
+
+CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
+WIN="nebula-sidebar"
+WIDTH="${NEBULA_SIDEBAR_WIDTH:-260}"     # ancho del sidebar (px) -> zona muerta
+EDGE="${NEBULA_SIDEBAR_EDGE:-1}"         # px desde el borde que disparan apertura
+INTERVAL="${NEBULA_SIDEBAR_POLL:-0.15}"  # segundos entre lecturas del puntero
+
+for c in xdotool eww; do
+    command -v "$c" >/dev/null 2>&1 || { echo "nebula-edge-sidebar: falta '$c'" >&2; exit 1; }
+done
+
+eww_cmd() { eww -c "$CFG/eww" "$@" >/dev/null 2>&1; }
+
+# Estado que creemos tener. Si el usuario abre/cierra con Super+B se puede
+# desincronizar un tick, pero se auto-corrige al mover el puntero.
+open=0
+
+while :; do
+    sleep "$INTERVAL"
+
+    x="$(xdotool getmouselocation --shell 2>/dev/null | sed -n 's/^X=//p')"
+    [[ "$x" =~ ^[0-9]+$ ]] || continue
+
+    if (( x <= EDGE )); then
+        # No abrir por encima de una ventana en fullscreen (juego / video).
+        if command -v bspc >/dev/null 2>&1 \
+           && [[ -n "$(bspc query -N -n .fullscreen.window 2>/dev/null)" ]]; then
+            continue
+        fi
+        if (( open == 0 )); then
+            eww_cmd open "$WIN" && open=1
+        fi
+    elif (( x > WIDTH )); then
+        if (( open == 1 )); then
+            eww_cmd close "$WIN" && open=0
+        fi
+    fi
+done

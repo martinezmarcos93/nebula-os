@@ -106,6 +106,8 @@
 ;; UNA sola ventana. Sin :exclusive (no reserva strut, no empuja las ventanas
 ;; tiled) y con :wm-ignore (bspwm no la gestiona). :focusable false para que
 ;; nunca robe el foco del teclado (coherente con focus_follows_pointer false).
+;; Se abre llevando el puntero al borde izquierdo (nebula-edge-sidebar) o con
+;; Super + B; el daemon lo arranca bspwmrc sin abrir esta ventana.
 (defwindow nebula-sidebar
   :monitor 0
   :geometry (geometry :x "0" :y "0" :width "260px" :height "100%" :anchor "left center")
@@ -114,3 +116,29 @@
   :focusable false
   :wm-ignore true
   (sidebar-content))
+
+;; --- Barra de estado superior -----------------------------------------
+;; Siempre visible (la abre bspwmrc al iniciar sesion). Marca / reloj-fecha /
+;; CPU-RAM-GPU-temp. :exclusive true -> reserva la franja superior, las
+;; ventanas no la tapan. Sin glyphs de Nerd Font (la UI usa Inter): texto plano.
+(defwidget bar-content []
+  (centerbox :class "bar" :orientation "h"
+    (box :class "bar-left" :halign "start" :space-evenly false :spacing 8
+      (image :path "${EWW_CONFIG_DIR}/../nebula/icons/brand-mark.png"
+             :image-width 15 :image-height 15 :preserve-aspect-ratio true)
+      (label :class "bar-brand" :text "NEBULA"))
+    (box :halign "center"
+      (label :class "bar-clock" :text "${DATE}   ${TIME}"))
+    (box :class "bar-right" :halign "end" :space-evenly false :spacing 14
+      (label :class "bar-stat" :text "CPU ${CPU}%")
+      (label :class "bar-stat" :text "RAM ${MEM}%")
+      (label :class "bar-stat" :text {GPU  != "" ? "GPU ${GPU}%"   : ""})
+      (label :class "bar-stat" :text {TEMP != "" ? "TEMP ${TEMP}"  : ""}))))
+
+(defwindow nebula-bar
+  :monitor 0
+  :geometry (geometry :x "0" :y "0" :width "100%" :height "26px" :anchor "top center")
+  :stacking "fg"
+  :exclusive true
+  :focusable false
+  (bar-content))

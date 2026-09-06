@@ -29,6 +29,24 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-06, pedido del usuario — escritorio completo al iniciar sesion)
+- **Barra de estado superior (`nebula-bar`).** Nueva ventana `eww` siempre
+  visible (la abre `bspwmrc`), franja de 26 px con `:exclusive true` (reserva
+  su espacio). Marca / fecha+hora / CPU-RAM-GPU-temp, texto plano (la UI usa
+  Inter, sin glyphs de Nerd Font). Reusa los `defpoll` del sidebar. El reloj
+  ya no vive solo dentro del sidebar. `dotfiles/eww/eww.{yuck,scss}`.
+- **Sidebar por gesto de borde.** `bin/nebula-edge-sidebar` (nuevo): hace
+  polling de la posicion del puntero con `xdotool` y abre el sidebar al tocar
+  el borde izquierdo, lo cierra al alejarse >260 px. NO usa el `:onhover` de
+  eww (ese modelo entraba en loop abrir/cerrar, `18aa8fc`) — el polling lo
+  detecta desde afuera. No se abre por encima de una ventana en fullscreen.
+  `Super + B` sigue como toggle manual en paralelo.
+- `dotfiles/bspwm/bspwmrc`: al iniciar sesion con eww, ademas del daemon abre
+  `nebula-bar` y lanza `nebula-edge-sidebar` (con guard `pgrep -f`).
+- `docs/DESIGN.md`: §6.5 (interaccion) reescrita, nueva §6.6 (barra), fila de
+  `Super + B` en la matriz §14.2.
+- Depende de `xdotool` (ya en `PKGS_BASE` desde FASE C).
+
 ### Quitado (2026-09-06, pedido del usuario — sin terminal al iniciar sesion)
 - Se elimina el mecanismo de "terminal de desarrollo al login": `dotfiles/bspwm/
   autostart.sh` (borrado), su invocacion al final de `dotfiles/bspwm/bspwmrc`,

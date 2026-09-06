@@ -243,17 +243,24 @@ Taxonomía real, sincronizada con `dotfiles/nebula/categories.toml` (editable ah
 | **Sistema** | Archivos (Nautilus) · Monitor (`btop`) · Audio (`pavucontrol`) · Red (`nmtui`) · Apagar/Reiniciar |
 | **IA Local** | Iniciar Ollama · *Chat con modelo* (`nebula-ai-chat`) · Descargar modelo · Estado GPU (`nvidia-smi`) |
 
-### 6.4. Zona inferior del panel
+### 6.4. Zona inferior del sidebar
 
 Reloj · uso de CPU / RAM / GPU (`nvidia-smi --query-gpu=utilization.gpu,memory.used`) · temperatura (`sensors`) · red · volumen · brillo. Se actualiza cada 2 s (cada 5 s en modo juego para no competir por GPU).
 
 ### 6.5. Interacción
 
-- **Desplegar/ocultar el panel (con `eww`): `Super + B`.** Una **única** ventana (`nebula-sidebar`, 260 px, alto completo, pegada al borde izquierdo; `wm-ignore true`, `exclusive false`, `focusable false`). `Super + B` ejecuta `eww open --toggle nebula-sidebar`: si está abierta la cierra, si está cerrada la abre. El botón "‹" del header la cierra a mano. El daemon de `eww` lo arranca `bspwmrc` al iniciar sesión (`pidof -q eww || eww … daemon &`) sin abrir ninguna ventana, para que el primer `Super + B` responda al instante. **No hay** ventana-sensor ni apertura por hover: ese modelo (`toggle-tab` + `:onhover`/`:onhoverlost`) entraba en loop abrir/cerrar y se descartó — ver `dotfiles/eww/eww.yuck`.
+- **Desplegar/ocultar el sidebar (con `eww`): gesto de borde o `Super + B`.** Una **única** ventana (`nebula-sidebar`, 260 px, alto completo, pegada al borde izquierdo; `wm-ignore true`, `exclusive false`, `focusable false`).
+  - **Gesto de borde:** `bin/nebula-edge-sidebar` (lo arranca `bspwmrc`) hace *polling* de la posición del puntero con `xdotool`; al tocar el borde izquierdo (`x ≤ 1`) abre el sidebar, al alejar el puntero más allá de los 260 px lo cierra. **No** usa el `:onhover` de `eww`: ese modelo (`toggle-tab` + `:onhover`/`:onhoverlost`) entraba en loop abrir/cerrar porque el sidebar tapaba al sensor — se descartó en `18aa8fc`. El *polling* lo detecta desde afuera de `eww`, sin loop.
+  - **`Super + B`:** `eww open --toggle nebula-sidebar` — toggle manual, funciona en paralelo al gesto. El botón "‹" del header también la cierra.
+  - El daemon de `eww` lo arranca `bspwmrc` al iniciar sesión (`pidof -q eww || eww … daemon &`), y no se abre por *fullscreen* (juego/vídeo).
 - `Super + Espacio` → `rofi -show drun` (todas las apps).
 - `Super + C` → `rofi` con las categorías de `categories.toml` (alternativa por teclado al sidebar).
 - Con `polybar` (fallback degradado, E1): no hay sidebar — es una barra inferior fija sin categorías; `Super + C` (rofi) pasa a ser la única forma de navegar por categoría.
 - Secciones colapsables por categoría (estado persistido en `~/.cache/nebula/panel-state`) — pendiente de implementar (hoy `categories.toml` no distingue estado de colapso).
+
+### 6.6. Barra de estado superior (`nebula-bar`)
+
+Ventana `eww` **siempre visible** (la abre `bspwmrc` al iniciar sesión), franja superior de 26 px, `:exclusive true` → reserva su espacio, las ventanas no la tapan. Contenido: marca **NEBULA** (izq.) · fecha + hora (centro) · `CPU% RAM% GPU% TEMP` (der., texto plano — la UI usa Inter, sin glyphs de Nerd Font). Reusa los `defpoll` del sidebar (`DATE`/`TIME`, `CPU`/`MEM`, `GPU`/`TEMP`). Pendiente: *tray* y taskbar de ventanas minimizadas.
 
 ---
 
@@ -562,7 +569,7 @@ combinación queda asignada a dos acciones.
 | `Super + Enter` | Terminal (Alacritty) |
 | `Super + Space` | `rofi -show drun` |
 | `Super + C` / `Super + Shift + C` | Menú rofi de categorías / regenerar panel (`nebula-gen-panel`) |
-| `Super + B` | Toggle del sidebar eww (`eww open --toggle nebula-sidebar`) |
+| `Super + B` | Toggle del sidebar eww (`eww open --toggle nebula-sidebar`). También se abre llevando el puntero al borde izquierdo (`nebula-edge-sidebar`) |
 | `Super + V` | Historial del portapapeles (`copyq toggle`) — server arrancado por `bspwmrc` |
 
 **Funciones Nebula**

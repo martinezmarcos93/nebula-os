@@ -118,3 +118,29 @@ $cian:    #22d3ee;
   color: $fg;
   margin-top: 4px;
 }
+
+// --- Barra de estado superior (nebula-bar) --------------------------
+.bar {
+  background-color: $panel;
+  border-bottom: 1px solid $violeta;
+  padding: 2px 14px;
+  color: $fg;
+}
+
+.bar-brand {
+  color: $cian;
+  font-weight: 700;
+  letter-spacing: 3px;
+  font-size: 12px;
+}
+
+.bar-clock {
+  color: $fg;
+  font-weight: 600;
+}
+
+.bar-right {
+  color: $muted;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
