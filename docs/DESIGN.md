@@ -134,6 +134,7 @@ Cada capa corresponde a un script numerado (§8). Las capas se instalan de abajo
 | Brillo / media keys | `brightnessctl`, `playerctl` | Sí | Atajos en `sxhkd`. |
 | Teclado (layout) | `setxkbmap` desde `/etc/default/keyboard` | Sí (`x11-xkb-utils`) | Se aplica en `bspwmrc` para los caminos `startx`/`ly`, donde ningún DM fija el layout (con GDM ya viene puesto). Fallback `latam` si el archivo no existe. |
 | Agente PolicyKit | `lxpolkit` o `policykit-1-gnome` | Sí | Necesario para montajes/permisos gráficos. |
+| Portapapeles | **copyq** | Sí (`universe`) | Daemon con historial persistido a disco: lo copiado sobrevive al cierre de la app fuente. `bspwmrc` arranca solo el server (sin ventana, sin tray); `Super + V` abre el historial con buscador. `xclip` (para scripts) va aparte. |
 | Fuentes | `fonts-jetbrains-mono`, `fonts-inter` | Sí | **Space Grotesk** y **Nerd Fonts** no están empaquetadas → instalación manual en `40-tema.sh`. |
 | Tema GTK | **Nordic-darker** (o **Fluent-dark**) | No (GitHub) | Instalación a `~/.themes` o `/usr/share/themes`. |
 | Iconos | **Papirus-Dark** (`papirus-icon-theme`) | Sí | — |
@@ -376,7 +377,7 @@ nebula-os/
 | Script | Acciones principales | Criterio de éxito |
 |---|---|---|
 | **`00-preflight.sh`** | Verifica: Ubuntu 24.04 (`lsb_release`), arquitectura `amd64`, usuario con `sudo`, `apt update` responde, ≥ 3 GB libres en `/`, **ausencia** de `gdm3`/`gnome-shell` (aviso, no aborta), `nvidia-smi` funciona, `systemctl is-system-running` no `degraded`. | Todas las críticas OK; imprime tabla de resultados. |
-| **`10-base.sh`** | `apt` de: `xserver-xorg-core xinit x11-xserver-utils bspwm sxhkd picom rofi alacritty dunst feh brightnessctl playerctl lm-sensors network-manager-gnome pavucontrol pipewire pipewire-pulse wireplumber lxpolkit i3lock xss-lock fonts-jetbrains-mono fonts-inter papirus-icon-theme x11-xkb-utils git ca-certificates unzip curl xclip` (el driver NVIDIA **no** se instala aquí: es responsabilidad del post-formateo, fuera de alcance — ver §2.1). Detecta gestor de display activo y aplica el mecanismo de arranque correspondiente (§4). Crea `~/.xinitrc`. Habilita PipeWire de usuario. | `startx`/DM entra a `bspwm` con fondo negro; `Super+Enter` abre Alacritty. |
+| **`10-base.sh`** | `apt` de: `xserver-xorg-core xinit x11-xserver-utils bspwm sxhkd picom rofi alacritty dunst feh brightnessctl playerctl lm-sensors network-manager-gnome pavucontrol pipewire pipewire-pulse wireplumber lxpolkit i3lock xss-lock fonts-jetbrains-mono fonts-inter papirus-icon-theme x11-xkb-utils git ca-certificates unzip curl xclip copyq` (el driver NVIDIA **no** se instala aquí: es responsabilidad del post-formateo, fuera de alcance — ver §2.1). Detecta gestor de display activo y aplica el mecanismo de arranque correspondiente (§4). Crea `~/.xinitrc`. Habilita PipeWire de usuario. | `startx`/DM entra a `bspwm` con fondo negro; `Super+Enter` abre Alacritty. |
 | **`20-panel.sh`** | Si `NEBULA_PANEL=eww` (default): instala `rustup`/`cargo`, `cargo install eww --locked` (o compila desde git) — **con manejo de fallo SSL, cae a polybar** (§11, E1). Si `polybar`: `apt install polybar`. Instala Nerd Font a `~/.local/share/fonts` + `fc-cache`. | Panel lateral visible con categorías y reloj; lanza una app de cada categoría. |
 | **`30-dotfiles.sh`** | Backup de `~/.config` afectado → despliega `dotfiles/` (copia o symlink). Los colores quedan escritos a mano en cada plantilla (§5.1, no hay `envsubst` real todavía). Al final, corre `nebula-gen-panel` para que el sidebar `eww` recién desplegado quede con las categorías reales de esta máquina (no con lo que haya quedado commiteado en el repo). | `bspc`/`picom`/`rofi` levantan con la config del repo sin errores en log. |
 | **`40-tema.sh`** | Instala tema GTK (`NEBULA_THEME`) a `~/.themes`; `papirus-folders` a violeta; Bibata a `~/.icons` si `NEBULA_CURSOR=1`; Space Grotesk manual; aplica `gsettings` + `settings.ini` + `~/.Xresources` + `xsettingsd`; wallpaper. | Apps GTK (GIMP, `pcmanfm`) abren en oscuro; cursor y iconos correctos; sin flicker. |
@@ -539,6 +540,7 @@ combinación queda asignada a dos acciones.
 | `Super + Space` | `rofi -show drun` |
 | `Super + C` / `Super + Shift + C` | Menú rofi de categorías / regenerar panel (`nebula-gen-panel`) |
 | `Super + B` | Toggle del sidebar eww (`eww open --toggle nebula-sidebar`) |
+| `Super + V` | Historial del portapapeles (`copyq toggle`) — server arrancado por `bspwmrc` |
 
 **Funciones Nebula**
 

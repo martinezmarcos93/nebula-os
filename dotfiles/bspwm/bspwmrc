@@ -46,6 +46,12 @@ _run dunst
 _run lxpolkit
 _run nm-applet
 _run xsettingsd
+# Portapapeles con historial persistente. `copyq` sin argumentos y sin server
+# vivo arranca SOLO el server (sin ventana). El historial se guarda a disco,
+# asi que sobrevive al cierre de la app que copio. No necesita systray (en
+# copyq 7.x la falta de bandeja no es un problema). Se consulta con Super + V
+# (ver sxhkdrc). `_run` evita un segundo server en cada `bspc wm -r`.
+_run copyq
 
 # Bloqueo automatico al suspender
 if command -v xss-lock >/dev/null 2>&1; then

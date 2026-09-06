@@ -27,6 +27,7 @@ PKGS_BASE=(
     bspwm sxhkd picom rofi alacritty dunst
     feh brightnessctl playerctl lm-sensors
     network-manager-gnome pavucontrol
+    copyq
     pipewire pipewire-pulse wireplumber
     lxpolkit i3lock xss-lock
     fonts-jetbrains-mono fonts-inter papirus-icon-theme

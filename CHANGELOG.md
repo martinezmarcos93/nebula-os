@@ -29,6 +29,23 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-06, revision contra analisis externo — FASE G: portapapeles con historial)
+- **No habia gestor de portapapeles:** al cerrar la app que copiaba algo, el
+  contenido se perdia. Lo marcaron los tres analisis externos. `clipmenu` /
+  `greenclip` (lo que se habia sugerido) NO estan en los repos de Ubuntu
+  24.04; de lo empaquetado se eligio **copyq** (mas controlable, CLI
+  scriptable, no depende de systray).
+- `install/10-base.sh`: `copyq` agregado a `PKGS_BASE` (universe).
+- `dotfiles/bspwm/bspwmrc`: autostart del server de copyq (`_run copyq` —
+  sin ventana ni tray; idempotente en `bspc wm -r`). El historial se persiste
+  a disco, asi que sobrevive al cierre de la app fuente.
+- `dotfiles/sxhkd/sxhkdrc`: `Super + V` -> `copyq toggle` (historial con
+  buscador). `Super + V` estaba libre, sin colision.
+- `docs/DESIGN.md`: fila "Portapapeles" en la pila tecnica (§4), `copyq` en la
+  lista de paquetes de §8.3, y `Super + V` en la matriz de atajos (§14.2).
+- `xclip` (FASE A) sigue aparte: lo usan los scripts (`nebula-ai-chat`);
+  copyq maneja las selecciones X por su cuenta y ambos conviven.
+
 ### Corregido (2026-09-06, revision contra analisis externo — FASE B: layout de teclado)
 - **El layout de teclado no se fijaba en ningun lado.** No habia `setxkbmap`
   ni config xkb en el repo. Con GDM el layout lo propaga el gestor de display

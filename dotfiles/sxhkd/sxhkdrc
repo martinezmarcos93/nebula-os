@@ -18,6 +18,11 @@ super + shift + c
 super + b
     eww -c "$HOME/.config/eww" open --toggle nebula-sidebar
 
+# Historial del portapapeles (copyq). El server lo arranca bspwmrc al iniciar
+# sesion; esto abre/cierra la ventana con buscador. Pegar = Enter sobre un item.
+super + v
+    copyq toggle
+
 # --- Funciones unicas de Nebula --------------------------------------
 super + f
     nebula-focus-mode
