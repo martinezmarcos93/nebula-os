@@ -136,3 +136,33 @@ $cian:    #22d3ee;
   font-family: "JetBrains Mono", monospace;
   font-size: 11px;
 }
+
+// --- Taskbar de nebula-bar (ventanas del escritorio enfocado) --------
+.taskbar {
+  padding: 0 6px;
+}
+
+.task {
+  padding: 1px 10px;
+  margin: 0 1px;
+  border-radius: 6px;
+  color: $muted;
+  font-size: 11px;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: $fg;
+  }
+}
+
+// Ventana enfocada: resaltada (igual criterio que el hover de las apps).
+.task-active {
+  background-color: $violeta;
+  color: $bg;
+}
+
+// Ventana minimizada (hidden=on): tenue e italica; el "◦ " lo pone el .yuck.
+.task-hidden {
+  color: rgba(156, 163, 175, 0.55);
+  font-style: italic;
+}

@@ -29,6 +29,36 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-06, pedido del usuario — minimizar/restaurar con el mouse)
+- `bin/nebula-taskbar` (nuevo): `bspc subscribe` que emite el JSON de las
+  ventanas del escritorio enfocado (`{id, label, class, hidden, focused}`) y
+  lo re-emite ante cada cambio. Solo depende de `bspc` + `xdotool`; sin
+  `bspwm` emite `[]` y sale.
+- `dotfiles/eww/eww.yuck`: `deflisten TASKWINS` + widget `taskbar` en
+  `nebula-bar` (centro). Un boton por ventana; clic = `bspc node <id> -g
+  hidden=off -f` (restaura la minimizada y la enfoca). El reloj pasa al
+  grupo derecho junto a las stats.
+- `dotfiles/eww/eww.scss`: `.task` / `.task-active` / `.task-hidden`
+  (minimizada: gris + italica + `◦`).
+- `dotfiles/sxhkd/sxhkdrc`: comentarios de `Super+D` / `Super+Shift+D` al dia
+  (restaurar es un clic en el taskbar; el rofi sigue para otros escritorios).
+- `docs/DESIGN.md` §6.6.
+
+### Corregido (2026-09-06, pedido del usuario — categorias del sidebar)
+- `bin/nebula-gen-panel`: las apps no instaladas ya no se listan (antes:
+  `launcher-off` en gris) ni en el sidebar ni en el menu rofi de `Super+C`;
+  una categoria sin ninguna app instalada no se dibuja. `NEBULA_GEN_ASSUME_ALL=1`
+  sigue generando el `eww.yuck` "de fabrica" con todas.
+- `bin/nebula-gen-panel`: `do_menu` no aborta por `set -e` si se cancela rofi.
+- `dotfiles/eww/eww.{yuck,scss}`: fuera el widget `launcher-off` / `.app-off`.
+- `dotfiles/nebula/categories.toml`, `docs/DESIGN.md` 6.3: doc actualizada.
+
+### Corregido (2026-09-06, pedido del usuario — gesto de borde del sidebar)
+- `bin/nebula-edge-sidebar`: zona caliente `EDGE` 1 px -> 6 px (con 1 px el
+  puntero casi nunca disparaba) y poll 0.15 s -> 0.05 s. Ambos con override por
+  entorno (`NEBULA_SIDEBAR_EDGE` / `NEBULA_SIDEBAR_POLL`). Sin cambios de
+  logica. `docs/DESIGN.md` 6.5.
+
 ### Anadido (2026-09-06, pedido del usuario — auto-sync de la sesion al login)
 - `bin/nebula-sync` (nuevo): corre en cada login (lo lanza `bspwmrc`, en
   segundo plano, una vez por sesion via `--once`).

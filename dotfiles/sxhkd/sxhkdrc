@@ -42,7 +42,9 @@ super + ctrl + r
 #   Mover / redimensionar : Super + arrastre (izq mueve, der esquina)
 #   Alt+Tab / Alt+Shift+Tab: cambiar de ventana (alttab, no es un bind de aca)
 #   Maximizar             : Super + Shift + F  (fullscreen toggle)
-#   Minimizar             : Super + D  ->  restaurar: Super + Shift + D
+#   Minimizar             : Super + D  ->  clic en el taskbar de nebula-bar
+#                           para restaurar (o Super + Shift + D, ve todos los
+#                           escritorios)
 #   Volver una al tiling  : Super + T
 
 # Cerrar la ventana enfocada (equivalente funcional de Alt+F4)
@@ -65,12 +67,14 @@ super + Tab
     bspc node -f last
 
 # Minimizar la ventana enfocada. bspwm no tiene "minimizar" real: se marca
-# como hidden (desaparece sin perder estado). Restaurar: Super+Shift+D.
-# (Una taskbar visible con las minimizadas llega con la barra de estado.)
+# como hidden (desaparece sin perder estado). Vuelve con un clic en el taskbar
+# de nebula-bar (o con Super+Shift+D).
 super + d
     bspc node -g hidden=on
 
-# Selector rofi de ventanas ocultas -> restaura y enfoca la elegida
+# Selector rofi de ventanas ocultas de CUALQUIER escritorio -> restaura y
+# enfoca la elegida. El taskbar de nebula-bar solo muestra las del escritorio
+# actual, asi que este sigue siendo util para las de otras categorias.
 super + shift + d
     nebula-window-switcher
 

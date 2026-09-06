@@ -47,12 +47,18 @@ done
 [[ "$synbad" -eq 0 ]] && ok "bash -n sobre todos los scripts"
 
 for b in nebula-screenshot nebula-powermenu nebula-edge-sidebar nebula-rescue \
-         nebula-window-switcher nebula-gen-panel nebula-sync; do
+         nebula-window-switcher nebula-gen-panel nebula-sync nebula-taskbar; do
     s="$REPO/bin/$b"
     [[ -x "$s" ]] || { bad "no ejecutable: bin/$b"; continue; }
     if "$s" --help >/dev/null 2>&1; then ok "bin/$b --help -> 0"
     else bad "bin/$b --help sale != 0"; fi
 done
+
+# nebula-taskbar sin bspwm: debe emitir un array JSON vacio y salir, no colgarse.
+tb_out="$(timeout 3 "$REPO/bin/nebula-taskbar" 2>/dev/null | head -n1)"
+[[ "$tb_out" == "[]" || "$tb_out" == \[* ]] \
+    && ok "nebula-taskbar: emite JSON de arranque ('$tb_out')" \
+    || bad "nebula-taskbar: primera linea no es JSON ('$tb_out')"
 
 # ===========================================================================
 hdr "ESTATICO - dotfiles"
@@ -68,6 +74,9 @@ ne="$(grep -cF ';; --- nebula:autogen END'   "$YUCK")"
 
 grep -q '(defwindow nebula-bar' "$YUCK"     && ok "eww.yuck: define nebula-bar"     || bad "eww.yuck: falta defwindow nebula-bar"
 grep -q '(defwindow nebula-sidebar' "$YUCK" && ok "eww.yuck: define nebula-sidebar" || bad "eww.yuck: falta defwindow nebula-sidebar"
+grep -q '(deflisten TASKWINS' "$YUCK" && grep -q 'nebula-taskbar' "$YUCK" \
+    && ok "eww.yuck: taskbar cableado (deflisten TASKWINS -> nebula-taskbar)" \
+    || bad "eww.yuck: falta el deflisten TASKWINS del taskbar"
 
 if command -v eww >/dev/null 2>&1; then
     d="$REPO/dotfiles/eww"; sock=""

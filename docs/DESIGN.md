@@ -266,7 +266,9 @@ Reloj · uso de CPU / RAM / GPU (`nvidia-smi --query-gpu=utilization.gpu,memory.
 
 ### 6.6. Barra de estado superior (`nebula-bar`)
 
-Ventana `eww` **siempre visible** (la abre `bspwmrc` al iniciar sesión), franja superior de 26 px, `:exclusive true` → reserva su espacio, las ventanas no la tapan. Contenido: marca **NEBULA** (izq.) · fecha + hora (centro) · `CPU% RAM% GPU% TEMP` (der., texto plano — la UI usa Inter, sin glyphs de Nerd Font). Reusa los `defpoll` del sidebar (`DATE`/`TIME`, `CPU`/`MEM`, `GPU`/`TEMP`). Pendiente: *tray* y taskbar de ventanas minimizadas.
+Ventana `eww` **siempre visible** (la abre `bspwmrc` al iniciar sesión), franja superior de 26 px, `:exclusive true` → reserva su espacio, las ventanas no la tapan. Contenido: marca **NEBULA** (izq.) · **taskbar** de las ventanas del escritorio enfocado (centro) · fecha + hora + `CPU% RAM% GPU% TEMP` (der., texto plano — la UI usa Inter, sin glyphs de Nerd Font). Reusa los `defpoll` del sidebar (`DATE`/`TIME`, `CPU`/`MEM`, `GPU`/`TEMP`). Pendiente: *tray*.
+
+**Taskbar (minimizar/restaurar con el mouse).** `bin/nebula-taskbar` corre un `bspc subscribe` y emite en cada cambio el JSON de las ventanas del escritorio enfocado — `{id, label, class, hidden, focused}` — que `eww` consume por `deflisten TASKWINS`. El widget `taskbar` dibuja un botón por ventana; **clic = `bspc node <id> -g hidden=off -f`** (restaura la minimizada y la enfoca). La enfocada va resaltada; las minimizadas (`hidden=on` vía `Super+D`), en gris e itálica con un `◦` delante. Sólo lista el escritorio actual: para las minimizadas de otras categorías está `Super+Shift+D` (`nebula-window-switcher`, rofi, ve todas). Sólo depende de `bspc` + `xdotool` (ya en `PKGS_BASE`); si `bspwm` no está, emite `[]` y sale.
 
 ---
 

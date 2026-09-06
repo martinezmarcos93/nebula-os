@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# nebula-taskbar - Lista de ventanas del escritorio enfocado como JSON, para el
+# `deflisten` del taskbar de nebula-bar (dotfiles/eww/eww.yuck).
+#
+# Emite una linea JSON al arrancar y la RE-EMITE ante cualquier cambio relevante
+# (bspc subscribe). Cada entrada:
+#   {"id":"0x..","label":"Firefox","class":"firefox","hidden":false,"focused":true}
+#
+# El taskbar dibuja un boton por ventana; clic = `bspc node <id> -g hidden=off -f`
+# (restaura la minimizada y la enfoca). bspwm no tiene "minimizar" real: Super+D
+# hace `hidden=on` y esto es lo que las trae de vuelta con el mouse, como en un
+# escritorio clasico. Para las minimizadas de OTROS escritorios sigue estando
+# `Super+Shift+D` (nebula-window-switcher, rofi, ve todas).
+#
+# Uso: nebula-taskbar [--help]   (corre en loop; lo consume eww via deflisten)
+set -uo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    sed -n '2,15p' "$0"
+    exit 0
+fi
+
+command -v bspc >/dev/null 2>&1 || { echo "[]"; exit 1; }
+HAVE_XDOTOOL=0
+command -v xdotool >/dev/null 2>&1 && HAVE_XDOTOOL=1
+
+LABEL_MAX="${NEBULA_TASKBAR_LABEL_MAX:-24}"
+
+# Escapa una cadena para incrustarla como string JSON.
+json_str() {
+    local s=$1
+    s=${s//\\/\\\\}
+    s=${s//\"/\\\"}
+    s=${s//$'\t'/ }
+    s=${s//$'\n'/ }
+    printf '"%s"' "$s"
+}
+
+emit() {
+    local ids id name cls hidden focused first=1 focus_id
+    focus_id="$(bspc query -N -n focused 2>/dev/null || true)"
+    # Nodos con ventana del escritorio enfocado (incluye los hidden).
+    mapfile -t ids < <(bspc query -N -d focused -n .window 2>/dev/null)
+
+    printf '['
+    for id in "${ids[@]}"; do
+        [[ -n "$id" ]] || continue
+
+        name=""; cls=""
+        if (( HAVE_XDOTOOL )); then
+            name="$(xdotool getwindowname "$id" 2>/dev/null || true)"
+            cls="$(xdotool getwindowclassname "$id" 2>/dev/null || true)"
+        fi
+        [[ -n "$cls"  ]] || cls="?"
+        [[ -n "$name" ]] || name="$cls"
+        if (( ${#name} > LABEL_MAX )); then
+            name="${name:0:LABEL_MAX-1}…"
+        fi
+
+        hidden=false
+        [[ -n "$(bspc query -N -n "${id}.hidden" 2>/dev/null)" ]] && hidden=true
+        focused=false
+        [[ "$id" == "$focus_id" ]] && focused=true
+
+        (( first )) || printf ','
+        first=0
+        printf '{"id":"%s","label":%s,"class":%s,"hidden":%s,"focused":%s}' \
+            "$id" "$(json_str "$name")" "$(json_str "$cls")" "$hidden" "$focused"
+    done
+    printf ']\n'
+}
+
+emit
+
+# bspc subscribe se corta si bspwm se va -> el while termina y el script sale
+# (eww reintenta el deflisten). node_flag = toggle de hidden (lo que nos importa
+# para minimizar/restaurar); el resto mantiene el resaltado al dia.
+bspc subscribe node_add node_remove node_flag node_state node_focus node_transfer desktop_focus 2>/dev/null \
+| while read -r _; do
+    # Coalesce: drena la rafaga de eventos de los ultimos ~50 ms y emite una vez.
+    while read -r -t 0.05 _; do :; done
+    emit
+done

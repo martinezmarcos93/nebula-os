@@ -27,6 +27,10 @@
 (defpoll TEMP :interval "5s"  :initial ""
   "sensors 2>/dev/null | awk '/Package id 0/ {print $4; exit}'")
 
+;; Ventanas del escritorio enfocado (incluye las minimizadas), para el taskbar
+;; de nebula-bar. bin/nebula-taskbar re-emite el JSON ante cada cambio de bspwm.
+(deflisten TASKWINS :initial "[]" "nebula-taskbar")
+
 (defwidget cat [name]
   (label :class "cat-title" :halign "start" :text name))
 
@@ -138,18 +142,32 @@
   (sidebar-content))
 
 ;; --- Barra de estado superior -----------------------------------------
-;; Siempre visible (la abre bspwmrc al iniciar sesion). Marca / reloj-fecha /
-;; CPU-RAM-GPU-temp. :exclusive true -> reserva la franja superior, las
-;; ventanas no la tapan. Sin glyphs de Nerd Font (la UI usa Inter): texto plano.
+;; Siempre visible (la abre bspwmrc al iniciar sesion). Marca (izq.) · taskbar
+;; de ventanas del escritorio enfocado (centro) · reloj-fecha + CPU/RAM/GPU/temp
+;; (der.). :exclusive true -> reserva la franja superior, las ventanas no la
+;; tapan. Sin glyphs de Nerd Font (la UI usa Inter): texto plano.
+
+;; Taskbar: un boton por ventana del escritorio enfocado (TASKWINS, via
+;; bin/nebula-taskbar). Clic = restaurar si esta minimizada (hidden=off) y
+;; enfocar. La enfocada va resaltada; las minimizadas, en gris e italica con
+;; un punto delante. Asi se minimiza/restaura "con normalidad", con el mouse.
+(defwidget taskbar []
+  (box :class "taskbar" :orientation "h" :halign "center" :space-evenly false :spacing 4
+    (for w in TASKWINS
+      (button :class "task ${w.focused ? "task-active" : ""} ${w.hidden ? "task-hidden" : ""}"
+              :onclick "bspc node ${w.id} -g hidden=off -f"
+        (label :text "${w.hidden ? "◦ " : ""}${w.label}" :limit-width 24)))))
+
 (defwidget bar-content []
   (centerbox :class "bar" :orientation "h"
     (box :class "bar-left" :halign "start" :space-evenly false :spacing 8
       (image :path "${EWW_CONFIG_DIR}/../nebula/icons/brand-mark.png"
              :image-width 15 :image-height 15 :preserve-aspect-ratio true)
       (label :class "bar-brand" :text "NEBULA"))
-    (box :halign "center"
-      (label :class "bar-clock" :text "${DATE}   ${TIME}"))
+    (box :class "bar-center" :halign "center" :hexpand true
+      (taskbar))
     (box :class "bar-right" :halign "end" :space-evenly false :spacing 14
+      (label :class "bar-clock" :text "${DATE}   ${TIME}")
       (label :class "bar-stat" :text "CPU ${CPU}%")
       (label :class "bar-stat" :text "RAM ${MEM}%")
       (label :class "bar-stat" :text {GPU  != "" ? "GPU ${GPU}%"   : ""})
