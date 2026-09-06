@@ -122,3 +122,11 @@ bspc rule -a '*'             state=floating
 bspc rule -a Steam           desktop='^3' follow=on
 bspc rule -a steam_app_*     state=fullscreen
 bspc rule -a "*:Toolkit:Picture-in-Picture" state=floating sticky=on
+
+# --- Sincronizacion al login (una vez por sesion, en segundo plano) -----
+# Si los dotfiles del repo cambiaron -> redespliega a ~/.config y recarga.
+# Si faltan paquetes de PKGS_BASE -> los instala (pide root via sudo -n /
+# pkexec; si no puede, solo avisa). NUNCA bloquea: sin red / apt ocupado ->
+# reintenta en el proximo login. Desactivar el paso de paquetes:
+#   touch ~/.config/nebula/no-auto-pkgs
+command -v nebula-sync >/dev/null 2>&1 && ( nebula-sync --once --quiet & )

@@ -47,7 +47,7 @@ done
 [[ "$synbad" -eq 0 ]] && ok "bash -n sobre todos los scripts"
 
 for b in nebula-screenshot nebula-powermenu nebula-edge-sidebar nebula-rescue \
-         nebula-window-switcher nebula-gen-panel; do
+         nebula-window-switcher nebula-gen-panel nebula-sync; do
     s="$REPO/bin/$b"
     [[ -x "$s" ]] || { bad "no ejecutable: bin/$b"; continue; }
     if "$s" --help >/dev/null 2>&1; then ok "bin/$b --help -> 0"

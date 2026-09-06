@@ -29,6 +29,25 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-06, pedido del usuario — auto-sync de la sesion al login)
+- `bin/nebula-sync` (nuevo): corre en cada login (lo lanza `bspwmrc`, en
+  segundo plano, una vez por sesion via `--once`).
+  - **Dotfiles:** hashea `dotfiles/` del repo; si cambio -> corre
+    `30-dotfiles.sh` y recarga `bspwm`/`sxhkd`. Sin root.
+  - **Paquetes:** compara `PKGS_BASE` con lo instalado e instala lo que falte
+    con `sudo -n` o `pkexec` (+ agente polkit). Desactivable con
+    `~/.config/nebula/no-auto-pkgs` (pasa a solo avisar).
+  - **Nunca bloquea:** sin red / `apt` ocupado / sin via de root -> avisa por
+    `notify-send` y sale 0; reintenta en el proximo login.
+  - Flags: `--quiet --once --dotfiles-only --pkgs-only`.
+- `install/50-funciones.sh`: escribe `$XDG_DATA_HOME/nebula/{repo-path,
+  pkgs.list}` (extrae `PKGS_BASE` de `10-base.sh`) para que `nebula-sync`
+  funcione sin tener que buscar el repo. `nebula-sync` en el mapa de `.desktop`.
+- `dotfiles/bspwm/bspwmrc`: `nebula-sync --once --quiet` al final del rc,
+  detachado (`( ... & )`).
+- `tools/test-session.sh`: chequea `nebula-sync --help`.
+- `docs/DESIGN.md`: §7.10 nuevo, fila de `50-funciones.sh` en §8.3.
+
 ### Anadido (2026-09-06, estabilizacion — bateria de pruebas)
 - `tools/test-session.sh` + `make test-session`: bateria NO interactiva.
   - **Estatico** (sin X): `make lint`, `bash -n` de todos los scripts, `--help`

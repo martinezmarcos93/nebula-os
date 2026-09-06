@@ -33,6 +33,21 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Datos que necesita bin/nebula-sync en cada login (ver ese script):
+#   repo-path -> donde esta este repo (para redesplegar dotfiles si cambian)
+#   pkgs.list -> copia de PKGS_BASE (para instalar lo que falte sin el repo)
+# ---------------------------------------------------------------------------
+NEBULA_DATA="$(dirname "$(dirname "$RT_LIB_DST")")"
+if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
+    info "[dry-run] escribiria $NEBULA_DATA/{repo-path,pkgs.list}"
+else
+    printf '%s\n' "$REPO_ROOT" > "$NEBULA_DATA/repo-path"
+    ( eval "$(sed -n '/^PKGS_BASE=(/,/^)/p' "$REPO_ROOT/install/10-base.sh")" 2>/dev/null
+      printf '%s\n' "${PKGS_BASE[@]:-}" ) > "$NEBULA_DATA/pkgs.list"
+    info "escrito: $NEBULA_DATA/repo-path y pkgs.list ($(grep -c . "$NEBULA_DATA/pkgs.list") paquetes)"
+fi
+
+# ---------------------------------------------------------------------------
 # Copiar bin/nebula-* -> ~/.local/bin (solo si cambio, para no pisar mtime).
 # ---------------------------------------------------------------------------
 declare -A DESC=(
@@ -45,6 +60,7 @@ declare -A DESC=(
     [nebula-gen-panel]="Regenerar panel/menu de categorias"
     [nebula-screenshot]="Captura de pantalla"
     [nebula-powermenu]="Menu de energia (bloquear / salir / apagar)"
+    [nebula-sync]="Sincronizar la sesion (dotfiles + paquetes)"
 )
 
 for src in "$REPO_ROOT"/bin/nebula-*; do

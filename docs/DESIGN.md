@@ -353,6 +353,16 @@ Lee `categories.toml` y regenera la sección de categorías del sidebar `eww` (i
 | Motivo | `bspc quit` no tenía ningún atajo: no había forma de **salir de la sesión** por teclado, sólo apagar/reiniciar desde el sidebar. |
 | Degradación | Sin `rofi` o `bspc` avisa por `notify-send` y sale. |
 
+### 7.10. `nebula-sync` — Sincronizar la sesión al login
+
+| Aspecto | Detalle |
+|---|---|
+| Cuándo | `bspwmrc` la lanza en cada login, en segundo plano, **una vez por sesión** (`--once`, marcador en `$XDG_RUNTIME_DIR`). También a mano. |
+| Dotfiles | Hashea `dotfiles/` del repo; si cambió respecto del último sync → corre `30-dotfiles.sh` (backup + deploy + `nebula-gen-panel`) y recarga `bspwm`/`sxhkd`. Sin root. Necesita `$XDG_DATA_HOME/nebula/repo-path` (lo escribe `50-funciones.sh`). |
+| Paquetes | Compara `PKGS_BASE` (del repo, o de `$XDG_DATA_HOME/nebula/pkgs.list`) con lo instalado; instala lo que falte con `sudo -n` o `pkexec` (+ agente polkit). Desactivable con `~/.config/nebula/no-auto-pkgs` (pasa a sólo avisar). |
+| Nunca bloquea | Sin red, con `apt` ocupado (`fuser` sobre el lock) o sin vía de root → `notify-send` y sale 0; reintenta en el próximo login. |
+| Flags | `--quiet` (sólo avisa acciones/errores), `--once`, `--dotfiles-only`, `--pkgs-only`. |
+
 ---
 
 ## 8. Integración con el proyecto de post-formateo
@@ -417,7 +427,7 @@ nebula-os/
 | **`20-panel.sh`** | Si `NEBULA_PANEL=eww` (default): instala `rustup`/`cargo`, `cargo install eww --locked` (o compila desde git) — **con manejo de fallo SSL, cae a polybar** (§11, E1). Si `polybar`: `apt install polybar`. Instala Nerd Font a `~/.local/share/fonts` + `fc-cache`. | Panel lateral visible con categorías y reloj; lanza una app de cada categoría. |
 | **`30-dotfiles.sh`** | Backup de `~/.config` afectado → despliega `dotfiles/` (copia o symlink). Los colores quedan escritos a mano en cada plantilla (§5.1, no hay `envsubst` real todavía). Al final, corre `nebula-gen-panel` para que el sidebar `eww` recién desplegado quede con las categorías reales de esta máquina (no con lo que haya quedado commiteado en el repo). | `bspc`/`picom`/`rofi` levantan con la config del repo sin errores en log. |
 | **`40-tema.sh`** | Instala tema GTK (`NEBULA_THEME`) a `~/.themes`; `papirus-folders` a violeta; Bibata a `~/.icons` si `NEBULA_CURSOR=1`; Space Grotesk manual; aplica `gsettings` + `settings.ini` + `~/.Xresources` + `xsettingsd`; wallpaper. | Apps GTK (GIMP, `pcmanfm`) abren en oscuro; cursor y iconos correctos; sin flicker. |
-| **`50-funciones.sh`** | Despliega `lib/nebula-runtime.sh` a `$XDG_DATA_HOME/nebula/lib/` (lo sourcean los `nebula-*` ya copiados, ver §8.2); copia `bin/nebula-*` → `~/.local/bin` (`chmod +x`); añade a `PATH` si falta; genera entradas `.desktop` para los `nebula-*`; recarga `sxhkd`. Los atajos `sxhkd` ya vienen en `dotfiles/sxhkd/sxhkdrc` (stage 30). | Cada `nebula-*` responde a `--help`; `game-mode` on/off sin residuos; `ai-chat` lista modelos. |
+| **`50-funciones.sh`** | Despliega `lib/nebula-runtime.sh` a `$XDG_DATA_HOME/nebula/lib/` (lo sourcean los `nebula-*` ya copiados, ver §8.2); copia `bin/nebula-*` → `~/.local/bin` (`chmod +x`); escribe `$XDG_DATA_HOME/nebula/{repo-path,pkgs.list}` para `nebula-sync` (§7.10); añade a `PATH` si falta; genera entradas `.desktop` para los `nebula-*`; recarga `sxhkd`. Los atajos `sxhkd` ya vienen en `dotfiles/sxhkd/sxhkdrc` (stage 30). | Cada `nebula-*` responde a `--help`; `game-mode` on/off sin residuos; `ai-chat` lista modelos. |
 | **`60-postcheck.sh`** | Verifica binarios (clasificados **CRITICAL** → FAIL / **OPTIONAL** → WARN), servicios de usuario, ausencia de errores en el log, y —si corre dentro de la sesión Nebula— **sesión viva**: procesos realmente arriba (`bspwm`/`sxhkd` críticos; `picom`/`dunst`/`lxpolkit`/panel/`copyq` opcionales), `DISPLAY`, cursor X y layout de teclado. Mide RAM en reposo (`free -m`), genera `~/nebula-report.txt`. Si no hay FAIL, copia dotfiles activos a `~/.config/nebula/known-good/`. | Sin FAIL; RAM dentro de lo estimado (§9). `eww` caído es WARN, no FAIL (hay *fallback* a polybar, E1). |
 
 ### 8.4. Acople al proyecto de post-formateo existente
