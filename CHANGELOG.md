@@ -29,6 +29,23 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Cambiado (2026-09-06, revision contra analisis externo — FASE F: postcheck de sesion viva)
+- `install/60-postcheck.sh` solo comprobaba `command -v` de los binarios: una
+  sesion podia quedar visualmente perfecta pero sin `sxhkd`/`picom`/panel
+  corriendo y el postcheck la daba por buena (A1 §22, A3).
+  - **Bloque nuevo "Sesion viva":** si `bspwm` esta arriba en la shell,
+    verifica procesos realmente corriendo (`pgrep`): `sxhkd` (CRITICAL, sin
+    atajos la sesion es inoperable), `picom`/`dunst`/`lxpolkit`/panel/`copyq`
+    (OPTIONAL), mas `DISPLAY`, cursor X (`Xcursor.theme`) y layout de teclado.
+  - **Binarios clasificados por severidad:** CRITICAL (`bspwm sxhkd rofi
+    alacritty`) -> FAIL; OPTIONAL (`picom dunst copyq maim` + panel) -> WARN.
+    Antes `picom`/`dunst` faltantes abortaban el postcheck; ahora la sesion se
+    considera usable y el snapshot known-good igual se guarda.
+  - **`eww` caido = WARN, no FAIL:** es OPTIONAL y hay fallback a polybar (E1).
+  - **Default de `EFFECTIVE_PANEL` corregido** a `eww` (era `polybar`, pero el
+    default del instalador es `eww`; solo importaba si faltaba `~/.xprofile`).
+- `docs/DESIGN.md` §8.3: fila de `60-postcheck.sh` actualizada.
+
 ### Anadido (2026-09-06, revision contra analisis externo — FASE E: salir de sesion + bloqueo por inactividad)
 - **No habia forma de cerrar sesion por teclado.** `bspc quit` no tenia
   ningun atajo; el sidebar solo ofrecia Apagar/Reiniciar. Y el bloqueo

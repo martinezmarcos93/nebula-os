@@ -23,24 +23,97 @@ _pass() { PASS=$((PASS + 1));    ok   "$1"; }
 _warn() { WARN_N=$((WARN_N + 1)); warn "$1"; }
 _fail() { FAIL=$((FAIL + 1));    err  "$1"; }
 
-EFFECTIVE_PANEL="polybar"
+# El default del instalador es eww (install.sh); polybar es solo el fallback
+# degradado (E1). ~/.xprofile guarda el panel efectivo de ESTA maquina.
+EFFECTIVE_PANEL="eww"
 if grep -qs '^export NEBULA_PANEL=' "$HOME/.xprofile" 2>/dev/null; then
     EFFECTIVE_PANEL="$(grep '^export NEBULA_PANEL=' "$HOME/.xprofile" | tail -n1 | cut -d= -f2)"
 fi
 
 # ---------------------------------------------------------------------------
-# Binarios
+# Binarios. Severidad segun si la sesion sigue siendo usable sin ese binario
+# (clasificacion pedida en la revision contra el analisis externo):
+#   CRITICAL -> sin esto no hay sesion operable                 -> FAIL
+#   OPTIONAL -> degrada (compositor, notificaciones, panel, ...)  -> WARN
 # ---------------------------------------------------------------------------
-BINARIES=(bspwm sxhkd picom rofi alacritty dunst)
-[[ "$EFFECTIVE_PANEL" == "eww" ]] && BINARIES+=(eww) || BINARIES+=(polybar)
+BIN_CRITICAL=(bspwm sxhkd rofi alacritty)
+BIN_OPTIONAL=(picom dunst copyq maim)
+if [[ "$EFFECTIVE_PANEL" == "eww" ]]; then
+    BIN_OPTIONAL+=(eww)
+else
+    BIN_OPTIONAL+=(polybar)
+fi
 
-for b in "${BINARIES[@]}"; do
+for b in "${BIN_CRITICAL[@]}"; do
+    if has_cmd "$b"; then
+        _pass "binario CRITICAL presente: $b"
+    else
+        _fail "falta el binario CRITICAL: $b"
+    fi
+done
+for b in "${BIN_OPTIONAL[@]}"; do
     if has_cmd "$b"; then
         _pass "binario presente: $b"
     else
-        _fail "falta el binario: $b"
+        _warn "falta el binario opcional: $b (la sesion sigue siendo usable)"
     fi
 done
+
+# ---------------------------------------------------------------------------
+# Sesion viva. Solo aplica si este script corre DENTRO de la sesion Nebula
+# (bspwm arriba en esta shell): comprueba que los procesos que la forman
+# esten realmente corriendo, no solo instalados.
+#   CRITICAL: bspwm + sxhkd (sin atajos la sesion es inoperable) + DISPLAY.
+#   OPTIONAL: picom, dunst, lxpolkit, panel, copyq.
+# ---------------------------------------------------------------------------
+step "Sesion viva"
+if pgrep -x bspwm >/dev/null 2>&1; then
+    if [[ -n "${DISPLAY:-}" ]]; then
+        _pass "DISPLAY=$DISPLAY"
+    else
+        _fail "sesion bspwm activa pero DISPLAY vacio"
+    fi
+
+    if pgrep -x sxhkd >/dev/null 2>&1; then
+        _pass "proceso vivo: sxhkd (atajos de teclado)"
+    else
+        _fail "sxhkd NO esta corriendo: la sesion queda sin atajos (recuperar desde un TTY con 'pkill -USR1 -x sxhkd' o 'nebula-rescue')"
+    fi
+
+    for p in picom dunst lxpolkit copyq; do
+        if pgrep -x "$p" >/dev/null 2>&1; then
+            _pass "proceso vivo: $p"
+        else
+            _warn "proceso '$p' no esta corriendo (la sesion sigue siendo usable)"
+        fi
+    done
+
+    panel_proc="polybar"
+    [[ "$EFFECTIVE_PANEL" == "eww" ]] && panel_proc="eww"
+    if pgrep -x "$panel_proc" >/dev/null 2>&1; then
+        _pass "proceso vivo: $panel_proc (panel)"
+    else
+        _warn "panel '$panel_proc' no esta corriendo. Con eww el daemon deberia estar vivo aunque no hayas abierto el sidebar (Super+B)."
+    fi
+
+    xcur="$(command -v xrdb >/dev/null 2>&1 && xrdb -query 2>/dev/null | sed -n 's/^Xcursor\.theme:[[:space:]]*//p')"
+    if [[ -n "$xcur" ]]; then
+        _pass "cursor X configurado: $xcur"
+    else
+        _warn "no veo Xcursor.theme en la base de recursos X (revisa install/40-tema.sh / ~/.Xresources)"
+    fi
+
+    if command -v setxkbmap >/dev/null 2>&1; then
+        kbd="$(setxkbmap -query 2>/dev/null | awk '/^layout:/ {print $2; exit}')"
+        if [[ -n "$kbd" ]]; then
+            _pass "layout de teclado: $kbd"
+        else
+            _warn "no pude leer el layout de teclado con setxkbmap"
+        fi
+    fi
+else
+    _warn "sesion bspwm no activa en esta shell: se omiten los chequeos de sesion viva. Inicia sesion 'Nebula OS (bspwm)' y corre 'install/60-postcheck.sh' de nuevo."
+fi
 
 # ---------------------------------------------------------------------------
 # Servicios de usuario
