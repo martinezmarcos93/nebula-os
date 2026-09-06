@@ -29,6 +29,14 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-06, tooling)
+- `tools/test-nested.sh` + target `make test-nested`: sandbox de bspwm + sxhkd
+  (con la config real del repo) + alttab dentro de un Xephyr, sin tocar la
+  sesion activa. Para iterar sobre los dotfiles de ventanas/atajos sin cerrar
+  sesion. Solo aplica las directivas `bspc config/rule/monitor`; no corre el
+  autostart completo (sin GLX/NVIDIA no es representativo para picom/juegos).
+  `tools/*.sh` entra en el `shellcheck` de `make lint`.
+
 ### Cambiado (2026-09-06, revision contra analisis externo — FASE D: ventanas en modo flotante + Alt+Tab)
 - **Decision del usuario:** las ventanas no se quieren fijas/tiled. Se pasa
   bspwm a **modo flotante por defecto** y se agrega un Alt+Tab visual real.
