@@ -256,7 +256,7 @@ Reloj · uso de CPU / RAM / GPU (`nvidia-smi --query-gpu=utilization.gpu,memory.
 ### 6.5. Interacción
 
 - **Desplegar/ocultar el sidebar (con `eww`): gesto de borde o `Super + B`.** Una **única** ventana (`nebula-sidebar`, 260 px, alto completo, pegada al borde izquierdo; `wm-ignore true`, `exclusive false`, `focusable false`).
-  - **Gesto de borde:** `bin/nebula-edge-sidebar` (lo arranca `bspwmrc`) hace *polling* de la posición del puntero con `xdotool`; al tocar el borde izquierdo (`x ≤ 1`) abre el sidebar, al alejar el puntero más allá de los 260 px lo cierra. **No** usa el `:onhover` de `eww`: ese modelo (`toggle-tab` + `:onhover`/`:onhoverlost`) entraba en loop abrir/cerrar porque el sidebar tapaba al sensor — se descartó en `18aa8fc`. El *polling* lo detecta desde afuera de `eww`, sin loop.
+  - **Gesto de borde:** `bin/nebula-edge-sidebar` (lo arranca `bspwmrc`) hace *polling* de la posición del puntero con `xdotool` cada 50 ms; al entrar en la franja del borde izquierdo (`x ≤ 6`, ajustable con `NEBULA_SIDEBAR_EDGE`) abre el sidebar, al alejar el puntero más allá de los 260 px lo cierra. **No** usa el `:onhover` de `eww`: ese modelo (`toggle-tab` + `:onhover`/`:onhoverlost`) entraba en loop abrir/cerrar porque el sidebar tapaba al sensor — se descartó en `18aa8fc`. El *polling* lo detecta desde afuera de `eww`, sin loop.
   - **`Super + B`:** `eww open --toggle nebula-sidebar` — toggle manual, funciona en paralelo al gesto. El botón "‹" del header también la cierra.
   - El daemon de `eww` lo arranca `bspwmrc` al iniciar sesión (`pidof -q eww || eww … daemon &`), y no se abre por *fullscreen* (juego/vídeo).
 - `Super + Espacio` → `rofi -show drun` (todas las apps).

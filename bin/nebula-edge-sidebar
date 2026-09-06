@@ -18,8 +18,13 @@ fi
 CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 WIN="nebula-sidebar"
 WIDTH="${NEBULA_SIDEBAR_WIDTH:-260}"     # ancho del sidebar (px) -> zona muerta
-EDGE="${NEBULA_SIDEBAR_EDGE:-1}"         # px desde el borde que disparan apertura
-INTERVAL="${NEBULA_SIDEBAR_POLL:-0.15}"  # segundos entre lecturas del puntero
+# Zona caliente ancha (no 1 px): con 1 px el puntero tenia que quedar clavado
+# en la primera columna y casi nunca disparaba. 6 px se alcanza con solo
+# empujar el raton contra el borde. Subilo mas si lo queres aun mas sensible.
+EDGE="${NEBULA_SIDEBAR_EDGE:-6}"         # px desde el borde que disparan apertura
+# Poll rapido: a 0.15 s el gesto se sentia con retardo. 0.05 s = ~20 lecturas/s,
+# xdotool getmouselocation es barato (no mide nada mas).
+INTERVAL="${NEBULA_SIDEBAR_POLL:-0.05}"  # segundos entre lecturas del puntero
 
 for c in xdotool eww; do
     command -v "$c" >/dev/null 2>&1 || { echo "nebula-edge-sidebar: falta '$c'" >&2; exit 1; }
