@@ -135,6 +135,7 @@ Cada capa corresponde a un script numerado (§8). Las capas se instalan de abajo
 | Teclado (layout) | `setxkbmap` desde `/etc/default/keyboard` | Sí (`x11-xkb-utils`) | Se aplica en `bspwmrc` para los caminos `startx`/`ly`, donde ningún DM fija el layout (con GDM ya viene puesto). Fallback `latam` si el archivo no existe. |
 | Agente PolicyKit | `lxpolkit` o `policykit-1-gnome` | Sí | Necesario para montajes/permisos gráficos. |
 | Portapapeles | **copyq** | Sí (`universe`) | Daemon con historial persistido a disco: lo copiado sobrevive al cierre de la app fuente. `bspwmrc` arranca solo el server (sin ventana, sin tray); `Super + V` abre el historial con buscador. `xclip` (para scripts) va aparte. |
+| Captura de pantalla | **maim** (+ `xdotool`) | Sí (`universe`) | `bin/nebula-screenshot`: `Print` completa, `Shift+Print` región, `Super+Print` ventana activa, `Super+Shift+S` región al portapapeles. Guarda en `<Imágenes>/Capturas/` y además copia al portapapeles. |
 | Fuentes | `fonts-jetbrains-mono`, `fonts-inter` | Sí | **Space Grotesk** y **Nerd Fonts** no están empaquetadas → instalación manual en `40-tema.sh`. |
 | Tema GTK | **Nordic-darker** (o **Fluent-dark**) | No (GitHub) | Instalación a `~/.themes` o `/usr/share/themes`. |
 | Iconos | **Papirus-Dark** (`papirus-icon-theme`) | Sí | — |
@@ -207,7 +208,7 @@ El panel lateral y el lanzador `rofi` se generan **desde un solo archivo declara
 - el widget del panel en `eww` (`.yuck`, reescribiendo solo la sección delimitada por marcadores `nebula:autogen`),
 - las entradas del menú `rofi` por categoría (`nebula-gen-panel --menu`).
 
-`polybar` (fallback degradado, E1) **no** lee `categories.toml`: su `config.ini` es estático y no muestra categorías dinámicas. No se generan accesos `.desktop` por app de categoría (sí los hay, aparte, para los 7 `nebula-*` — ver `50-funciones.sh`).
+`polybar` (fallback degradado, E1) **no** lee `categories.toml`: su `config.ini` es estático y no muestra categorías dinámicas. No se generan accesos `.desktop` por app de categoría (sí los hay, aparte, para los `nebula-*` — ver `50-funciones.sh`).
 
 ### 6.2. Formato de `categories.toml`
 
@@ -317,6 +318,15 @@ Cada función se entrega como script en `~/.local/bin/nebula-<nombre>`, con entr
 
 Lee `categories.toml` y regenera la sección de categorías del sidebar `eww` (invocación por defecto, sin argumentos) o el menú `rofi` de categorías (`nebula-gen-panel --menu`). No genera accesos `.desktop` (esos son aparte, uno por cada `nebula-*`, ver `50-funciones.sh`). Se ejecuta al final de `30-dotfiles.sh` y cada vez que el usuario edita las categorías (`Super + Shift + C` para recargar).
 
+### 7.8. `nebula-screenshot` — Capturas de pantalla
+
+| Aspecto | Detalle |
+|---|---|
+| Atajos | `Print` completa · `Shift + Print` región · `Super + Print` ventana activa · `Super + Shift + S` región al portapapeles |
+| Backend | `maim` (captura), `xdotool` (ventana activa), `xclip` (portapapeles) |
+| Salida | `<Imágenes de XDG>/Capturas/AAAA-MM-DD_HH-MM-SS.png` (con *fallback* a `$HOME` si no hay carpeta XDG). Los modos de archivo **además** copian la imagen al portapapeles; el modo `clip` es solo portapapeles. |
+| Degradación | Sin `maim` avisa y sale; sin `xclip` funciona igual pero sin copiar; cancelar la selección (Esc) no deja archivo ni notificación. |
+
 ---
 
 ## 8. Integración con el proyecto de post-formateo
@@ -377,11 +387,11 @@ nebula-os/
 | Script | Acciones principales | Criterio de éxito |
 |---|---|---|
 | **`00-preflight.sh`** | Verifica: Ubuntu 24.04 (`lsb_release`), arquitectura `amd64`, usuario con `sudo`, `apt update` responde, ≥ 3 GB libres en `/`, **ausencia** de `gdm3`/`gnome-shell` (aviso, no aborta), `nvidia-smi` funciona, `systemctl is-system-running` no `degraded`. | Todas las críticas OK; imprime tabla de resultados. |
-| **`10-base.sh`** | `apt` de: `xserver-xorg-core xinit x11-xserver-utils bspwm sxhkd picom rofi alacritty dunst feh brightnessctl playerctl lm-sensors network-manager-gnome pavucontrol pipewire pipewire-pulse wireplumber lxpolkit i3lock xss-lock fonts-jetbrains-mono fonts-inter papirus-icon-theme x11-xkb-utils git ca-certificates unzip curl xclip copyq` (el driver NVIDIA **no** se instala aquí: es responsabilidad del post-formateo, fuera de alcance — ver §2.1). Detecta gestor de display activo y aplica el mecanismo de arranque correspondiente (§4). Crea `~/.xinitrc`. Habilita PipeWire de usuario. | `startx`/DM entra a `bspwm` con fondo negro; `Super+Enter` abre Alacritty. |
+| **`10-base.sh`** | `apt` de: `xserver-xorg-core xinit x11-xserver-utils bspwm sxhkd picom rofi alacritty dunst feh brightnessctl playerctl lm-sensors network-manager-gnome pavucontrol pipewire pipewire-pulse wireplumber lxpolkit i3lock xss-lock fonts-jetbrains-mono fonts-inter papirus-icon-theme x11-xkb-utils git ca-certificates unzip curl xclip copyq libnotify-bin maim xdotool` (el driver NVIDIA **no** se instala aquí: es responsabilidad del post-formateo, fuera de alcance — ver §2.1). Detecta gestor de display activo y aplica el mecanismo de arranque correspondiente (§4). Crea `~/.xinitrc`. Habilita PipeWire de usuario. | `startx`/DM entra a `bspwm` con fondo negro; `Super+Enter` abre Alacritty. |
 | **`20-panel.sh`** | Si `NEBULA_PANEL=eww` (default): instala `rustup`/`cargo`, `cargo install eww --locked` (o compila desde git) — **con manejo de fallo SSL, cae a polybar** (§11, E1). Si `polybar`: `apt install polybar`. Instala Nerd Font a `~/.local/share/fonts` + `fc-cache`. | Panel lateral visible con categorías y reloj; lanza una app de cada categoría. |
 | **`30-dotfiles.sh`** | Backup de `~/.config` afectado → despliega `dotfiles/` (copia o symlink). Los colores quedan escritos a mano en cada plantilla (§5.1, no hay `envsubst` real todavía). Al final, corre `nebula-gen-panel` para que el sidebar `eww` recién desplegado quede con las categorías reales de esta máquina (no con lo que haya quedado commiteado en el repo). | `bspc`/`picom`/`rofi` levantan con la config del repo sin errores en log. |
 | **`40-tema.sh`** | Instala tema GTK (`NEBULA_THEME`) a `~/.themes`; `papirus-folders` a violeta; Bibata a `~/.icons` si `NEBULA_CURSOR=1`; Space Grotesk manual; aplica `gsettings` + `settings.ini` + `~/.Xresources` + `xsettingsd`; wallpaper. | Apps GTK (GIMP, `pcmanfm`) abren en oscuro; cursor y iconos correctos; sin flicker. |
-| **`50-funciones.sh`** | Despliega `lib/nebula-runtime.sh` a `$XDG_DATA_HOME/nebula/lib/` (lo sourcean los `nebula-*` ya copiados, ver §8.2); copia `bin/nebula-*` → `~/.local/bin` (`chmod +x`); añade a `PATH` si falta; genera entradas `.desktop` para los 7 `nebula-*`; recarga `sxhkd`. Los atajos `sxhkd` ya vienen en `dotfiles/sxhkd/sxhkdrc` (stage 30). | Cada `nebula-*` responde a `--help`; `game-mode` on/off sin residuos; `ai-chat` lista modelos. |
+| **`50-funciones.sh`** | Despliega `lib/nebula-runtime.sh` a `$XDG_DATA_HOME/nebula/lib/` (lo sourcean los `nebula-*` ya copiados, ver §8.2); copia `bin/nebula-*` → `~/.local/bin` (`chmod +x`); añade a `PATH` si falta; genera entradas `.desktop` para los `nebula-*`; recarga `sxhkd`. Los atajos `sxhkd` ya vienen en `dotfiles/sxhkd/sxhkdrc` (stage 30). | Cada `nebula-*` responde a `--help`; `game-mode` on/off sin residuos; `ai-chat` lista modelos. |
 | **`60-postcheck.sh`** | Verifica binarios, servicios de usuario, ausencia de errores en el log, mide RAM en reposo (`free -m` tras 60 s de sesión estable), genera `~/nebula-report.txt`. Si todo verde, copia dotfiles activos a `dotfiles/nebula/known-good/`. | Reporte sin faltantes; RAM dentro de lo estimado (§9). |
 
 ### 8.4. Acople al proyecto de post-formateo existente
@@ -576,6 +586,16 @@ combinación queda asignada a dos acciones.
 | `Super + Shift + X` | Bloquear pantalla (`i3lock`) |
 | `Super + Escape` | Recargar `sxhkd` (`pkill -USR1 -x sxhkd`) |
 | `XF86Audio*` / `XF86MonBrightness*` | Volumen / brillo / media (`wpctl`, `playerctl`, `brightnessctl`) |
+
+**Portapapeles / captura**
+
+| Atajo | Acción |
+|---|---|
+| `Super + V` | Historial del portapapeles (`copyq toggle`) |
+| `Print` | Captura de pantalla completa → archivo + portapapeles (`nebula-screenshot full`) |
+| `Shift + Print` | Captura de región → archivo + portapapeles (`nebula-screenshot region`) |
+| `Super + Print` | Captura de la ventana activa → archivo + portapapeles (`nebula-screenshot window`) |
+| `Super + Shift + S` | Captura de región → sólo al portapapeles (`nebula-screenshot clip`) |
 
 **Mouse** (bspwm `pointer_action`, sin cambios): `Super + arrastre izq` = mover ·
 `Super + arrastre medio` = redimensionar lado · `Super + arrastre der` = redimensionar esquina.

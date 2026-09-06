@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# nebula-screenshot - Capturas de pantalla para Nebula OS (backend: maim).
+#   full    (por defecto)  pantalla completa      -> archivo (+ portapapeles)
+#   region                 seleccion interactiva  -> archivo (+ portapapeles)
+#   window                 ventana activa         -> archivo (+ portapapeles)
+#   clip                   seleccion interactiva  -> SOLO al portapapeles
+# Los archivos van a  <carpeta Imagenes de XDG>/Capturas/AAAA-MM-DD_HH-MM-SS.png
+# Uso: nebula-screenshot [full|region|window|clip] [--help]
+set -uo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    sed -n '2,8p' "$0"
+    exit 0
+fi
+
+notify() {
+    command -v notify-send >/dev/null 2>&1 && notify-send -a "Nebula" "$1" "${2:-}" || true
+}
+
+command -v maim >/dev/null 2>&1 || { notify "Captura" "Falta 'maim' en el PATH."; exit 1; }
+
+have_clip=0
+command -v xclip >/dev/null 2>&1 && have_clip=1
+copy_png() { [[ "$have_clip" -eq 1 ]] && xclip -selection clipboard -t image/png; }
+
+mode="${1:-full}"
+
+# Modo 'clip': ni archivo ni carpeta, va derecho al portapapeles.
+if [[ "$mode" == "clip" ]]; then
+    if [[ "$have_clip" -ne 1 ]]; then
+        notify "Captura" "Falta 'xclip' para copiar al portapapeles."
+        exit 1
+    fi
+    if maim -u -s | copy_png; then
+        notify "Captura" "Region copiada al portapapeles."
+    fi
+    exit 0
+fi
+
+case "$mode" in
+    full)   args=(-u) ;;
+    region) args=(-u -s) ;;
+    window)
+        command -v xdotool >/dev/null 2>&1 \
+            || { notify "Captura" "Falta 'xdotool' para el modo 'window'."; exit 1; }
+        args=(-u -i "$(xdotool getactivewindow)") ;;
+    *)
+        echo "uso: nebula-screenshot [full|region|window|clip]" >&2
+        exit 2 ;;
+esac
+
+dir="$(xdg-user-dir PICTURES 2>/dev/null || true)"
+[[ -n "$dir" && -d "$dir" ]] || dir="$HOME"
+dir="$dir/Capturas"
+mkdir -p "$dir"
+file="$dir/$(date +%Y-%m-%d_%H-%M-%S).png"
+
+if ! maim "${args[@]}" "$file"; then
+    # maim sale !=0 si se cancela la seleccion (Esc) o si falla: sin ruido.
+    [[ -f "$file" ]] && rm -f "$file"
+    exit 1
+fi
+
+# Ademas del archivo, dejarla en el portapapeles para pegar de una.
+[[ "$have_clip" -eq 1 ]] && copy_png < "$file" >/dev/null 2>&1 || true
+
+notify "Captura guardada" "${file/#"$HOME"/~}"

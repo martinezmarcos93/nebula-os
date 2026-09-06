@@ -43,6 +43,7 @@ declare -A DESC=(
     [nebula-streaming-profile]="Perfil de streaming dedicado"
     [nebula-rescue]="Rescatar el entorno Nebula"
     [nebula-gen-panel]="Regenerar panel/menu de categorias"
+    [nebula-screenshot]="Captura de pantalla"
 )
 
 for src in "$REPO_ROOT"/bin/nebula-*; do

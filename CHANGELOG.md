@@ -29,6 +29,28 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-06, revision contra analisis externo — FASE C: capturas de pantalla)
+- **No habia ninguna solucion de captura de pantalla:** ni binario, ni atajo,
+  ni carpeta destino. `Print` no hacia nada. Lo marcaron los tres analisis
+  externos.
+- `bin/nebula-screenshot` (nuevo): backend `maim`. Modos `full` / `region` /
+  `window` / `clip`. Los de archivo guardan en
+  `<Imagenes de XDG>/Capturas/AAAA-MM-DD_HH-MM-SS.png` (fallback a `$HOME`) y
+  ademas copian la imagen al portapapeles; `clip` es solo portapapeles.
+  Degrada bien: sin `maim` avisa y sale, sin `xclip` no copia pero sigue,
+  cancelar la seleccion con Esc no deja archivo ni ruido.
+- `dotfiles/sxhkd/sxhkdrc`: `Print` (full), `Shift + Print` (region),
+  `Super + Print` (window), `Super + Shift + S` (clip). Ninguno colisionaba.
+- `install/10-base.sh`: `maim`, `xdotool` y `libnotify-bin` a `PKGS_BASE`.
+  `libnotify-bin` (trae `notify-send`) faltaba desde siempre: dunst es solo el
+  servidor y todos los `nebula-*` daban por hecho el binario cliente.
+- `install/50-funciones.sh`: `nebula-screenshot` en el mapa de descripciones
+  para que reciba su entrada `.desktop`.
+- `docs/DESIGN.md`: fila "Captura de pantalla" en la pila tecnica (§4), nueva
+  subseccion §7.8, paquetes en §8.3, bloque en la matriz de atajos (§14.2).
+  De paso, "los 7 `nebula-*`" -> "los `nebula-*`" (ya eran 8 con
+  `nebula-window-switcher`, ahora 9).
+
 ### Anadido (2026-09-06, revision contra analisis externo — FASE G: portapapeles con historial)
 - **No habia gestor de portapapeles:** al cerrar la app que copiaba algo, el
   contenido se perdia. Lo marcaron los tres analisis externos. `clipmenu` /

@@ -28,6 +28,13 @@ PKGS_BASE=(
     feh brightnessctl playerctl lm-sensors
     network-manager-gnome pavucontrol
     copyq
+    # libnotify-bin -> notify-send. dunst es el servidor, pero el binario que
+    # lo dispara es aparte y lo dan por hecho todos los scripts nebula-*.
+    libnotify-bin
+    # Capturas de pantalla (bin/nebula-screenshot): maim toma la captura,
+    # xdotool resuelve la ventana activa para el modo 'window'. xclip (arriba)
+    # copia la imagen al portapapeles.
+    maim xdotool
     pipewire pipewire-pulse wireplumber
     lxpolkit i3lock xss-lock
     fonts-jetbrains-mono fonts-inter papirus-icon-theme

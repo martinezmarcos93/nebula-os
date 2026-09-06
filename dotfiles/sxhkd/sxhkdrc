@@ -102,6 +102,18 @@ super + shift + x
 super + Escape
     pkill -USR1 -x sxhkd
 
+# --- Captura de pantalla (bin/nebula-screenshot) -----------------
+# Todas guardan en <Imagenes>/Capturas/ Y copian al portapapeles; 'clip' es
+# la excepcion (solo portapapeles, sin archivo).
+Print
+    nebula-screenshot full
+shift + Print
+    nebula-screenshot region
+super + Print
+    nebula-screenshot window
+super + shift + s
+    nebula-screenshot clip
+
 # --- Audio / brillo / media (PipeWire via wpctl) ------------------
 XF86Audio{RaiseVolume,LowerVolume}
     wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%{+,-} -l 1.5
