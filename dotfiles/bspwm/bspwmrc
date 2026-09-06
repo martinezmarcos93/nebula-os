@@ -117,9 +117,3 @@ bspc rule -a '*'             state=floating
 bspc rule -a Steam           desktop='^3' follow=on
 bspc rule -a steam_app_*     state=fullscreen
 bspc rule -a "*:Toolkit:Picture-in-Picture" state=floating sticky=on
-
-# --- Autostart de sesion (una vez por login, NO en cada `bspc wm -r`) ---
-# Toda la logica de "solo una vez" vive en autostart.sh: este bloque se
-# re-ejecuta en cada recarga del WM, pero el script se auto-descarta si ya
-# corrio en esta sesion. Ver dotfiles/bspwm/autostart.sh.
-[[ -x "$HOME/.config/bspwm/autostart.sh" ]] && "$HOME/.config/bspwm/autostart.sh" &

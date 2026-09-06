@@ -29,6 +29,14 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Quitado (2026-09-06, pedido del usuario — sin terminal al iniciar sesion)
+- Se elimina el mecanismo de "terminal de desarrollo al login": `dotfiles/bspwm/
+  autostart.sh` (borrado), su invocacion al final de `dotfiles/bspwm/bspwmrc`,
+  y la entrada `autostart.sh` del `chmod` de `install/30-dotfiles.sh`. Ya no
+  existe el sentinela `~/.config/nebula/dev-terminal`. La sesion arranca
+  directo al escritorio, sin abrir ninguna terminal. (Revierte la decision
+  registrada como "el usuario quiere mantener este mecanismo".)
+
 ### Anadido (2026-09-06, tooling)
 - `tools/test-nested.sh` + target `make test-nested`: sandbox de bspwm + sxhkd
   (con la config real del repo) + alttab dentro de un Xephyr, sin tocar la

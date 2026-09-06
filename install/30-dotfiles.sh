@@ -61,7 +61,7 @@ done
 # Permisos de ejecucion en scripts desplegados (bspwm los ejecuta como rc,
 # polybar/launch.sh y scripts/gpu.sh se invocan directamente).
 # ---------------------------------------------------------------------------
-for f in "$CFG/bspwm/bspwmrc" "$CFG/bspwm/autostart.sh" \
+for f in "$CFG/bspwm/bspwmrc" \
          "$CFG/polybar/launch.sh" "$CFG/polybar/scripts/gpu.sh"; do
     [[ -e "$f" ]] && run chmod +x "$f"
 done
