@@ -61,6 +61,7 @@ declare -A DESC=(
     [nebula-screenshot]="Captura de pantalla"
     [nebula-powermenu]="Menu de energia (bloquear / salir / apagar)"
     [nebula-sync]="Sincronizar la sesion (dotfiles + paquetes)"
+    [nebula-mount-datos]="Montar el disco de datos"
 )
 
 for src in "$REPO_ROOT"/bin/nebula-*; do

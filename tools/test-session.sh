@@ -47,7 +47,8 @@ done
 [[ "$synbad" -eq 0 ]] && ok "bash -n sobre todos los scripts"
 
 for b in nebula-screenshot nebula-powermenu nebula-edge-sidebar nebula-rescue \
-         nebula-window-switcher nebula-gen-panel nebula-sync nebula-taskbar; do
+         nebula-window-switcher nebula-gen-panel nebula-sync nebula-taskbar \
+         nebula-mount-datos; do
     s="$REPO/bin/$b"
     [[ -x "$s" ]] || { bad "no ejecutable: bin/$b"; continue; }
     if "$s" --help >/dev/null 2>&1; then ok "bin/$b --help -> 0"
@@ -59,6 +60,12 @@ tb_out="$(timeout 3 "$REPO/bin/nebula-taskbar" 2>/dev/null | head -n1)"
 [[ "$tb_out" == "[]" || "$tb_out" == \[* ]] \
     && ok "nebula-taskbar: emite JSON de arranque ('$tb_out')" \
     || bad "nebula-taskbar: primera linea no es JSON ('$tb_out')"
+
+# nebula-mount-datos --fstab: linea de fstab bien formada, sin tocar nada.
+fs_out="$("$REPO/bin/nebula-mount-datos" --fstab 2>/dev/null | grep -E '^UUID=')"
+[[ "$fs_out" == *"ntfs-3g"*"nofail"*"x-systemd.automount"* ]] \
+    && ok "nebula-mount-datos --fstab: linea con ntfs-3g/nofail/automount" \
+    || bad "nebula-mount-datos --fstab: linea inesperada ('$fs_out')"
 
 # ===========================================================================
 hdr "ESTATICO - dotfiles"

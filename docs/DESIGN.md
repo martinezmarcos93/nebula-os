@@ -365,6 +365,18 @@ Lee `categories.toml` y regenera la sección de categorías del sidebar `eww` (i
 | Nunca bloquea | Sin red, con `apt` ocupado (`fuser` sobre el lock) o sin vía de root → `notify-send` y sale 0; reintenta en el próximo login. |
 | Flags | `--quiet` (sólo avisa acciones/errores), `--once`, `--dotfiles-only`, `--pkgs-only`. |
 
+### 7.11. `nebula-mount-datos` — Disco de datos NTFS
+
+El repo de Nebula y las carpetas del usuario viven en un disco NTFS interno. Windows (Fast Startup / hibernación / apagado sucio) lo deja marcado **"dirty"** y el driver `ntfs3` del kernel se niega a montarlo (`volume is dirty and "force" flag is not set`).
+
+| Aspecto | Detalle |
+|---|---|
+| `nebula-mount-datos` | `ntfsfix -d` (limpia el flag dirty; `sudo` si hay TTY, si no `pkexec`) → `udisksctl mount`; si falla, `mount -t ntfs3 -o force`. Idempotente: si ya está montado, avisa y sale 0. Disco por UUID (`NEBULA_DATOS_UUID`, default el de este equipo). |
+| `nebula-mount-datos --fstab` | Imprime la línea recomendada de `/etc/fstab`: driver **`ntfs-3g`** (FUSE, tolera el flag dirty de entrada — sólo avisa), `nofail`, `x-systemd.automount` (no demora el boot; monta al primer acceso), `x-gvfs-show`, `uid`/`gid` del usuario. |
+| `nebula-mount-datos --fstab --apply` | Agrega esa línea a `/etc/fstab` (backup con fecha), crea el punto de montaje y activa el automount. No duplica si ya hay una entrada para ese UUID. |
+| Escritorio | `~/Escritorio/montar-disco-datos.sh` es un envoltorio fino: delega en `nebula-mount-datos` si está en el `PATH`, si no hace lo mínimo inline. |
+| Nota | Si Windows quedó **hibernado** (no sólo "fast startup"), `ntfs-3g` monta sólo lectura salvo `remove_hiberfile` (descarta el estado de Windows) — no se hace automáticamente. La NAS `/mnt/nas` está fuera del alcance: `--fstab` no la toca. |
+
 ---
 
 ## 8. Integración con el proyecto de post-formateo

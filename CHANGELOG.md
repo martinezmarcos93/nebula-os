@@ -29,6 +29,20 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-06, pedido del usuario — disco de datos NTFS)
+- `bin/nebula-mount-datos` (nuevo): monta el disco NTFS donde vive el repo
+  cuando Windows lo deja "dirty". `ntfsfix -d` (sudo/pkexec) + `udisksctl
+  mount`, con fallback `mount -t ntfs3 -o force`. Idempotente.
+  - `--fstab` imprime la linea recomendada (driver `ntfs-3g`, que tolera el
+    flag dirty; `nofail`; `x-systemd.automount`; `x-gvfs-show`).
+  - `--fstab --apply` la agrega a `/etc/fstab` (backup con fecha, no duplica)
+    y activa el automount.
+- `~/Escritorio/montar-disco-datos.sh`: envoltorio fino -> `nebula-mount-datos`
+  (con fallback inline si aun no esta instalado). [fuera del repo]
+- `install/50-funciones.sh`: `nebula-mount-datos` en el mapa de `.desktop`.
+- `tools/test-session.sh`: `--help` de `nebula-mount-datos`. `docs/DESIGN.md`
+  7.11.
+
 ### Anadido (2026-09-06, pedido del usuario — minimizar/restaurar con el mouse)
 - `bin/nebula-taskbar` (nuevo): `bspc subscribe` que emite el JSON de las
   ventanas del escritorio enfocado (`{id, label, class, hidden, focused}`) y

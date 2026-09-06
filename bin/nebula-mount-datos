@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# nebula-mount-datos - Monta el disco de datos NTFS (donde vive el repo de
+# Nebula y las carpetas del usuario) y, opcionalmente, deja el automontaje en
+# /etc/fstab para que no haya que hacerlo nunca mas a mano.
+#
+# El problema que resuelve: Windows (Fast Startup / hibernacion / apagado
+# sucio) deja el volumen marcado "dirty" y el driver ntfs3 del kernel se
+# niega a montarlo. `ntfsfix -d` limpia ese flag; ntfs-3g (FUSE) ademas lo
+# tolera de entrada, por eso el automontaje que instala este script usa
+# ntfs-3g.
+#
+# Uso:
+#   nebula-mount-datos                 monta el disco ahora (ntfsfix -d + mount)
+#   nebula-mount-datos --fstab         imprime la linea recomendada de /etc/fstab
+#   nebula-mount-datos --fstab --apply la agrega a /etc/fstab (con backup) y
+#                                      la activa (systemd automount). Idempotente.
+#   nebula-mount-datos --help
+#
+# Disco: por UUID. Default el de este equipo; override con NEBULA_DATOS_UUID.
+set -uo pipefail
+
+UUID="${NEBULA_DATOS_UUID:-A68072A880727F1D}"
+MOUNTPOINT="${NEBULA_DATOS_MOUNTPOINT:-/media/$USER/$UUID}"
+DEV="/dev/disk/by-uuid/$UUID"
+
+MODE="mount"
+APPLY=0
+for a in "$@"; do
+    case "$a" in
+        -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
+        --fstab)   MODE="fstab" ;;
+        --apply)   APPLY=1 ;;
+        *) echo "nebula-mount-datos: opcion desconocida: $a" >&2; exit 2 ;;
+    esac
+done
+
+note() { command -v notify-send >/dev/null 2>&1 && notify-send -a "Nebula" "Disco de datos" "$1" || true; }
+
+# sudo si hay terminal (contrasena por texto); pkexec si es doble clic (dialogo).
+priv() {
+    if [[ -t 0 && -t 1 ]]; then sudo "$@"; else pkexec "$@"; fi
+}
+
+fstab_line() {
+    printf 'UUID=%s  %s  ntfs-3g  uid=%s,gid=%s,dmask=022,fmask=133,windows_names,nofail,x-systemd.automount,x-gvfs-show  0  0\n' \
+        "$UUID" "$MOUNTPOINT" "$(id -u)" "$(id -g)"
+}
+
+# --------------------------------------------------------------------------
+case "$MODE" in
+fstab)
+    line="$(fstab_line)"
+    if [[ "$APPLY" -eq 0 ]]; then
+        printf '%s\n' "$line"
+        echo "# agregala con:  sudo nano /etc/fstab   (o: nebula-mount-datos --fstab --apply)" >&2
+        exit 0
+    fi
+    # Chequeo previo SIN privilegios (/etc/fstab es legible) para no pedir
+    # contrasena si ya esta.
+    if grep -qsE "^[^#]*UUID=${UUID}[[:space:]]" /etc/fstab; then
+        echo "Ya hay una entrada para UUID=$UUID en /etc/fstab; nada que hacer."
+        exit 0
+    fi
+    echo "Voy a agregar a /etc/fstab (con backup):"
+    printf '  %s\n' "$line"
+    # TODO el trabajo con privilegios en UNA sola llamada -> una sola contrasena
+    # (con pkexec, cada `priv` es un prompt aparte).
+    if priv bash -s -- "$UUID" "$MOUNTPOINT" "$line" <<'PRIV'
+set -eu
+uuid="$1"; mp="$2"; line="$3"
+# guard de carrera: re-chequear ya como root
+if grep -qsE "^[^#]*UUID=${uuid}[[:space:]]" /etc/fstab; then
+    echo "Ya hay una entrada para UUID=$uuid; no toco nada."
+    exit 0
+fi
+bk="/etc/fstab.nebula-bak.$(date +%Y%m%d-%H%M%S)"
+cp -- /etc/fstab "$bk"
+echo "backup: $bk"
+mkdir -p -- "$mp"
+printf '\n# Nebula OS - disco de datos (automontaje tolerante a "dirty")\n%s\n' "$line" >> /etc/fstab
+systemctl daemon-reload || true
+if command -v systemd-escape >/dev/null 2>&1; then
+    systemctl restart "$(systemd-escape -p --suffix=automount "$mp")" 2>/dev/null || true
+fi
+echo "OK: entrada agregada y automount activado."
+PRIV
+    then
+        echo "Listo. El disco se montara solo al primer acceso a $MOUNTPOINT."
+        note "Automontaje configurado en /etc/fstab."
+        exit 0
+    else
+        echo "ERROR: no se pudo configurar el automontaje (contrasena incorrecta o cancelado)." >&2
+        note "No se pudo configurar el automontaje."
+        exit 1
+    fi
+    ;;
+esac
+
+# --- MODE=mount ----------------------------------------------------------
+if mp="$(findmnt -n -o TARGET -S "$DEV" 2>/dev/null)" && [[ -n "$mp" ]]; then
+    echo "El disco ya estaba montado en: $mp"
+    note "Ya estaba montado en $mp"
+    exit 0
+fi
+
+if [[ ! -e "$DEV" ]]; then
+    echo "ERROR: no encuentro el disco (UUID $UUID). Verifica que este conectado."
+    note "No se encontro el disco (UUID $UUID)."
+    exit 1
+fi
+
+echo "Limpiando el flag 'dirty' del disco ($DEV)..."
+if ! priv ntfsfix -d "$DEV"; then
+    echo "ERROR: ntfsfix fallo (contrasena incorrecta o cancelado)."
+    note "ntfsfix fallo."
+    exit 1
+fi
+
+echo "Montando..."
+if out="$(udisksctl mount -b "$DEV" 2>&1)"; then
+    echo "$out"
+    note "Montado correctamente."
+else
+    echo "udisksctl fallo: $out"
+    echo "Reintento con montaje forzado (ntfs3 -o force)..."
+    priv mkdir -p "$MOUNTPOINT"
+    if priv mount -t ntfs3 -o "force,uid=$(id -u),gid=$(id -g),iocharset=utf8" "$DEV" "$MOUNTPOINT"; then
+        echo "Montado (forzado) en: $MOUNTPOINT"
+        note "Montado (forzado) en $MOUNTPOINT"
+    else
+        echo "ERROR: no se pudo montar de ninguna forma."
+        note "No se pudo montar."
+        exit 1
+    fi
+fi
+
+mp="$(findmnt -n -o TARGET -S "$DEV" 2>/dev/null)"
+echo "Disco disponible en: ${mp:-$MOUNTPOINT}"
