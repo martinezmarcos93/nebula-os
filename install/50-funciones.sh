@@ -44,6 +44,7 @@ declare -A DESC=(
     [nebula-rescue]="Rescatar el entorno Nebula"
     [nebula-gen-panel]="Regenerar panel/menu de categorias"
     [nebula-screenshot]="Captura de pantalla"
+    [nebula-powermenu]="Menu de energia (bloquear / salir / apagar)"
 )
 
 for src in "$REPO_ROOT"/bin/nebula-*; do

@@ -53,8 +53,12 @@ _run xsettingsd
 # (ver sxhkdrc). `_run` evita un segundo server en cada `bspc wm -r`.
 _run copyq
 
-# Bloqueo automatico al suspender
+# Bloqueo automatico: al suspender y por inactividad. `xset s 300` arma el
+# "screensaver" de X a los 5 min sin actividad; xss-lock lo escucha (igual que
+# la senal de suspension) y corre el mismo i3lock que Super+Shift+X y el menu
+# de energia (nebula-powermenu). Sin xss-lock no tiene sentido el timer solo.
 if command -v xss-lock >/dev/null 2>&1; then
+    command -v xset >/dev/null 2>&1 && xset s 300 5
     _run xss-lock -- i3lock -n -c 000000
 fi
 

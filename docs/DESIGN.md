@@ -129,7 +129,8 @@ Cada capa corresponde a un script numerado (§8). Las capas se instalan de abajo
 | Notificaciones | **dunst** | Sí | Ligero, tematizable, integrable con game/focus mode. |
 | Audio | **PipeWire** + `pipewire-pulse` + `wireplumber` | Sí | Default de 24.04; en instalación mínima hay que instalarlo explícitamente. GUI: `pavucontrol`. |
 | Red | **NetworkManager** + `nm-applet` / `nmtui` | Sí | — |
-| Bloqueo de pantalla | `i3lock` + `xss-lock` (o `betterlockscreen`) | Sí | Integrado con suspensión. |
+| Bloqueo de pantalla | `i3lock` + `xss-lock` | Sí | Integrado con suspensión **y con inactividad**: `bspwmrc` arma `xset s 300` y `xss-lock` dispara el mismo `i3lock`. |
+| Menú de energía / logout | `bin/nebula-powermenu` (rofi) | — (usa `rofi`/`i3lock`/`systemctl`) | `Super + Shift + E`: bloquear · cerrar sesión (`bspc quit`) · suspender · reiniciar · apagar. Las tres destructivas confirman. Única vía por teclado para salir de la sesión. |
 | Fondo | `feh` o `nitrogen` | Sí | `feh --bg-fill` desde `bspwmrc`. |
 | Brillo / media keys | `brightnessctl`, `playerctl` | Sí | Atajos en `sxhkd`. |
 | Teclado (layout) | `setxkbmap` desde `/etc/default/keyboard` | Sí (`x11-xkb-utils`) | Se aplica en `bspwmrc` para los caminos `startx`/`ly`, donde ningún DM fija el layout (con GDM ya viene puesto). Fallback `latam` si el archivo no existe. |
@@ -326,6 +327,16 @@ Lee `categories.toml` y regenera la sección de categorías del sidebar `eww` (i
 | Backend | `maim` (captura), `xdotool` (ventana activa), `xclip` (portapapeles) |
 | Salida | `<Imágenes de XDG>/Capturas/AAAA-MM-DD_HH-MM-SS.png` (con *fallback* a `$HOME` si no hay carpeta XDG). Los modos de archivo **además** copian la imagen al portapapeles; el modo `clip` es solo portapapeles. |
 | Degradación | Sin `maim` avisa y sale; sin `xclip` funciona igual pero sin copiar; cancelar la selección (Esc) no deja archivo ni notificación. |
+
+### 7.9. `nebula-powermenu` — Menú de energía
+
+| Aspecto | Detalle |
+|---|---|
+| Atajo | `Super + Shift + E` |
+| Opciones | Bloquear (`i3lock`) · Cerrar sesión (`bspc quit`) · Suspender · Reiniciar · Apagar (`systemctl …`) |
+| Confirmación | Cerrar sesión, Reiniciar y Apagar piden un `Sí/No` en `rofi` (por defecto en *No*); Bloquear y Suspender van directo. |
+| Motivo | `bspc quit` no tenía ningún atajo: no había forma de **salir de la sesión** por teclado, sólo apagar/reiniciar desde el sidebar. |
+| Degradación | Sin `rofi` o `bspc` avisa por `notify-send` y sale. |
 
 ---
 
@@ -584,7 +595,9 @@ combinación queda asignada a dos acciones.
 |---|---|
 | `Super + Shift + R` | Recargar `bspwm` (`bspc wm -r`) |
 | `Super + Shift + X` | Bloquear pantalla (`i3lock`) |
+| `Super + Shift + E` | Menú de energía: bloquear / cerrar sesión (`bspc quit`) / suspender / reiniciar / apagar (`nebula-powermenu`) |
 | `Super + Escape` | Recargar `sxhkd` (`pkill -USR1 -x sxhkd`) |
+| _(inactividad 5 min)_ | Bloqueo automático (`xset s 300` + `xss-lock` → `i3lock`) |
 | `XF86Audio*` / `XF86MonBrightness*` | Volumen / brillo / media (`wpctl`, `playerctl`, `brightnessctl`) |
 
 **Portapapeles / captura**

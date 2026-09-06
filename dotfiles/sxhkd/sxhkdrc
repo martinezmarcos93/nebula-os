@@ -99,6 +99,11 @@ super + shift + r
     bspc wm -r
 super + shift + x
     i3lock -n -c 000000
+# Menu de energia: bloquear / cerrar sesion (bspc quit) / suspender / reiniciar
+# / apagar. Las tres destructivas piden confirmacion. Es la unica via por
+# teclado para SALIR de la sesion (bspc quit no tenia atajo).
+super + shift + e
+    nebula-powermenu
 super + Escape
     pkill -USR1 -x sxhkd
 

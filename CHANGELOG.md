@@ -29,6 +29,23 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-06, revision contra analisis externo — FASE E: salir de sesion + bloqueo por inactividad)
+- **No habia forma de cerrar sesion por teclado.** `bspc quit` no tenia
+  ningun atajo; el sidebar solo ofrecia Apagar/Reiniciar. Y el bloqueo
+  automatico solo pasaba al suspender, no por inactividad. Ambos los marcaron
+  los analisis externos (A1 §3 y §14, A3 §8).
+- `bin/nebula-powermenu` (nuevo): menu rofi con Bloquear / Cerrar sesion
+  (`bspc quit`) / Suspender / Reiniciar / Apagar. Las tres destructivas piden
+  un `Si/No` en rofi (por defecto en "No"). Sin `rofi`/`bspc` avisa y sale.
+- `dotfiles/sxhkd/sxhkdrc`: `Super + Shift + E` -> `nebula-powermenu`. Libre,
+  sin colision.
+- `dotfiles/bspwm/bspwmrc`: `xset s 300 5` dentro del guard de `xss-lock` ->
+  a los 5 min de inactividad el "screensaver" de X dispara el mismo `i3lock`.
+- `install/50-funciones.sh`: `nebula-powermenu` en el mapa de descripciones
+  (entrada `.desktop`).
+- `docs/DESIGN.md`: fila "Menu de energia" en la pila tecnica (§4), subseccion
+  §7.9, atajo + linea de inactividad en la matriz (§14.2).
+
 ### Anadido (2026-09-06, revision contra analisis externo — FASE C: capturas de pantalla)
 - **No habia ninguna solucion de captura de pantalla:** ni binario, ni atajo,
   ni carpeta destino. `Print` no hacia nada. Lo marcaron los tres analisis

@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# nebula-powermenu - Menu de energia de Nebula OS (rofi).
+#   Bloquear / Cerrar sesion (bspc quit) / Suspender / Reiniciar / Apagar.
+#   Cerrar sesion, Reiniciar y Apagar piden confirmacion. Atajo: Super+Shift+E.
+# Uso: nebula-powermenu [--help]
+set -uo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    sed -n '2,5p' "$0"
+    exit 0
+fi
+
+for _c in rofi bspc; do
+    if ! command -v "$_c" >/dev/null 2>&1; then
+        command -v notify-send >/dev/null 2>&1 \
+            && notify-send -a "Nebula" "Menu de energia" "Falta '$_c' en el PATH."
+        exit 1
+    fi
+done
+unset _c
+
+lock_screen() {
+    if command -v i3lock >/dev/null 2>&1; then
+        i3lock -n -c 000000
+    elif command -v loginctl >/dev/null 2>&1; then
+        loginctl lock-session
+    fi
+}
+
+# confirm TEXTO -> 0 si el usuario elige "Si" (por defecto queda en "No").
+confirm() {
+    local ans
+    ans="$(printf 'No\nSi\n' | rofi -dmenu -i -no-custom -p "$1")" || return 1
+    [[ "$ans" == "Si" ]]
+}
+
+choice="$(printf '%s\n' \
+    'Bloquear' \
+    'Cerrar sesion' \
+    'Suspender' \
+    'Reiniciar' \
+    'Apagar' \
+    | rofi -dmenu -i -no-custom -p 'Energia')" || exit 0
+
+case "$choice" in
+    'Bloquear')      lock_screen ;;
+    'Cerrar sesion') confirm 'Cerrar la sesion?'    && bspc quit ;;
+    'Suspender')     systemctl suspend ;;
+    'Reiniciar')     confirm 'Reiniciar el equipo?' && systemctl reboot ;;
+    'Apagar')        confirm 'Apagar el equipo?'    && systemctl poweroff ;;
+    *)               exit 0 ;;
+esac
