@@ -29,6 +29,17 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido (2026-09-06, revision contra analisis externo — FASE A: dependencias)
+- `install/10-base.sh`: `PKGS_BASE` no incluia `git`, `ca-certificates`,
+  `unzip`, `curl` ni `xclip`, pero los stages siguientes los dan por hecho:
+  `40-tema.sh` hace `git clone` de los temas GTK, `20-panel.sh` hace `unzip`
+  de la Nerd Font y ambos usan `curl`. En una instalacion minima / Ubuntu
+  Server (el objetivo de `docs/DESIGN.md` seccion 2.1) esos binarios no
+  vienen, asi que los stages caian a `warn` y la sesion quedaba sin glyphs
+  (cuadros en el panel, E14) ni tema GTK. `xclip` ademas lo necesita
+  `nebula-ai-chat` y el portapapeles X en general. `apt_install` sigue
+  instalando solo lo que falte y sin recomendados, asi que es idempotente.
+
 ### Cambiado (2026-09-05, tercera pasada — sidebar de una sola ventana)
 - **El sidebar de eww se reescribio a UNA sola ventana (`nebula-sidebar`).**
   Se eliminaron `defwindow toggle-tab` / `defwidget toggle-tab` y todo el

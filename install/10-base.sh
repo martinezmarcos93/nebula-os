@@ -30,6 +30,15 @@ PKGS_BASE=(
     pipewire pipewire-pulse wireplumber
     lxpolkit i3lock xss-lock
     fonts-jetbrains-mono fonts-inter papirus-icon-theme
+    # Utilidades que dan por hecho los stages siguientes pero NO vienen en una
+    # instalacion minima / Ubuntu Server (ver docs/DESIGN.md seccion 2.1):
+    #   git, ca-certificates -> 40-tema.sh clona los temas GTK
+    #   unzip                -> 20-panel.sh descomprime la Nerd Font
+    #   curl                 -> descargas de 20/40 (cursor, fuentes, papirus-folders)
+    #   xclip                -> portapapeles X (lo usa nebula-ai-chat y hace falta
+    #                           para "copiar al portapapeles" en general)
+    # Sin esto los stages caian a `warn` y la sesion quedaba sin glyphs ni tema.
+    git ca-certificates unzip curl xclip
 )
 
 info "Paquetes (${#PKGS_BASE[@]}): ${PKGS_BASE[*]}"
