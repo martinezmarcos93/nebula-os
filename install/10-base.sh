@@ -30,6 +30,10 @@ PKGS_BASE=(
     pipewire pipewire-pulse wireplumber
     lxpolkit i3lock xss-lock
     fonts-jetbrains-mono fonts-inter papirus-icon-theme
+    # x11-xkb-utils -> setxkbmap. Suele venir de xserver-common (Depends), pero
+    # el layout de teclado depende de el, asi que se pide explicito. bspwmrc lo
+    # usa para fijar el layout en los caminos startx/ly (ver ese archivo).
+    x11-xkb-utils
     # Utilidades que dan por hecho los stages siguientes pero NO vienen en una
     # instalacion minima / Ubuntu Server (ver docs/DESIGN.md seccion 2.1):
     #   git, ca-certificates -> 40-tema.sh clona los temas GTK

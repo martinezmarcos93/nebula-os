@@ -21,6 +21,24 @@ if command -v xrdb >/dev/null 2>&1 && [[ -f "$HOME/.Xresources" ]]; then
 fi
 command -v xsetroot >/dev/null 2>&1 && xsetroot -cursor_name left_ptr
 
+# --- Teclado ----------------------------------------------------------
+# Un gestor de display (GDM) ya aplica el layout del sistema, pero los caminos
+# `startx` y `ly` (NEBULA_LOGIN) no dejan nada que lo haga: sin esto el teclado
+# se queda en el default de X (us) y se pierden la ñ, los acentos y AltGr.
+# Fuente de verdad: /etc/default/keyboard, que escribe el instalador de Ubuntu
+# / `dpkg-reconfigure keyboard-configuration`. Fallback a 'latam' si no existe.
+# Idempotente: re-aplicarlo en cada `bspc wm -r` no molesta.
+if command -v setxkbmap >/dev/null 2>&1; then
+    _kbd_layout="latam"
+    [[ -r /etc/default/keyboard ]] && . /etc/default/keyboard
+    _kbd_args=(-layout "${XKBLAYOUT:-$_kbd_layout}")
+    [[ -n "${XKBMODEL:-}"   ]] && _kbd_args+=(-model   "$XKBMODEL")
+    [[ -n "${XKBVARIANT:-}" ]] && _kbd_args+=(-variant "$XKBVARIANT")
+    [[ -n "${XKBOPTIONS:-}" ]] && _kbd_args+=(-option "" -option "$XKBOPTIONS")
+    setxkbmap "${_kbd_args[@]}" 2>/dev/null || true
+    unset _kbd_layout _kbd_args
+fi
+
 # --- Autostart ------------------------------------------------------------
 pgrep -x sxhkd >/dev/null 2>&1 || sxhkd &
 _run picom --config "$HOME/.config/picom/picom.conf"

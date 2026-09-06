@@ -29,6 +29,25 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido (2026-09-06, revision contra analisis externo — FASE B: layout de teclado)
+- **El layout de teclado no se fijaba en ningun lado.** No habia `setxkbmap`
+  ni config xkb en el repo. Con GDM el layout lo propaga el gestor de display
+  (por eso "funcionaba" en la maquina de prueba), pero los caminos
+  `NEBULA_LOGIN=startx` y `NEBULA_LOGIN=ly` no dejan nada que lo haga: el
+  teclado quedaba en el default de X (`us`) y se perdian la ñ, los acentos y
+  AltGr. Marcado por dos de los tres analisis externos.
+- `dotfiles/bspwm/bspwmrc`: nueva seccion "Teclado". Aplica `setxkbmap`
+  leyendo `/etc/default/keyboard` (lo escribe el instalador de Ubuntu /
+  `dpkg-reconfigure keyboard-configuration`), respetando `XKBLAYOUT`,
+  `XKBMODEL`, `XKBVARIANT` y `XKBOPTIONS`. Fallback a `latam` si el archivo no
+  existe. Idempotente: se re-aplica sin problema en cada `bspc wm -r`.
+- `install/10-base.sh`: `x11-xkb-utils` (trae `setxkbmap`) agregado explicito
+  a `PKGS_BASE` — suele venir por `Depends` de `xserver-common`, pero el
+  layout depende de el.
+- `docs/DESIGN.md`: fila "Teclado (layout)" en la tabla de pila tecnica (§4) y
+  lista de paquetes de `10-base.sh` en §8.3 resincronizada con el array real
+  (incluia drift previo: faltaban `lm-sensors` y lo agregado en FASE A).
+
 ### Corregido (2026-09-06, revision contra analisis externo — FASE A: dependencias)
 - `install/10-base.sh`: `PKGS_BASE` no incluia `git`, `ca-certificates`,
   `unzip`, `curl` ni `xclip`, pero los stages siguientes los dan por hecho:
