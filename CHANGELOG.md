@@ -29,6 +29,21 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-06, estabilizacion — bateria de pruebas)
+- `tools/test-session.sh` + `make test-session`: bateria NO interactiva.
+  - **Estatico** (sin X): `make lint`, `bash -n` de todos los scripts, `--help`
+    de cada `nebula-*`, `eww.yuck` (parentesis, marcadores autogen unicos,
+    ambas `defwindow`), carga real del `.yuck` por el daemon de eww, parseo de
+    `categories.toml`, atajos duplicados en `sxhkdrc`, deps declaradas en
+    `PKGS_BASE`.
+  - **Sandbox** (Xephyr efimero): bspwm responde a `bspc`, regla flotante
+    global activa, `focus_follows_pointer=false`, `sxhkd` carga el rc sin
+    errores de sintaxis, y (con `xdotool`+`alacritty`) que `Super+Return`
+    dispare de verdad. Se salta con WARN si falta Xephyr.
+  - Sale con codigo != 0 ante cualquier FAIL. La validacion VISUAL sigue
+    siendo manual (docs/DESIGN.md 14.1).
+  - Primera corrida: 22 OK / 1 WARN (falta `xdotool` local) / 0 FAIL.
+
 ### Cambiado (2026-09-06, pedido del usuario — categorias con apps reales)
 - `dotfiles/nebula/categories.toml` reescrito: cada categoria lista **todos**
   los programas tipicos de esa funcion (varios navegadores, varios editores,
