@@ -120,7 +120,8 @@ Cada capa corresponde a un script numerado (§8). Las capas se instalan de abajo
 | Componente | Elección | En repos Ubuntu 24.04 | Justificación / corrección |
 |---|---|---|---|
 | Servidor gráfico | **Xorg** (`xserver-xorg-core`, `xinit`) | Sí | Mejor compatibilidad NVIDIA propietario + juegos + `bspwm`. Wayland exigiría cambiar de WM (Sway/Hyprland). |
-| Gestor de ventanas | **bspwm** + **sxhkd** | Sí | Ligero, configurable por texto, tiling. Sustituye a `i3-gaps` (descontinuado; fusionado en `i3 ≥ 4.22`). |
+| Gestor de ventanas | **bspwm** + **sxhkd** | Sí | Ligero, configurable por texto. Se usa en **modo flotante** (`bspc rule -a '*' state=floating`): las ventanas abren sueltas y se mueven/redimensionan con `Super+arrastre`; `Super+T` tilea una puntualmente. Sustituye a `i3-gaps` (descontinuado; fusionado en `i3 ≥ 4.22`). |
+| Cambio de ventana (Alt+Tab) | **alttab** | Sí (`universe`) | Alt+Tab visual estilo escritorio clásico (mantener Alt, `Tab` cicla, soltar elige; `Alt+Shift+Tab` hacia atrás). bspwm no lo trae. Residente, arrancado por `bspwmrc` (`alttab -w 1`). |
 | Compositor | **picom** (v10+) | Sí | Transparencias, sombras, `vsync` para evitar tearing con NVIDIA. Backend `glx`. |
 | Panel | **eww** (panel principal soportado) | **No** — se compila con `cargo` | Sidebar lateral con categorías, iconos propios y HUD de recursos con barras de progreso. Se despliega por **hover** (acercar el mouse al borde izquierdo abre `sidebar`; alejarlo de todo el panel lo cierra), sin clic ni atajo de teclado — ver §6.5. Config en `.yuck` (S-expr, **no YAML**) + SCSS. Riesgo de red con SSL interceptado al compilar (§11, E1). `NEBULA_PANEL=eww` (default). |
 | Panel (fallback degradado) | **polybar** | Sí | Barra inferior simple, sin categorías dinámicas (no lee `categories.toml`, ver §6.1). Se activa solo si `eww` no se pudo compilar (E1) o explícitamente con `NEBULA_PANEL=polybar`. |
@@ -182,7 +183,8 @@ Estos tokens se documentan **una sola vez** en `dotfiles/nebula/colors.sh` (refe
 
 ### 5.3. Ventanas y compositor (picom)
 
-- Gaps de 8–10 px (`bspc config window_gap`).
+- **Modo flotante**: toda ventana abre suelta (`bspc rule -a '*' state=floating`), movible/redimensionable con el ratón; `Super+T` la tilea puntualmente. Alt+Tab visual con `alttab`.
+- Gaps de 8–10 px (`bspc config window_gap`) — sólo aplican a ventanas que se hayan devuelto al tiling.
 - Borde de 2 px: foco `accent-violeta`, sin foco `#1f2937`.
 - `picom`: sombras sutiles (`shadow-radius = 12`, `shadow-opacity = 0.35`), `corner-radius = 10`, `fading = true`, `vsync = true`, backend `glx`.
 - Reglas: sin sombra ni transparencia para pantalla completa / juegos.
@@ -398,7 +400,7 @@ nebula-os/
 | Script | Acciones principales | Criterio de éxito |
 |---|---|---|
 | **`00-preflight.sh`** | Verifica: Ubuntu 24.04 (`lsb_release`), arquitectura `amd64`, usuario con `sudo`, `apt update` responde, ≥ 3 GB libres en `/`, **ausencia** de `gdm3`/`gnome-shell` (aviso, no aborta), `nvidia-smi` funciona, `systemctl is-system-running` no `degraded`. | Todas las críticas OK; imprime tabla de resultados. |
-| **`10-base.sh`** | `apt` de: `xserver-xorg-core xinit x11-xserver-utils bspwm sxhkd picom rofi alacritty dunst feh brightnessctl playerctl lm-sensors network-manager-gnome pavucontrol pipewire pipewire-pulse wireplumber lxpolkit i3lock xss-lock fonts-jetbrains-mono fonts-inter papirus-icon-theme x11-xkb-utils git ca-certificates unzip curl xclip copyq libnotify-bin maim xdotool` (el driver NVIDIA **no** se instala aquí: es responsabilidad del post-formateo, fuera de alcance — ver §2.1). Detecta gestor de display activo y aplica el mecanismo de arranque correspondiente (§4). Crea `~/.xinitrc`. Habilita PipeWire de usuario. | `startx`/DM entra a `bspwm` con fondo negro; `Super+Enter` abre Alacritty. |
+| **`10-base.sh`** | `apt` de: `xserver-xorg-core xinit x11-xserver-utils bspwm sxhkd picom rofi alacritty dunst feh brightnessctl playerctl lm-sensors network-manager-gnome pavucontrol pipewire pipewire-pulse wireplumber lxpolkit i3lock xss-lock fonts-jetbrains-mono fonts-inter papirus-icon-theme x11-xkb-utils git ca-certificates unzip curl xclip copyq libnotify-bin maim xdotool alttab` (el driver NVIDIA **no** se instala aquí: es responsabilidad del post-formateo, fuera de alcance — ver §2.1). Detecta gestor de display activo y aplica el mecanismo de arranque correspondiente (§4). Crea `~/.xinitrc`. Habilita PipeWire de usuario. | `startx`/DM entra a `bspwm` con fondo negro; `Super+Enter` abre Alacritty. |
 | **`20-panel.sh`** | Si `NEBULA_PANEL=eww` (default): instala `rustup`/`cargo`, `cargo install eww --locked` (o compila desde git) — **con manejo de fallo SSL, cae a polybar** (§11, E1). Si `polybar`: `apt install polybar`. Instala Nerd Font a `~/.local/share/fonts` + `fc-cache`. | Panel lateral visible con categorías y reloj; lanza una app de cada categoría. |
 | **`30-dotfiles.sh`** | Backup de `~/.config` afectado → despliega `dotfiles/` (copia o symlink). Los colores quedan escritos a mano en cada plantilla (§5.1, no hay `envsubst` real todavía). Al final, corre `nebula-gen-panel` para que el sidebar `eww` recién desplegado quede con las categorías reales de esta máquina (no con lo que haya quedado commiteado en el repo). | `bspc`/`picom`/`rofi` levantan con la config del repo sin errores en log. |
 | **`40-tema.sh`** | Instala tema GTK (`NEBULA_THEME`) a `~/.themes`; `papirus-folders` a violeta; Bibata a `~/.icons` si `NEBULA_CURSOR=1`; Space Grotesk manual; aplica `gsettings` + `settings.ini` + `~/.Xresources` + `xsettingsd`; wallpaper. | Apps GTK (GIMP, `pcmanfm`) abren en oscuro; cursor y iconos correctos; sin flicker. |
@@ -573,20 +575,21 @@ combinación queda asignada a dos acciones.
 | `Super + H` | HUD de recursos (`nebula-resource-hud`) — **única, ya no colisiona con foco** |
 | `Super + Ctrl + R` | Rescate (`nebula-rescue`) |
 
-**Ventanas**
+**Ventanas** — bspwm en **modo flotante**: las ventanas abren sueltas; mover/redimensionar con `Super + arrastre` (izq mueve · der esquina) o el ratón en los bordes.
 
 | Atajo | Acción |
 |---|---|
+| `Alt + Tab` / `Alt + Shift + Tab` | Cambiar de ventana — switcher visual (`alttab`, residente; **no** es un bind de `sxhkd`) |
 | `Super + W` | Cerrar ventana (`bspc node -c`) — equivalente de Alt+F4 |
+| `Super + Shift + F` | **Maximizar** / restaurar (fullscreen toggle, `bspc node -t ~fullscreen`) |
+| `Super + D` | **Minimizar** (`bspc node -g hidden=on`) |
+| `Super + Shift + D` | Restaurar una minimizada — selector rofi (`nebula-window-switcher`) |
+| `Super + T` | Tilear / volver flotante la ventana enfocada (`bspc node -t ~floating`) |
 | `Super + {←↓↑→}` | Foco direccional (`bspc node -f {west,south,north,east}`) |
-| `Super + Shift + {←↓↑→}` | Swap/mover la ventana en esa dirección (`bspc node -s … --follow`) |
-| `Super + Tab` | Volver a la última ventana enfocada (`bspc node -f last`) |
-| `Super + D` | Ocultar ventana (`bspc node -g hidden=on`) |
-| `Super + Shift + D` | Selector rofi de ventanas ocultas → restaura + enfoca (`nebula-window-switcher`) |
-| `Super + Ctrl + {←↓↑→}` | Redimensionar ~32px (flotante: siempre; tiled: ajusta split, no-op si no aplica) |
-| `Super + Shift + F` | Toggle fullscreen (`bspc node -t ~fullscreen`) |
-| `Super + M` | Layout del desktop: monocle ↔ tiled (**no es "minimizar"**) |
-| `Super + T` | Ventana flotante ↔ tiled (`bspc node -t ~floating`) |
+| `Super + Tab` | Cambio rápido a la última ventana enfocada (`bspc node -f last`) |
+| `Super + Ctrl + {←↓↑→}` | Redimensionar ~32 px |
+| `Super + Shift + {←↓↑→}` | Swap de posición — sólo para ventanas devueltas al tiling con `Super + T` |
+| `Super + M` | Layout del desktop: monocle ↔ tiled (no es "minimizar") |
 | `Super + {1-6}` / `Super + Shift + {1-6}` | Ir a / enviar ventana a escritorio N (6 desktops: I–VI) |
 
 **Sesión**

@@ -25,6 +25,9 @@ step "10-base - Xorg + WM + sesion"
 PKGS_BASE=(
     xserver-xorg-core xinit x11-xserver-utils
     bspwm sxhkd picom rofi alacritty dunst
+    # alttab -> Alt+Tab visual entre ventanas (bspwm no lo trae). Lo arranca
+    # dotfiles/bspwm/bspwmrc como residente.
+    alttab
     feh brightnessctl playerctl lm-sensors
     network-manager-gnome pavucontrol
     copyq

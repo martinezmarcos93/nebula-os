@@ -36,6 +36,15 @@ super + ctrl + r
     nebula-rescue
 
 # --- Ventanas --------------------------------------------------------
+# Nebula corre bspwm en MODO FLOTANTE (bspc rule -a '*' state=floating en
+# bspwmrc): las ventanas abren sueltas y se mueven/redimensionan con
+# Super+arrastre o con el raton en los bordes. Mapa rapido:
+#   Mover / redimensionar : Super + arrastre (izq mueve, der esquina)
+#   Alt+Tab / Alt+Shift+Tab: cambiar de ventana (alttab, no es un bind de aca)
+#   Maximizar             : Super + Shift + F  (fullscreen toggle)
+#   Minimizar             : Super + D  ->  restaurar: Super + Shift + D
+#   Volver una al tiling  : Super + T
+
 # Cerrar la ventana enfocada (equivalente funcional de Alt+F4)
 super + w
     bspc node -c
@@ -44,20 +53,20 @@ super + w
 super + {Left,Down,Up,Right}
     bspc node -f {west,south,north,east}
 
-# Mover / intercambiar la ventana enfocada con su vecina en esa direccion.
-# En tiling esto es un SWAP de posiciones en el arbol, NO un "mover a
-# cualquier lado" (eso solo existe con la ventana flotante + Super+arrastre).
-# --follow mantiene el foco sobre la ventana que se movio.
+# SWAP de posiciones con la ventana vecina. Solo tiene efecto sobre ventanas
+# que hayas devuelto al tiling con Super+T; en modo flotante (el normal) las
+# ventanas se mueven con Super+arrastre, no con esto.
 super + shift + {Left,Down,Up,Right}
     bspc node -s {west,south,north,east} --follow
 
-# Volver a la ultima ventana enfocada (cambio rapido de 1 nivel, no es un
-# selector visual tipo Alt+Tab completo: eso queda para una etapa posterior)
+# Cambio rapido a la ultima ventana enfocada (1 nivel). El selector visual
+# completo estilo Alt+Tab lo da alttab (ver bspwmrc).
 super + Tab
     bspc node -f last
 
-# Ocultar la ventana enfocada. Mecanismo nativo de bspwm: la saca del arbol
-# de tiling y la desmapea SIN perder su estado. Se restaura con Super+Shift+D.
+# Minimizar la ventana enfocada. bspwm no tiene "minimizar" real: se marca
+# como hidden (desaparece sin perder estado). Restaurar: Super+Shift+D.
+# (Una taskbar visible con las minimizadas llega con la barra de estado.)
 super + d
     bspc node -g hidden=on
 
@@ -77,8 +86,8 @@ super + ctrl + Down
 super + ctrl + Up
     bspc node -z bottom 0 -32 || bspc node -z top 0 -32
 
-# Fullscreen toggle (juegos, Steam, mpv, ventanas flotantes). ~ alterna
-# contra el estado previo de la ventana.
+# Maximizar / restaurar la ventana enfocada (fullscreen toggle). Tambien es lo
+# que usan juegos, Steam y mpv. ~ alterna contra el estado previo.
 super + shift + f
     bspc node -t ~fullscreen
 

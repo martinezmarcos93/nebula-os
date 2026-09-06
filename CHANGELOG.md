@@ -29,6 +29,29 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Cambiado (2026-09-06, revision contra analisis externo — FASE D: ventanas en modo flotante + Alt+Tab)
+- **Decision del usuario:** las ventanas no se quieren fijas/tiled. Se pasa
+  bspwm a **modo flotante por defecto** y se agrega un Alt+Tab visual real.
+  (Reversible: quitar la regla `'*'` vuelve al tiling de FASE 1.)
+- `dotfiles/bspwm/bspwmrc`:
+  - `bspc rule -a '*' state=floating` -> toda ventana abre suelta; se mueve /
+    redimensiona con `Super+arrastre` o el raton en los bordes. Se quitaron
+    las reglas `state=floating` por app (Pavucontrol/Nsxiv/mpv), ya cubiertas
+    por el `'*'`. Se mantienen las de Steam y Picture-in-Picture.
+  - `_run alttab -w 1`: switcher residente. `Alt+Tab` cicla, soltar Alt elige;
+    `Alt+Shift+Tab` hacia atras. `sxhkd` no toca Alt+Tab.
+- `install/10-base.sh`: `alttab` en `PKGS_BASE` (universe).
+- `dotfiles/sxhkd/sxhkdrc`: sin atajos nuevos; comentarios de la seccion
+  "Ventanas" reescritos al modo flotante. Mapa: maximizar = `Super+Shift+F`,
+  minimizar = `Super+D` (restaurar con `Super+Shift+D`), tilear una =
+  `Super+T`. `Super+Shift+flechas` (swap) queda solo para ventanas devueltas
+  al tiling.
+- `docs/DESIGN.md`: fila del WM y fila nueva "Cambio de ventana (Alt+Tab)" en
+  §4, nota de modo flotante en §5.3, `alttab` en §8.3, tabla "Ventanas" de la
+  matriz §14.2 reescrita.
+- **Pendiente (queda para la barra de estado):** taskbar visible con las
+  ventanas minimizadas. Hoy se restauran con `Super+Shift+D`.
+
 ### Cambiado (2026-09-06, revision contra analisis externo — FASE F: postcheck de sesion viva)
 - `install/60-postcheck.sh` solo comprobaba `command -v` de los binarios: una
   sesion podia quedar visualmente perfecta pero sin `sxhkd`/`picom`/panel
