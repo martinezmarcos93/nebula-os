@@ -29,17 +29,39 @@ parse() {
     ' "$TOML"
 }
 
+# Una app esta "disponible" si su ejecutable (primer token del exec) esta en el
+# PATH. Los propios comandos de Nebula (nebula-*) se asumen siempre disponibles:
+# los instala install/50-funciones.sh, que corre DESPUES de este generador, asi
+# que aun no estarian en el PATH al generar.
+# NEBULA_GEN_ASSUME_ALL=1 -> todas las apps se tratan como disponibles. Sirve
+# para regenerar el eww.yuck "de fabrica" del repo (neutro, con TODAS las apps).
+# En una instalacion real se corre sin esa variable: las apps que no esten
+# instaladas NO se listan (ni en el sidebar ni en el menu rofi), y una categoria
+# sin ninguna app instalada no se dibuja.
+app_available() {
+    [[ "${NEBULA_GEN_ASSUME_ALL:-0}" == "1" ]] && return 0
+    local bin="${1%% *}"
+    case "$bin" in
+        nebula-*) return 0 ;;
+    esac
+    command -v "$bin" >/dev/null 2>&1
+}
+
 do_menu() {
     local rows sel app ex
-    rows="$(parse)"
-    [[ -n "$rows" ]] || { echo "categories.toml vacio" >&2; exit 1; }
+    rows="$(parse | while IFS=$'\t' read -r c n e; do
+        if app_available "$e"; then printf '%s\t%s\t%s\n' "$c" "$n" "$e"; fi
+    done)"
+    [[ -n "$rows" ]] || { echo "categories.toml vacio (o nada instalado)" >&2; exit 1; }
     if ! command -v rofi >/dev/null 2>&1; then
         printf '%s\n' "$rows"
         return 0
     fi
+    # `|| true`: si el usuario cancela rofi (Esc) sale != 0 y con `set -e` eso
+    # abortaria el script sin llegar al `return 0` de abajo.
     sel="$(printf '%s\n' "$rows" \
         | awk -F'\t' '{printf "%s  -  %s\n",$1,$2}' \
-        | rofi -dmenu -i -p 'Categorias')"
+        | rofi -dmenu -i -p 'Categorias' || true)"
     [[ -n "$sel" ]] || return 0
     app="${sel#*  -  }"
     ex="$(printf '%s\n' "$rows" | awk -F'\t' -v a="$app" '$2==a {print $3; exit}')"
@@ -70,27 +92,14 @@ do_gen() {
         printf '%s' "$s"
     }
 
-    # Una app esta "disponible" si su ejecutable (primer token del exec) esta
-    # en el PATH. Los propios comandos de Nebula (nebula-*) se asumen siempre
-    # disponibles: los instala install/50-funciones.sh, que corre DESPUES de
-    # este generador, asi que aun no estarian en el PATH al generar.
-    # NEBULA_GEN_ASSUME_ALL=1 -> todas las apps se tratan como disponibles.
-    # Sirve para regenerar el eww.yuck "de fabrica" del repo (neutro, sin
-    # launcher-off dependiente de que este instalado en ESTA maquina). En una
-    # instalacion real se corre sin esa variable y ahi si grisa lo que falta.
-    app_available() {
-        [[ "${NEBULA_GEN_ASSUME_ALL:-0}" == "1" ]] && return 0
-        local bin="${1%% *}"
-        case "$bin" in
-            nebula-*) return 0 ;;
-        esac
-        command -v "$bin" >/dev/null 2>&1
-    }
-
-    local block="" cur="" cat name ex slug icon_path
+    # El encabezado de categoria se emite DIFERIDO: solo si la categoria tiene
+    # al menos una app instalada. Asi no quedan titulos huerfanos cuando todas
+    # sus apps estan ausentes.
+    local block="" cur="" hdr="" cat name ex slug icon_path
     while IFS=$'\t' read -r cat name ex; do
         [[ -n "$cat" ]] || continue
         if [[ "$cat" != "$cur" ]]; then
+            cur="$cat"
             slug="$(slugify "$cat")"
             icon_path="$icons_dir/$slug.png"
             if [[ -f "$icon_path" ]]; then
@@ -98,18 +107,17 @@ do_gen() {
                 # en runtime): si se escribiera la ruta absoluta de ESTA
                 # maquina ($icon_path), el archivo commiteado en el repo
                 # quedaria roto para cualquier otro usuario/maquina.
-                block+="        (cat-icon :name \"$cat\" :icon \"\${EWW_CONFIG_DIR}/../nebula/icons/$slug.png\")"$'\n'
+                hdr="        (cat-icon :name \"$cat\" :icon \"\${EWW_CONFIG_DIR}/../nebula/icons/$slug.png\")"$'\n'
             else
-                block+="        (cat :name \"$cat\")"$'\n'
+                hdr="        (cat :name \"$cat\")"$'\n'
             fi
-            cur="$cat"
         fi
-        if app_available "$ex"; then
-            block+="        (launcher :label \"$name\" :cmd \"$ex &\")"$'\n'
-        else
-            # Sin :onclick: se ve la fila pero no lanza nada roto.
-            block+="        (launcher-off :label \"$name\")"$'\n'
+        app_available "$ex" || continue
+        if [[ -n "$hdr" ]]; then
+            block+="$hdr"
+            hdr=""
         fi
+        block+="        (launcher :label \"$name\" :cmd \"$ex &\")"$'\n'
     done < <(parse)
 
     local tmp

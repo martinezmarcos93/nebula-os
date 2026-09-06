@@ -35,15 +35,10 @@
     (image :path icon :image-width 16 :image-height 16 :preserve-aspect-ratio true)
     (label :halign "start" :text name)))
 
+;; Solo se generan `launcher` para apps instaladas (nebula-gen-panel filtra por
+;; `command -v`); las ausentes no se listan y una categoria sin apps no se dibuja.
 (defwidget launcher [label cmd]
   (button :class "app" :halign "fill" :onclick cmd
-    (label :halign "start" :text label)))
-
-;; Igual que `launcher` pero para apps que NO estan instaladas: sin :onclick,
-;; en gris. El generador (bin/nebula-gen-panel) decide cual usar segun
-;; `command -v` del ejecutable.
-(defwidget launcher-off [label]
-  (box :class "app app-off" :halign "fill"
     (label :halign "start" :text label)))
 
 (defwidget stat-row [icon label value pct]

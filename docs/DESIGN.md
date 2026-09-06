@@ -232,11 +232,11 @@ icono   = ""
 
 ### 6.3. Taxonomía inicial
 
-Cada categoría lista **todos los programas típicos de esa función** (varios navegadores, varios editores, etc.). El generador marca cada uno según `command -v` del primer token de `exec`: instalado → fila normal con `:onclick`; ausente → fila en gris (`launcher-off`, sin `:onclick`) pero **visible**, para que se vea que la categoría lo contempla. Los `nebula-*` se asumen siempre presentes. La copia commiteada de `eww.yuck` se genera con `NEBULA_GEN_ASSUME_ALL=1` (todo como `launcher`, neutro); el `nebula-gen-panel` que corre `30-dotfiles.sh` en cada máquina es el que grisa lo que falta.
+Cada categoría lista **todos los programas típicos de esa función** (varios navegadores, varios editores, etc.). El generador filtra por `command -v` del primer token de `exec`: instalado → fila normal con `:onclick`; **ausente → no se lista**; categoría sin ninguna app instalada → no se dibuja. Los `nebula-*` se asumen siempre presentes. La copia commiteada de `eww.yuck` se genera con `NEBULA_GEN_ASSUME_ALL=1` (todas las apps, neutro); el `nebula-gen-panel` que corre `30-dotfiles.sh` en cada máquina es el que recorta lo que no está instalado (mismo filtro en el menú rofi de `Super + C`).
 
 Sincronizada con `dotfiles/nebula/categories.toml` (editable ahí; regenerar con `nebula-gen-panel` o `Super+Shift+C`).
 
-| Categoría | Aplicaciones (se muestran instaladas + en gris las ausentes) |
+| Categoría | Aplicaciones típicas (sólo se muestran las instaladas) |
 |---|---|
 | **Navegadores** | Firefox · Google Chrome · Chromium · Brave · Vivaldi |
 | **Desarrollo** | Terminal (Alacritty) · VS Code · Editor (Neovim) · Git TUI (`lazygit`) · Docker TUI (`lazydocker`) · Base de datos (DBeaver) |

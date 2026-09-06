@@ -5,11 +5,12 @@
 #   - la seccion de categorias del sidebar eww (dotfiles/eww/eww.yuck)
 #   - el menu rofi por categoria (nebula-gen-panel --menu)
 #
-# Cada categoria lista TODOS los programas tipicos de esa funcion. El generador
-# marca cada uno segun `command -v` del primer token de `exec`:
+# Cada categoria lista TODOS los programas tipicos de esa funcion (varios
+# navegadores, varios editores, etc.). El generador filtra por `command -v` del
+# primer token de `exec`:
 #   - instalado  -> fila normal, con :onclick
-#   - ausente    -> fila en gris (launcher-off), sin :onclick, pero visible
-#                   para que se vea que la categoria lo contempla.
+#   - ausente    -> NO se lista
+#   - categoria sin ninguna app instalada -> no se dibuja
 # Los `nebula-*` se asumen siempre disponibles (los instala 50-funciones.sh).
 #
 # polybar (fallback degradado si eww no compila, ver docs/DESIGN.md E1) NO lee
