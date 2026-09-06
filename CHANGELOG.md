@@ -29,6 +29,21 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Cambiado (2026-09-06, pedido del usuario — categorias con apps reales)
+- `dotfiles/nebula/categories.toml` reescrito: cada categoria lista **todos**
+  los programas tipicos de esa funcion (varios navegadores, varios editores,
+  etc.), no uno generico. De 6 categorias a 8 (nuevas: Navegadores, Ofimatica;
+  el navegador sale de Multimedia). En "Sistema", los `systemctl poweroff/
+  reboot` sueltos se reemplazan por "Energia" -> `nebula-powermenu`.
+- `bin/nebula-gen-panel`: nueva variable `NEBULA_GEN_ASSUME_ALL=1` -> trata
+  todas las apps como disponibles. Sirve para regenerar el `eww.yuck` "de
+  fabrica" del repo (neutro, todo como `launcher`); en una instalacion real se
+  corre sin ella y ahi si grisa (`launcher-off`) lo que no esta instalado.
+- `dotfiles/eww/eww.yuck`: bloque autogen regenerado con la taxonomia nueva
+  (45 apps en 8 categorias); cabecera del archivo actualizada (dos ventanas:
+  `nebula-bar` + `nebula-sidebar`).
+- `docs/DESIGN.md` §6.2/§6.3 actualizados.
+
 ### Anadido (2026-09-06, pedido del usuario — escritorio completo al iniciar sesion)
 - **Barra de estado superior (`nebula-bar`).** Nueva ventana `eww` siempre
   visible (la abre `bspwmrc`), franja de 26 px con `:exclusive true` (reserva

@@ -74,7 +74,12 @@ do_gen() {
     # en el PATH. Los propios comandos de Nebula (nebula-*) se asumen siempre
     # disponibles: los instala install/50-funciones.sh, que corre DESPUES de
     # este generador, asi que aun no estarian en el PATH al generar.
+    # NEBULA_GEN_ASSUME_ALL=1 -> todas las apps se tratan como disponibles.
+    # Sirve para regenerar el eww.yuck "de fabrica" del repo (neutro, sin
+    # launcher-off dependiente de que este instalado en ESTA maquina). En una
+    # instalacion real se corre sin esa variable y ahi si grisa lo que falta.
     app_available() {
+        [[ "${NEBULA_GEN_ASSUME_ALL:-0}" == "1" ]] && return 0
         local bin="${1%% *}"
         case "$bin" in
             nebula-*) return 0 ;;

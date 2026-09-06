@@ -1,14 +1,16 @@
 ;; dotfiles/eww/eww.yuck - Nebula OS  "Cosmic Dark"
-;; Panel lateral izquierdo (260 px). La lista de categorias/apps la regenera
-;; el generador a partir de dotfiles/nebula/categories.toml. NO edites el
-;; bloque autogenerado (delimitado por los marcadores dentro del widget).
+;; Dos ventanas:
+;;   nebula-bar     barra de estado superior, siempre visible (la abre bspwmrc)
+;;   nebula-sidebar panel lateral izquierdo (260 px) con las categorias/apps
 ;;
-;; UX: UNA sola ventana ("nebula-sidebar"), sin sensor de hover ni ventana
-;; secundaria. Se abre y se cierra con Super + B (`eww open --toggle
-;; nebula-sidebar`, ver dotfiles/sxhkd/sxhkdrc). El boton "‹" del header la
-;; cierra a mano. El daemon de eww lo arranca dotfiles/bspwm/bspwmrc al
-;; iniciar sesion (sin abrir ninguna ventana), asi el primer Super+B
-;; responde al instante.
+;; La lista de categorias/apps del sidebar la regenera `nebula-gen-panel` a
+;; partir de dotfiles/nebula/categories.toml. NO edites a mano el bloque entre
+;; los marcadores autogen de mas abajo.
+;;
+;; UX del sidebar: una sola ventana, sin :onhover de eww. Se abre llevando el
+;; puntero al borde izquierdo (bin/nebula-edge-sidebar, polling del puntero) o
+;; con Super + B; el boton "‹" del header la cierra. El daemon de eww lo
+;; arranca bspwmrc al iniciar sesion.
 
 (defpoll TIME :interval "10s" :initial "--:--" "date '+%H:%M'")
 (defpoll DATE :interval "60s" :initial ""      "date '+%a %d %b'")
@@ -62,31 +64,54 @@
     (scroll :vscroll true :hscroll false :vexpand true
       (box :orientation "v" :space-evenly false :spacing 2
         ;; --- nebula:autogen BEGIN (no editar) ---
+        (cat-icon :name "Navegadores" :icon "${EWW_CONFIG_DIR}/../nebula/icons/navegadores.png")
+        (launcher :label "Firefox" :cmd "firefox &")
+        (launcher :label "Google Chrome" :cmd "google-chrome-stable &")
+        (launcher :label "Chromium" :cmd "chromium &")
+        (launcher :label "Brave" :cmd "brave-browser &")
+        (launcher :label "Vivaldi" :cmd "vivaldi-stable &")
         (cat-icon :name "Desarrollo" :icon "${EWW_CONFIG_DIR}/../nebula/icons/desarrollo.png")
         (launcher :label "Terminal" :cmd "alacritty &")
-        (launcher :label "Editor" :cmd "alacritty -e nvim &")
+        (launcher :label "VS Code" :cmd "code &")
+        (launcher :label "Editor (nvim)" :cmd "alacritty -e nvim &")
         (launcher :label "Git TUI" :cmd "alacritty -e lazygit &")
         (launcher :label "Docker TUI" :cmd "alacritty -e lazydocker &")
+        (launcher :label "Base de datos" :cmd "dbeaver &")
+        (cat-icon :name "Ofimatica" :icon "${EWW_CONFIG_DIR}/../nebula/icons/ofimatica.png")
+        (launcher :label "LibreOffice" :cmd "libreoffice &")
+        (launcher :label "Writer" :cmd "libreoffice --writer &")
+        (launcher :label "Calc" :cmd "libreoffice --calc &")
+        (launcher :label "Impress" :cmd "libreoffice --impress &")
+        (launcher :label "Visor de PDF" :cmd "evince &")
+        (launcher :label "Notas (Obsidian)" :cmd "obsidian &")
         (cat-icon :name "Graficos" :icon "${EWW_CONFIG_DIR}/../nebula/icons/graficos.png")
         (launcher :label "GIMP" :cmd "gimp &")
-        (launcher :label "Darktable" :cmd "darktable &")
+        (launcher :label "Krita" :cmd "krita &")
         (launcher :label "Inkscape" :cmd "inkscape &")
-        (launcher :label "Visor" :cmd "nsxiv -t . &")
+        (launcher :label "Darktable" :cmd "darktable &")
+        (launcher :label "Blender" :cmd "blender &")
+        (launcher :label "Visor de imagenes" :cmd "nsxiv -t . &")
+        (cat-icon :name "Multimedia" :icon "${EWW_CONFIG_DIR}/../nebula/icons/multimedia.png")
+        (launcher :label "Video (mpv)" :cmd "mpv --player-operation-mode=pseudo-gui &")
+        (launcher :label "VLC" :cmd "vlc &")
+        (launcher :label "Musica (cmus)" :cmd "alacritty -e cmus &")
+        (launcher :label "Spotify" :cmd "spotify &")
+        (launcher :label "OBS Studio" :cmd "obs &")
+        (launcher :label "Control de audio" :cmd "pavucontrol &")
+        (launcher :label "Perfiles de streaming" :cmd "nebula-streaming-profile &")
         (cat-icon :name "Juegos" :icon "${EWW_CONFIG_DIR}/../nebula/icons/juegos.png")
         (launcher :label "Steam" :cmd "steam &")
+        (launcher :label "Lutris" :cmd "lutris &")
+        (launcher :label "Heroic" :cmd "heroic &")
         (launcher :label "Modo Juego" :cmd "nebula-game-mode &")
-        (cat-icon :name "Multimedia" :icon "${EWW_CONFIG_DIR}/../nebula/icons/multimedia.png")
-        (launcher :label "Navegador" :cmd "firefox &")
-        (launcher :label "Video" :cmd "mpv --player-operation-mode=pseudo-gui &")
-        (launcher :label "Musica" :cmd "alacritty -e cmus &")
-        (launcher :label "Perfiles de streaming" :cmd "nebula-streaming-profile &")
         (cat-icon :name "Sistema" :icon "${EWW_CONFIG_DIR}/../nebula/icons/sistema.png")
         (launcher :label "Archivos" :cmd "nautilus --new-window &")
-        (launcher :label "Monitor" :cmd "alacritty -e btop &")
-        (launcher :label "Audio" :cmd "pavucontrol &")
+        (launcher :label "Monitor de recursos" :cmd "alacritty -e btop &")
+        (launcher :label "Discos" :cmd "gnome-disks &")
         (launcher :label "Red" :cmd "alacritty -e nmtui &")
-        (launcher :label "Apagar" :cmd "systemctl poweroff &")
-        (launcher :label "Reiniciar" :cmd "systemctl reboot &")
+        (launcher :label "Captura de pantalla" :cmd "nebula-screenshot region &")
+        (launcher :label "Rescatar entorno" :cmd "nebula-rescue &")
+        (launcher :label "Energia (bloquear / salir)" :cmd "nebula-powermenu &")
         (cat-icon :name "IA Local" :icon "${EWW_CONFIG_DIR}/../nebula/icons/ia-local.png")
         (launcher :label "Iniciar Ollama" :cmd "nebula-ai-chat --serve &")
         (launcher :label "Chat con modelo" :cmd "nebula-ai-chat &")

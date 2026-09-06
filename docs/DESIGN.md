@@ -232,16 +232,22 @@ icono   = ""
 
 ### 6.3. Taxonomía inicial
 
-Taxonomía real, sincronizada con `dotfiles/nebula/categories.toml` (editable ahí; regenerar con `nebula-gen-panel` o `Super+Shift+C`). Difiere del prototipo original en que no se instaló gaming pesado salvo Steam, y se usan Firefox/Nautilus en vez de LibreWolf/pcmanfm (decisión de scope, ver README):
+Cada categoría lista **todos los programas típicos de esa función** (varios navegadores, varios editores, etc.). El generador marca cada uno según `command -v` del primer token de `exec`: instalado → fila normal con `:onclick`; ausente → fila en gris (`launcher-off`, sin `:onclick`) pero **visible**, para que se vea que la categoría lo contempla. Los `nebula-*` se asumen siempre presentes. La copia commiteada de `eww.yuck` se genera con `NEBULA_GEN_ASSUME_ALL=1` (todo como `launcher`, neutro); el `nebula-gen-panel` que corre `30-dotfiles.sh` en cada máquina es el que grisa lo que falta.
 
-| Categoría | Aplicaciones |
+Sincronizada con `dotfiles/nebula/categories.toml` (editable ahí; regenerar con `nebula-gen-panel` o `Super+Shift+C`).
+
+| Categoría | Aplicaciones (se muestran instaladas + en gris las ausentes) |
 |---|---|
-| **Desarrollo** | Terminal (Alacritty) · Editor (Neovim) · Git TUI (`lazygit`) · Docker TUI (`lazydocker`) |
-| **Gráficos** | GIMP · Darktable · Inkscape · Visor (`nsxiv`) |
-| **Juegos** | Steam · *Modo Juego* (`nebula-game-mode`) |
-| **Multimedia** | Navegador (Firefox) · Video (`mpv`) · Música (`cmus`) · *Perfiles de streaming* (`nebula-streaming-profile`) |
-| **Sistema** | Archivos (Nautilus) · Monitor (`btop`) · Audio (`pavucontrol`) · Red (`nmtui`) · Apagar/Reiniciar |
+| **Navegadores** | Firefox · Google Chrome · Chromium · Brave · Vivaldi |
+| **Desarrollo** | Terminal (Alacritty) · VS Code · Editor (Neovim) · Git TUI (`lazygit`) · Docker TUI (`lazydocker`) · Base de datos (DBeaver) |
+| **Ofimática** | LibreOffice · Writer · Calc · Impress · Visor de PDF (`evince`) · Notas (Obsidian) |
+| **Gráficos** | GIMP · Krita · Inkscape · Darktable · Blender · Visor de imágenes (`nsxiv`) |
+| **Multimedia** | Video (`mpv`) · VLC · Música (`cmus`) · Spotify · OBS Studio · Control de audio (`pavucontrol`) · *Perfiles de streaming* |
+| **Juegos** | Steam · Lutris · Heroic · *Modo Juego* (`nebula-game-mode`) |
+| **Sistema** | Archivos (Nautilus) · Monitor (`btop`) · Discos (`gnome-disks`) · Red (`nmtui`) · Captura (`nebula-screenshot`) · Rescate (`nebula-rescue`) · Energía (`nebula-powermenu`) |
 | **IA Local** | Iniciar Ollama · *Chat con modelo* (`nebula-ai-chat`) · Descargar modelo · Estado GPU (`nvidia-smi`) |
+
+Nota: `bspwmrc` sólo trae `bspc rule` para Steam y Picture-in-Picture (decisión de scope, ver README); que Lutris/Heroic aparezcan en el panel no cambia eso — son sólo lanzadores.
 
 ### 6.4. Zona inferior del sidebar
 
