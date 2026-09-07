@@ -2,9 +2,12 @@
 
 Capa de interfaz minimalista y "cosmica" para **Ubuntu 24.04 LTS**: se monta
 sobre una instalacion minima (o sobre Ubuntu Desktop con GNOME, conviviendo
-como sesion alternativa) y deja un entorno con **Xorg + bspwm + picom**, un
-**panel lateral por categorias** (`eww`, se despliega acercando el mouse al
-borde izquierdo), lanzador **rofi** y estetica oscura *Cosmic Dark*.
+como sesion alternativa) y deja un entorno con **Xorg + bspwm + picom**:
+ventanas en **modo flotante** con **Alt+Tab** visual, **barra de estado
+superior** (`eww` `nebula-bar`: reloj, stats y taskbar de ventanas para
+minimizar/restaurar con el mouse), **panel lateral por categorias** (`eww`,
+se despliega acercando el mouse al borde izquierdo), lanzador **rofi** y
+estetica oscura *Cosmic Dark*.
 
 > **No es una distribucion.** Es un conjunto de scripts idempotentes pensados
 > para ejecutarse como **ultimo paso de un post-formateo**, despues de instalar
@@ -18,12 +21,17 @@ borde izquierdo), lanzador **rofi** y estetica oscura *Cosmic Dark*.
 
 ## Estado
 
-**Funcional.** Los 7 stages (`00`-`60`) y los 7 `nebula-*` de `bin/` estan
-implementados: instalan paquetes, despliegan dotfiles, generan el panel desde
-`categories.toml`, registran las funciones unicas y verifican el resultado.
-Validado en esta maquina; pendiente de probar sobre una instalacion limpia
-(clon nuevo, usuario distinto). Ver [`CHANGELOG.md`](CHANGELOG.md) para el
-detalle de que se hizo y que sigue abierto.
+**Funcional.** Los 7 stages (`00`-`60`) y los 14 scripts `nebula-*` de `bin/`
+estan implementados: instalan paquetes, despliegan dotfiles, generan el panel
+desde `categories.toml`, registran las funciones unicas (juego, foco,
+streaming, IA, HUD, rescate) y las piezas del escritorio (screenshots,
+portapapeles, menu de energia, taskbar, gesto de borde del sidebar,
+sincronizacion al login, montaje del disco de datos), y verifican el
+resultado. Validado por partes en esta maquina; **pendiente una validacion
+integral** en una sesion real (arranque limpio, recorrido de cada componente
+del escritorio) y sobre una instalacion limpia (clon nuevo, usuario distinto).
+Ver [`CHANGELOG.md`](CHANGELOG.md) para el detalle de que se hizo y que sigue
+abierto.
 
 Piezas de diseno explicitamente diferidas (no bloquean el uso diario):
 cursores tematicos, un HUD/centro de control mas grande que el sidebar
@@ -121,9 +129,15 @@ nebula-os/
     bspwm/bspwmrc  sxhkd/sxhkdrc  picom/picom.conf  alacritty/alacritty.toml
     dunst/dunstrc  rofi/*.rasi  polybar/{config.ini,launch.sh,scripts/}
     eww/{eww.yuck,eww.scss}  gtk-3.0/settings.ini
-  bin/                    nebula-game-mode, nebula-focus-mode, nebula-resource-hud,
-                          nebula-ai-chat, nebula-streaming-profile, nebula-rescue,
-                          nebula-gen-panel  (scripts funcionales, se copian a ~/.local/bin)
+  bin/                    Scripts funcionales, se copian a ~/.local/bin.
+                          Funciones unicas del panel: nebula-game-mode, nebula-focus-mode,
+                            nebula-resource-hud, nebula-ai-chat, nebula-streaming-profile,
+                            nebula-rescue, nebula-gen-panel.
+                          Escritorio: nebula-screenshot, nebula-powermenu,
+                            nebula-window-switcher, nebula-taskbar, nebula-edge-sidebar,
+                            nebula-sync, nebula-mount-datos.
+  tools/                  test-session.sh (bateria no interactiva: estatico + sandbox
+                          Xephyr), test-nested.sh (sandbox interactivo bspwm/sxhkd).
   docs/DESIGN.md          Documento de diseno completo (arquitectura, decisiones, plan).
 ```
 
@@ -148,7 +162,8 @@ scripts para reutilizar `run()` / `log()` / `apt_install()`.
 ## Desarrollo
 
 Ver [`CONTRIBUTING.md`](CONTRIBUTING.md). En resumen: `make lint` (shellcheck),
-LF siempre, idempotencia obligatoria, todo cambio de sistema via `run`/`run_root`.
+`make test-session` (bateria estatica + sandbox Xephyr), LF siempre,
+idempotencia obligatoria, todo cambio de sistema via `run`/`run_root`.
 
 ## Licencia
 
