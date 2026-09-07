@@ -4,24 +4,20 @@
 //   +----------------------+
 //   | (o) NEBULA OS        |   cabecera: marca + tagline
 //   |     cosmic minimalism|
-//   |                      |
 //   | Jueves 1 de Sept...  |   reloj en vivo
 //   | 21:37                |
-//   |                      |
 //   | CATEGORIAS           |
-//   |  > Favoritos         |   lista de categorias (icono de linea + nombre);
-//   |  > Terminales        |   clic -> abre el lanzador (launcher.js) filtrado
-//   |  > Navegadores       |   a esa categoria
-//   |  ...                 |
-//   |                      |
+//   |  > Favoritos         |   lista de categorias; clic -> lanzador (launcher.js)
+//   |  ...                 |   filtrado a esa categoria
+//   | SISTEMA              |
+//   |  CPU  RAM  SWAP ...  |   meters en vivo (meters.js) + sparkline de red
 //   |  [power][lock][reboot]|  al pie
 //   +----------------------+
 //
 // Reserva su ancho via struts -> las ventanas maximizadas no quedan debajo.
-// GNOME Shell 46 / GJS 1.80. Sin polling, sin dependencias externas.
+// GNOME Shell 46 / GJS 1.80.
 //
-// Incrementos siguientes: meters del sistema (SISTEMA) en la sidebar (3),
-// barra inferior (5), wallpaper/tema (6), stage de instalador (7).
+// Incrementos siguientes: barra inferior (5), wallpaper/tema (6), instalador (7).
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -34,6 +30,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {buildModel, invalidateIconCache} from './model.js';
 import {NebulaLauncher} from './launcher.js';
+import {NebulaMeters} from './meters.js';
 
 const SIDEBAR_WIDTH = 236;    // px reservados al escritorio (struts)
 const CAT_ICON = 16;
@@ -60,11 +57,13 @@ export class NebulaSidebar {
 
         this._launcher = new NebulaLauncher(extension, SIDEBAR_WIDTH,
             () => this._clearActive());
+        this._meters = new NebulaMeters();
 
         this._buildActors();
         this._place();
         this._populate();
         this._startClock();
+        this._meters.start();
         this._addKeybinding();
 
         this._connect(Main.layoutManager, 'monitors-changed', () => {
@@ -75,7 +74,7 @@ export class NebulaSidebar {
             this._scheduleRepopulate());
     }
 
-    // --- actores -------------------------------------------------------
+    // --- actores (una sola vez) ------------------------------------
 
     _buildActors() {
         this._sidebar = new St.BoxLayout({
@@ -84,6 +83,18 @@ export class NebulaSidebar {
             reactive: true,
             width: SIDEBAR_WIDTH,
         });
+
+        this._sidebar.add_child(this._buildHead());
+        this._sidebar.add_child(this._buildClock());
+        this._sidebar.add_child(new St.Label({text: 'CATEGORIAS', style_class: 'nebula-section'}));
+
+        this._catList = new St.BoxLayout({vertical: true, style_class: 'nebula-cat-list'});
+        this._sidebar.add_child(this._catList);
+
+        this._sidebar.add_child(new St.Widget({y_expand: true}));   // empuja lo de abajo
+        this._sidebar.add_child(this._meters.actor);
+        this._sidebar.add_child(this._buildPowerRow());
+
         Main.layoutManager.addChrome(this._sidebar, {
             affectsStruts: true,
             affectsInputRegion: true,
@@ -99,19 +110,15 @@ export class NebulaSidebar {
         this._sidebar.set_height(m.height);
     }
 
-    // --- contenido de la sidebar -------------------------------------
+    // --- lista de categorias (se reconstruye) --------------------
 
     _populate() {
-        this._sidebar.destroy_all_children();
-        this._catButtons = [];
         this._model = buildModel(this._ext.path);
         this._launcher.setModel(this._model);
 
-        this._sidebar.add_child(this._buildHead());
-        this._sidebar.add_child(this._buildClock());
-        this._sidebar.add_child(this._sectionLabel('CATEGORIAS'));
+        this._catList.destroy_all_children();
+        this._catButtons = [];
 
-        const list = new St.BoxLayout({vertical: true, style_class: 'nebula-cat-list'});
         this._model.forEach((cat, i) => {
             const btn = new St.Button({
                 style_class: 'nebula-cat',
@@ -132,19 +139,16 @@ export class NebulaSidebar {
             }));
             btn.set_child(row);
             this._connect(btn, 'clicked', () => this._onCategory(i));
-            list.add_child(btn);
+            this._catList.add_child(btn);
             this._catButtons.push(btn);
         });
+
         if (this._model.length === 0) {
-            list.add_child(new St.Label({
+            this._catList.add_child(new St.Label({
                 text: 'Sin categorias con apps instaladas',
                 style_class: 'nebula-cat-empty',
             }));
         }
-        this._sidebar.add_child(list);
-
-        this._sidebar.add_child(new St.Widget({y_expand: true}));  // empuja el pie
-        this._sidebar.add_child(this._buildPowerRow());
     }
 
     _buildHead() {
@@ -168,10 +172,6 @@ export class NebulaSidebar {
         box.add_child(this._dateLabel);
         box.add_child(this._timeLabel);
         return box;
-    }
-
-    _sectionLabel(text) {
-        return new St.Label({text, style_class: 'nebula-section'});
     }
 
     _buildPowerRow() {
@@ -314,6 +314,8 @@ export class NebulaSidebar {
 
         this._removeKeybinding();
 
+        this._meters?.destroy();
+        this._meters = null;
         this._launcher?.destroy();
         this._launcher = null;
 
@@ -323,6 +325,7 @@ export class NebulaSidebar {
             this._sidebar = null;
         }
         this._catButtons = [];
+        this._catList = null;
         this._model = [];
         this._dateLabel = null;
         this._timeLabel = null;

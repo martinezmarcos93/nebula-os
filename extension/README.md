@@ -10,8 +10,8 @@ audio, Bluetooth, discos, sesión). Si funciona, se planifica la migración.
 
 ## Qué hace (y qué no)
 
-Estado: **incrementos 1 y 2 de la migración**. Ver el plan de incrementos en la
-memoria del proyecto / los commits `feat(extension): ...`.
+Estado: **incrementos 1, 2 y 3 de la migración**. Ver el plan de incrementos en
+la memoria del proyecto / los commits `feat(extension): ...`.
 
 Hace:
 
@@ -22,6 +22,10 @@ Hace:
   - reloj en vivo (fecha en español + hora grande);
   - lista de las 12 categorías (icono de línea simbólico + nombre); clic → abre
     el lanzador filtrado a esa categoría;
+  - bloque **SISTEMA** (`meters.js`): barras en vivo CPU (`/proc/stat`), RAM y
+    SWAP (`/proc/meminfo`), GPU (`nvidia-smi`, se oculta si no está), Disco
+    (`/`), fila Red (↓/↑ desde `/proc/net/dev`) y una sparkline de red (Cairo).
+    Poll cada 2 s;
   - fila al pie: apagar (`gnome-session-quit --power-off`) · bloquear
     (`loginctl lock-session`) · reiniciar (`gnome-session-quit --reboot`).
 - **Lanzador con búsqueda** (`launcher.js`), panel flotante a la derecha de la
@@ -47,6 +51,7 @@ se decida un *shell theme*.
 | `nebula-shell@nebula-os/extension.js` | `enable()` / `disable()` — solo instancia y destruye el sidebar |
 | `nebula-shell@nebula-os/sidebar.js` | Sidebar ancha (cabecera + reloj + categorías + energía) + struts + atajo + ciclo de vida |
 | `nebula-shell@nebula-os/launcher.js` | Panel "Buscar aplicaciones...": búsqueda + lista plana icono/nombre/descripción |
+| `nebula-shell@nebula-os/meters.js` | Bloque SISTEMA: CPU/RAM/SWAP/GPU/Disco/Red en vivo + sparkline (Cairo) |
 | `nebula-shell@nebula-os/model.js` | Carga `categories.json`, detección `GLib.find_program_in_path`, lanzamiento, iconos + descripciones (`Gio.AppInfo`), `flatApps`/`filterApps` |
 | `nebula-shell@nebula-os/stylesheet.css` | Paleta Cosmic Dark, scopeada a `.nebula-*` |
 | `nebula-shell@nebula-os/schemas/*.gschema.xml` | Tecla `toggle-sidebar` (`<Super>b`) |
@@ -79,7 +84,7 @@ gnome-extensions disable nebula-shell@nebula-os
 rm ~/.local/share/gnome-shell/extensions/nebula-shell@nebula-os
 ```
 
-## Checklist (incrementos 1-2)
+## Checklist (incrementos 1-3)
 
 En una sesión GNOME normal:
 
@@ -90,6 +95,8 @@ En una sesión GNOME normal:
 - [ ] escribir en "Buscar aplicaciones..." filtra sobre todas las apps; `Enter` lanza la primera;
 - [ ] clic en una fila lanza la app y el lanzador se cierra;
 - [ ] `Super+B` abre (todas las apps) / cierra el lanzador; `Esc` lo cierra;
+- [ ] bloque SISTEMA: CPU/RAM/SWAP/Disco se mueven; GPU aparece con nombre y %
+      (o no aparece si no hay `nvidia-smi`); Red muestra ↓/↑ y la sparkline dibuja;
 - [ ] los 3 botones del pie: apagar y reiniciar muestran el diálogo de GNOME; bloquear bloquea;
 - [ ] una ventana maximizada respeta el ancho de la sidebar (no queda debajo);
 - [ ] red, audio, Bluetooth, discos, notificaciones y bloqueo siguen 100% normales;
@@ -101,10 +108,14 @@ En una sesión GNOME normal:
 
 - `metadata.json` fija `shell-version: ["46"]` (Ubuntu 24.04 LTS se queda en 46
   hasta 26.04).
-- `St.ScrollView` no se usa (las listas son cortas). Si crecen, envolver la
-  lista de categorías y el drawer y usar `add_child` (GNOME 46 quitó `add_actor`).
+- El lanzador usa `St.ScrollView` con `add_child` + `set_policy(NEVER, AUTOMATIC)`
+  (API de GNOME 46; `add_actor` y el `set_policy` de 3 args ya no existen).
 - El reloj usa `Date.toLocaleDateString('es-ES', …)` (Intl de GJS/SpiderMonkey),
   no `GLib.DateTime.format`, para no depender del `LANG` de la sesión.
+- `meters.js` importa `cairo` (módulo especial de GJS, sin `gi://`) para la
+  sparkline; el `repaint` está en try/catch (Cairo puede fallar en captura de
+  thumbnail). `DISK_PATH` está fijo a `/` — hacerlo configurable es trabajo
+  futuro.
 
 ## Siguiente paso si el prototipo convence
 
