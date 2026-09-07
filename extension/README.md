@@ -10,8 +10,9 @@ audio, Bluetooth, discos, sesión). Si funciona, se planifica la migración.
 
 ## Qué hace (y qué no)
 
-Estado: **incrementos 1, 2 y 3 de la migración**. Ver el plan de incrementos en
-la memoria del proyecto / los commits `feat(extension): ...`.
+Estado: **incrementos 1-3 y 5 de la migración** (el 4, "botones de energía
+afinados", quedó cubierto por el 1: ya muestran el diálogo de GNOME). Ver el plan
+en la memoria del proyecto / los commits `feat(extension): ...`.
 
 Hace:
 
@@ -34,14 +35,19 @@ Hace:
   escribir → filtra sobre todas las apps; `Enter` lanza la primera; `Esc` /
   perder foco / `Super+B` cierra. La descripción sale de `Gio.AppInfo` cuando se
   puede resolver el `exec`.
+- **Barra inferior** (`bottombar.js`), franja full-width al pie (reserva su alto
+  con struts): indicador de escritorios (`global.workspace_manager`, clic para
+  cambiar), now-playing MPRIS (título + artista + `Previous`/`PlayPause`/`Next`
+  vía DBus `org.mpris.MediaPlayer2.Player`), accesos rápidos (volumen →
+  `pavucontrol`, red → `nm-connection-editor`) y reloj. La bandeja real
+  (StatusNotifier) la sigue mostrando `ubuntu-appindicators` en la barra superior.
 - Lee `categories.json` (generado desde `dotfiles/nebula/categories.toml`),
   oculta apps no instaladas y categorías vacías, lanza al clic.
 - Estética Cosmic Dark en sus propios widgets (`stylesheet.css`).
 
-No hace todavía (incrementos siguientes): meters del sistema en la sidebar (3),
-barra inferior con escritorios + MPRIS + indicadores (5), wallpaper / tema GTK /
-iconos (6), stage de instalador (7). Nunca: restyle del resto del Shell salvo que
-se decida un *shell theme*.
+No hace todavía: wallpaper / tema GTK / iconos morados (6), stage de instalador
+que reemplaza el stack Xorg/bspwm (7). Nunca: restyle del resto del Shell salvo
+que se decida un *shell theme*.
 
 ## Archivos
 
@@ -52,6 +58,7 @@ se decida un *shell theme*.
 | `nebula-shell@nebula-os/sidebar.js` | Sidebar ancha (cabecera + reloj + categorías + energía) + struts + atajo + ciclo de vida |
 | `nebula-shell@nebula-os/launcher.js` | Panel "Buscar aplicaciones...": búsqueda + lista plana icono/nombre/descripción |
 | `nebula-shell@nebula-os/meters.js` | Bloque SISTEMA: CPU/RAM/SWAP/GPU/Disco/Red en vivo + sparkline (Cairo) |
+| `nebula-shell@nebula-os/bottombar.js` | Barra inferior: escritorios + MPRIS (DBus) + accesos + reloj |
 | `nebula-shell@nebula-os/model.js` | Carga `categories.json`, detección `GLib.find_program_in_path`, lanzamiento, iconos + descripciones (`Gio.AppInfo`), `flatApps`/`filterApps` |
 | `nebula-shell@nebula-os/stylesheet.css` | Paleta Cosmic Dark, scopeada a `.nebula-*` |
 | `nebula-shell@nebula-os/schemas/*.gschema.xml` | Tecla `toggle-sidebar` (`<Super>b`) |
@@ -84,7 +91,7 @@ gnome-extensions disable nebula-shell@nebula-os
 rm ~/.local/share/gnome-shell/extensions/nebula-shell@nebula-os
 ```
 
-## Checklist (incrementos 1-3)
+## Checklist (incrementos 1-3, 5)
 
 En una sesión GNOME normal:
 
@@ -98,6 +105,10 @@ En una sesión GNOME normal:
 - [ ] bloque SISTEMA: CPU/RAM/SWAP/Disco se mueven; GPU aparece con nombre y %
       (o no aparece si no hay `nvidia-smi`); Red muestra ↓/↑ y la sparkline dibuja;
 - [ ] los 3 botones del pie: apagar y reiniciar muestran el diálogo de GNOME; bloquear bloquea;
+- [ ] barra inferior: los números de escritorio reflejan los reales y cambian de
+      workspace al clic; con música sonando aparece "Artista - Título" y los
+      controles |< >|| >| funcionan; volumen abre pavucontrol, red abre el editor;
+      reloj al día; una ventana maximizada no queda debajo de la barra;
 - [ ] una ventana maximizada respeta el ancho de la sidebar (no queda debajo);
 - [ ] red, audio, Bluetooth, discos, notificaciones y bloqueo siguen 100% normales;
 - [ ] `gnome-extensions disable` + bloquear/desbloquear la pantalla no deja
