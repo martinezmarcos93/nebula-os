@@ -28,6 +28,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {FEATURES} from './config.js';
 import {buildModel, invalidateIconCache} from './model.js';
 import {NebulaLauncher} from './launcher.js';
 import {NebulaMeters} from './meters.js';
@@ -55,20 +56,21 @@ export class NebulaSidebar {
         this._activeIndex = -1;
         this._catButtons = [];
 
-        this._launcher = new NebulaLauncher(extension, SIDEBAR_WIDTH,
-            () => this._clearActive());
-        this._meters = new NebulaMeters();
+        this._launcher = FEATURES.launcher
+            ? new NebulaLauncher(extension, SIDEBAR_WIDTH, () => this._clearActive())
+            : null;
+        this._meters = FEATURES.meters ? new NebulaMeters() : null;
 
         this._buildActors();
         this._place();
         this._populate();
         this._startClock();
-        this._meters.start();
+        this._meters?.start();
         this._addKeybinding();
 
         this._connect(Main.layoutManager, 'monitors-changed', () => {
             this._place();
-            this._launcher.relayoutIfVisible();
+            this._launcher?.relayoutIfVisible();
         });
         this._connect(Shell.AppSystem.get_default(), 'installed-changed', () =>
             this._scheduleRepopulate());
@@ -92,7 +94,8 @@ export class NebulaSidebar {
         this._sidebar.add_child(this._catList);
 
         this._sidebar.add_child(new St.Widget({y_expand: true}));   // empuja lo de abajo
-        this._sidebar.add_child(this._meters.actor);
+        if (this._meters)
+            this._sidebar.add_child(this._meters.actor);
         this._sidebar.add_child(this._buildPowerRow());
 
         Main.layoutManager.addChrome(this._sidebar, {
@@ -102,19 +105,36 @@ export class NebulaSidebar {
         });
     }
 
+    _monitor() {
+        const lm = Main.layoutManager;
+        return lm.primaryMonitor
+            ?? lm.monitors?.[lm.primaryIndex]
+            ?? lm.monitors?.[0]
+            ?? null;
+    }
+
     _place() {
-        const m = Main.layoutManager.primaryMonitor;
-        if (!m)
+        const m = this._monitor();
+        if (!m) {
+            // Aun no hay monitores; reintentar en el proximo idle.
+            if (!this._placeRetryId) {
+                this._placeRetryId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                    this._placeRetryId = 0;
+                    this._place();
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
             return;
+        }
         this._sidebar.set_position(m.x, m.y);
-        this._sidebar.set_height(m.height);
+        this._sidebar.set_size(SIDEBAR_WIDTH, m.height);
     }
 
     // --- lista de categorias (se reconstruye) --------------------
 
     _populate() {
         this._model = buildModel(this._ext.path);
-        this._launcher.setModel(this._model);
+        this._launcher?.setModel(this._model);
 
         this._catList.destroy_all_children();
         this._catButtons = [];
@@ -226,6 +246,14 @@ export class NebulaSidebar {
     // --- categorias / lanzador -----------------------------------
 
     _onCategory(index) {
+        if (!this._launcher) {
+            // Sin lanzador (incremento 1): el clic solo marca la categoria.
+            if (this._activeIndex === index)
+                this._clearActive();
+            else
+                this._setActive(index);
+            return;
+        }
         if (this._launcher.visible && this._activeIndex === index) {
             this._launcher.close();
             return;
@@ -235,6 +263,8 @@ export class NebulaSidebar {
     }
 
     _onToggleShortcut() {
+        if (!this._launcher)
+            return;
         if (this._launcher.visible)
             this._launcher.close();
         else
@@ -303,6 +333,10 @@ export class NebulaSidebar {
         if (this._clockId) {
             GLib.source_remove(this._clockId);
             this._clockId = 0;
+        }
+        if (this._placeRetryId) {
+            GLib.source_remove(this._placeRetryId);
+            this._placeRetryId = 0;
         }
         for (const id of this._timeoutIds)
             GLib.source_remove(id);

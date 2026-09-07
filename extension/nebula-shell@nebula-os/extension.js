@@ -14,13 +14,15 @@
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {FEATURES} from './config.js';
 import {NebulaSidebar} from './sidebar.js';
 import {NebulaBottomBar} from './bottombar.js';
 
 export default class NebulaShellExtension extends Extension {
     enable() {
         this._sidebar = new NebulaSidebar(this);
-        this._bottomBar = new NebulaBottomBar();
+        if (FEATURES.bottombar)
+            this._bottomBar = new NebulaBottomBar();
     }
 
     disable() {

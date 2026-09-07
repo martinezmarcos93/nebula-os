@@ -5,17 +5,21 @@
 #   2. copia los PNG de categoria del repo a  nebula-shell@nebula-os/icons/
 #   3. compila el gschema
 #
-# Con  --install  ademas enlaza la extension en
-#   ~/.local/share/gnome-shell/extensions/  (symlink, para desarrollo).
-# Con  --enable   corre  gnome-extensions enable  al terminar.
+# Con  --install    COPIA la extension a ~/.local/share/gnome-shell/extensions/
+#                   (GNOME 46 no carga symlinks de forma fiable: por eso copia).
+# Con  --enable     ademas corre  gnome-extensions enable  al terminar.
+# Con  --uninstall  borra la copia instalada y sale.
 #
 # NO toca install.sh ni la sesion bspwm. El prototipo se prueba a mano.
+# Tras --install hace falta reiniciar GNOME Shell (X11: Alt+F2 -> r ; Wayland:
+# cerrar sesion y volver a entrar) para que cargue la version nueva.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/.." && pwd)"
 EXT="$HERE/nebula-shell@nebula-os"
 UUID="nebula-shell@nebula-os"
+DEST="$HOME/.local/share/gnome-shell/extensions/$UUID"
 TOML="$REPO/dotfiles/nebula/categories.toml"
 ICONS_SRC="$REPO/dotfiles/nebula/icons"
 
@@ -25,6 +29,12 @@ for arg in "$@"; do
     case "$arg" in
         --install) do_install=1 ;;
         --enable)  do_install=1; do_enable=1 ;;
+        --uninstall)
+            gnome-extensions disable "$UUID" 2>/dev/null || true
+            rm -rf "$DEST"
+            echo "desinstalada: $DEST"
+            echo "reinicia GNOME Shell (Alt+F2 -> r, o cerrar sesion) para descargarla."
+            exit 0 ;;
         -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
         *) echo "arg desconocido: $arg" >&2; exit 2 ;;
     esac
@@ -65,14 +75,14 @@ else
 fi
 
 if [ "$do_install" -eq 1 ]; then
-    DEST="$HOME/.local/share/gnome-shell/extensions/$UUID"
-    mkdir -p "$(dirname "$DEST")"
     rm -rf "$DEST"
-    ln -s "$EXT" "$DEST"
-    echo "enlazado: $DEST -> $EXT"
+    mkdir -p "$(dirname "$DEST")"
+    cp -r "$EXT" "$DEST"
+    echo "copiada a: $DEST"
     if [ "$do_enable" -eq 1 ] && command -v gnome-extensions >/dev/null; then
-        gnome-extensions enable "$UUID" && echo "habilitada: $UUID" || \
-            echo "no se pudo habilitar aun (reinicia GNOME Shell primero)"
+        gnome-extensions enable "$UUID" 2>/dev/null \
+            && echo "habilitada (efectiva tras reiniciar el Shell)" \
+            || echo "no se pudo habilitar aun; reinicia el Shell y reintenta"
     fi
 fi
 
@@ -86,6 +96,5 @@ Listo. Para probar:
   journalctl --user -f -o cat /usr/bin/gnome-shell   # ver logs de la extension
 
 Para quitarla:
-  gnome-extensions disable $UUID
-  rm ~/.local/share/gnome-shell/extensions/$UUID
+  bash extension/build.sh --uninstall
 EOF
