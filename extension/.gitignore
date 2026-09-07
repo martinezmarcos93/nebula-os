@@ -1,0 +1,4 @@
+# Artefactos generados por build.sh (no versionar; se regeneran desde el repo).
+nebula-shell@nebula-os/categories.json
+nebula-shell@nebula-os/icons/
+nebula-shell@nebula-os/schemas/gschemas.compiled

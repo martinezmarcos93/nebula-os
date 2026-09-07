@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.nebula-shell"
+          path="/org/gnome/shell/extensions/nebula-shell/">
+    <key name="toggle-sidebar" type="as">
+      <default><![CDATA[['<Super>b']]]></default>
+      <summary>Mostrar u ocultar el drawer del sidebar de Nebula</summary>
+      <description>Atajo global. Formato de gsettings (lista de strings).</description>
+    </key>
+  </schema>
+</schemalist>

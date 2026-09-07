@@ -1,0 +1,8 @@
+{
+  "uuid": "nebula-shell@nebula-os",
+  "name": "Nebula Shell",
+  "description": "Sidebar Cosmic Dark por categorias sobre GNOME. Prototipo de viabilidad: NO restilea el resto del Shell, solo agrega un rail lateral izquierdo que lanza aplicaciones agrupadas por categoria (fuente: categories.toml del repo, convertido a categories.json por extension/build.sh).",
+  "shell-version": ["46"],
+  "settings-schema": "org.gnome.shell.extensions.nebula-shell",
+  "url": "https://github.com/martinezmarcos93/nebula-os"
+}
