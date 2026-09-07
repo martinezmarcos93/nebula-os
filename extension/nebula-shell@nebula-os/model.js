@@ -128,7 +128,30 @@ export function iconForCategory(extensionPath, categoria) {
     const png = GLib.build_filenamev([extensionPath, 'icons', `${slug}.png`]);
     if (GLib.file_test(png, GLib.FileTest.EXISTS))
         return Gio.FileIcon.new(Gio.File.new_for_path(png));
-    return new Gio.ThemedIcon({name: 'view-app-grid-symbolic'});
+    return new Gio.ThemedIcon({name: symbolicForCategory(categoria.nombre)});
+}
+
+// Nombre de icono simbolico por categoria (se tiñe por CSS `color`, como en la
+// imagen objetivo: icono de linea del mismo color que el texto).
+const CATEGORY_SYMBOLIC = {
+    'favoritos': 'starred-symbolic',
+    'terminales': 'utilities-terminal-symbolic',
+    'navegadores': 'web-browser-symbolic',
+    'desarrollo': 'applications-engineering-symbolic',
+    'multimedia': 'applications-multimedia-symbolic',
+    'graficos': 'applications-graphics-symbolic',
+    'ofimatica': 'x-office-document-symbolic',
+    'ia-local': 'applications-science-symbolic',
+    'gaming': 'applications-games-symbolic',
+    'juegos': 'applications-games-symbolic',
+    'sistema': 'preferences-system-symbolic',
+    'herramientas': 'applications-utilities-symbolic',
+    'configuracion': 'preferences-other-symbolic',
+};
+
+/** Nombre de icono simbolico para una categoria (fallback: grid). */
+export function symbolicForCategory(nombre) {
+    return CATEGORY_SYMBOLIC[categorySlug(nombre)] ?? 'view-app-grid-symbolic';
 }
 
 /**
@@ -151,6 +174,7 @@ export function buildModel(extensionPath) {
         out.push({
             nombre: cat.nombre ?? '?',
             icono: iconForCategory(extensionPath, cat),
+            simbolico: symbolicForCategory(cat.nombre),
             apps,
         });
     }

@@ -1,55 +1,149 @@
-/* Nebula Shell - estetica "Cosmic Dark". Scopeado a las clases .nebula-*:
+/* Nebula Shell - estetica "Cosmic Dark". Scopeada a las clases .nebula-*:
  * NO toca el resto del Shell. Paleta espejo de dotfiles/nebula/colors.sh.
  *
  *   BG panel     rgba(10,10,20,0.85)
  *   violeta      #7c3aed   cian     #22d3ee   magenta  #e879f9
  *   fg primario  #e5e7eb   fg muted #9ca3af
+ *   fuentes      Inter (UI) / JetBrains Mono (mono)
  */
 
-.nebula-rail {
-    background-color: rgba(10, 10, 20, 0.92);
-    border-right: 1px solid #7c3aed;
-    padding: 8px 0;
-    spacing: 6px;
+/* ---- Sidebar (panel ancho permanente) --------------------------------- */
+
+.nebula-sidebar {
+    background-color: rgba(8, 8, 16, 0.90);
+    border-right: 1px solid rgba(124, 58, 237, 0.55);
+    padding: 18px 14px 14px 16px;
+    spacing: 14px;
+    font-family: "Inter", "Cantarell", sans-serif;
+    color: #e5e7eb;
+}
+
+.nebula-head {
+    spacing: 10px;
 }
 
 .nebula-brand {
     color: #e879f9;
-    margin-bottom: 10px;
 }
 
-.nebula-rail-btn {
+.nebula-title {
+    font-size: 13pt;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    color: #f3f4f6;
+}
+
+.nebula-subtitle {
+    font-size: 8pt;
     color: #9ca3af;
-    padding: 8px;
-    border-radius: 10px;
-    transition-duration: 120ms;
+    letter-spacing: 0.5px;
 }
 
-.nebula-rail-btn:hover {
-    background-color: rgba(124, 58, 237, 0.25);
-    color: #e5e7eb;
+.nebula-clock {
+    spacing: 2px;
+    padding-bottom: 4px;
 }
 
-.nebula-rail-btn:focus {
-    background-color: rgba(34, 211, 238, 0.18);
+.nebula-date {
+    font-size: 8.5pt;
+    color: #9ca3af;
 }
 
-.nebula-rail-btn-active {
-    background-color: rgba(124, 58, 237, 0.45);
+.nebula-time {
+    font-size: 26pt;
+    font-weight: 300;
+    color: #f9fafb;
+}
+
+.nebula-section {
+    font-size: 7.5pt;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.nebula-cat-list {
+    spacing: 1px;
+}
+
+.nebula-cat {
+    border-radius: 8px;
+    padding: 7px 8px;
+    transition-duration: 110ms;
+}
+
+.nebula-cat-row {
+    spacing: 12px;
+}
+
+.nebula-cat-icon {
+    color: #9ca3af;
+}
+
+.nebula-cat-label {
+    font-size: 10.5pt;
+    color: #d1d5db;
+}
+
+.nebula-cat:hover {
+    background-color: rgba(124, 58, 237, 0.20);
+}
+
+.nebula-cat:hover .nebula-cat-icon,
+.nebula-cat:hover .nebula-cat-label {
+    color: #f3f4f6;
+}
+
+.nebula-cat:focus {
+    background-color: rgba(34, 211, 238, 0.16);
+}
+
+.nebula-cat-active {
+    background-color: rgba(124, 58, 237, 0.38);
+}
+
+.nebula-cat-active .nebula-cat-icon {
+    color: #e879f9;
+}
+
+.nebula-cat-active .nebula-cat-label {
     color: #ffffff;
 }
 
-.nebula-rail-empty {
+.nebula-cat-empty {
+    font-size: 9pt;
     color: #f59e0b;
-    margin-top: 10px;
+    padding: 6px 8px;
 }
+
+.nebula-power {
+    spacing: 8px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(124, 58, 237, 0.30);
+}
+
+.nebula-power-btn {
+    color: #9ca3af;
+    padding: 8px 14px;
+    border-radius: 8px;
+    transition-duration: 110ms;
+}
+
+.nebula-power-btn:hover {
+    background-color: rgba(124, 58, 237, 0.28);
+    color: #f3f4f6;
+}
+
+/* ---- Drawer de apps de una categoria -------------------------------- */
 
 .nebula-drawer {
     background-color: rgba(10, 10, 20, 0.97);
     border-right: 1px solid #22d3ee;
     box-shadow: 2px 0 16px 0 rgba(0, 0, 0, 0.55);
-    padding: 12px 10px;
+    padding: 14px 12px;
     spacing: 2px;
+    font-family: "Inter", "Cantarell", sans-serif;
 }
 
 .nebula-drawer-header {
