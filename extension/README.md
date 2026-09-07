@@ -10,8 +10,8 @@ audio, Bluetooth, discos, sesión). Si funciona, se planifica la migración.
 
 ## Qué hace (y qué no)
 
-Estado: **incremento 1 de la migración** (sidebar completa). Ver el plan de
-incrementos en la memoria del proyecto / los commits `feat(extension): ...`.
+Estado: **incrementos 1 y 2 de la migración**. Ver el plan de incrementos en la
+memoria del proyecto / los commits `feat(extension): ...`.
 
 Hace:
 
@@ -20,21 +20,24 @@ Hace:
   debajo. Contenido:
   - cabecera: marca (`brand-mark.png`) + "NEBULA OS" + "cosmic minimalism";
   - reloj en vivo (fecha en español + hora grande);
-  - lista de categorías (icono de línea simbólico + nombre); clic → drawer con
-    las apps de esa categoría;
+  - lista de las 12 categorías (icono de línea simbólico + nombre); clic → abre
+    el lanzador filtrado a esa categoría;
   - fila al pie: apagar (`gnome-session-quit --power-off`) · bloquear
     (`loginctl lock-session`) · reiniciar (`gnome-session-quit --reboot`).
-- **Drawer** desplegable encima de la sidebar (no reserva espacio → las ventanas
-  no se reacomodan) con las apps de la categoría elegida; se cierra al lanzar una
-  app, con `Super+B`, o al sacar el puntero del conjunto.
+- **Lanzador con búsqueda** (`launcher.js`), panel flotante a la derecha de la
+  sidebar (no reserva espacio): campo "Buscar aplicaciones..." + lista de apps
+  (icono + nombre + descripción). Clic en categoría → filtrado a esa categoría;
+  escribir → filtra sobre todas las apps; `Enter` lanza la primera; `Esc` /
+  perder foco / `Super+B` cierra. La descripción sale de `Gio.AppInfo` cuando se
+  puede resolver el `exec`.
 - Lee `categories.json` (generado desde `dotfiles/nebula/categories.toml`),
   oculta apps no instaladas y categorías vacías, lanza al clic.
 - Estética Cosmic Dark en sus propios widgets (`stylesheet.css`).
 
-No hace todavía (incrementos siguientes): meters del sistema en la sidebar (2),
-lanzador con búsqueda que reemplaza al drawer (3), barra inferior con escritorios
-+ MPRIS + indicadores (5), wallpaper / tema GTK / iconos (6), stage de instalador
-(7). Nunca: restyle del resto del Shell salvo que se decida un *shell theme*.
+No hace todavía (incrementos siguientes): meters del sistema en la sidebar (3),
+barra inferior con escritorios + MPRIS + indicadores (5), wallpaper / tema GTK /
+iconos (6), stage de instalador (7). Nunca: restyle del resto del Shell salvo que
+se decida un *shell theme*.
 
 ## Archivos
 
@@ -42,8 +45,9 @@ lanzador con búsqueda que reemplaza al drawer (3), barra inferior con escritori
 |---|---|
 | `nebula-shell@nebula-os/metadata.json` | UUID, `shell-version: ["46"]`, schema de settings |
 | `nebula-shell@nebula-os/extension.js` | `enable()` / `disable()` — solo instancia y destruye el sidebar |
-| `nebula-shell@nebula-os/sidebar.js` | Sidebar ancha (cabecera + reloj + categorías + energía) + drawer + struts + atajo + ciclo de vida |
-| `nebula-shell@nebula-os/model.js` | Carga `categories.json`, detección `GLib.find_program_in_path`, lanzamiento, iconos (PNG propio + simbólico por categoría) |
+| `nebula-shell@nebula-os/sidebar.js` | Sidebar ancha (cabecera + reloj + categorías + energía) + struts + atajo + ciclo de vida |
+| `nebula-shell@nebula-os/launcher.js` | Panel "Buscar aplicaciones...": búsqueda + lista plana icono/nombre/descripción |
+| `nebula-shell@nebula-os/model.js` | Carga `categories.json`, detección `GLib.find_program_in_path`, lanzamiento, iconos + descripciones (`Gio.AppInfo`), `flatApps`/`filterApps` |
 | `nebula-shell@nebula-os/stylesheet.css` | Paleta Cosmic Dark, scopeada a `.nebula-*` |
 | `nebula-shell@nebula-os/schemas/*.gschema.xml` | Tecla `toggle-sidebar` (`<Super>b`) |
 | `nebula-shell@nebula-os/categories.json` | **generado** por `build.sh` (no editar a mano) |
@@ -75,15 +79,17 @@ gnome-extensions disable nebula-shell@nebula-os
 rm ~/.local/share/gnome-shell/extensions/nebula-shell@nebula-os
 ```
 
-## Checklist (incremento 1)
+## Checklist (incrementos 1-2)
 
 En una sesión GNOME normal:
 
 - [ ] la sidebar se ve con la estética Cosmic Dark, borde izquierdo, altura completa;
 - [ ] cabecera (marca + textos) y reloj en vivo (fecha en español + hora) correctos;
-- [ ] las categorías listan **solo** apps instaladas; ninguna categoría vacía;
-- [ ] clic en una categoría abre el drawer; clic en una app la lanza y el drawer se cierra;
-- [ ] `Super+B` abre/cierra el drawer sin parpadeos;
+- [ ] las 12 categorías se listan; cada una muestra **solo** apps instaladas;
+- [ ] clic en una categoría abre el lanzador filtrado a esa categoría;
+- [ ] escribir en "Buscar aplicaciones..." filtra sobre todas las apps; `Enter` lanza la primera;
+- [ ] clic en una fila lanza la app y el lanzador se cierra;
+- [ ] `Super+B` abre (todas las apps) / cierra el lanzador; `Esc` lo cierra;
 - [ ] los 3 botones del pie: apagar y reiniciar muestran el diálogo de GNOME; bloquear bloquea;
 - [ ] una ventana maximizada respeta el ancho de la sidebar (no queda debajo);
 - [ ] red, audio, Bluetooth, discos, notificaciones y bloqueo siguen 100% normales;

@@ -1,5 +1,5 @@
-// Nebula Shell - la sidebar (incremento 1 de la migracion): panel ancho
-// PERMANENTE en el borde izquierdo, con la identidad de Nebula.
+// Nebula Shell - la sidebar: panel ancho PERMANENTE en el borde izquierdo con
+// la identidad de Nebula (imagen objetivo).
 //
 //   +----------------------+
 //   | (o) NEBULA OS        |   cabecera: marca + tagline
@@ -9,10 +9,10 @@
 //   | 21:37                |
 //   |                      |
 //   | CATEGORIAS           |
-//   |  > Terminales        |   lista de categorias (icono de linea + nombre)
-//   |  > Navegadores       |   clic -> abre el drawer con las apps de esa
-//   |  > Desarrollo        |   categoria (mecanismo del prototipo; el
-//   |  ...                 |   lanzador con busqueda llega en el incremento 2)
+//   |  > Favoritos         |   lista de categorias (icono de linea + nombre);
+//   |  > Terminales        |   clic -> abre el lanzador (launcher.js) filtrado
+//   |  > Navegadores       |   a esa categoria
+//   |  ...                 |
 //   |                      |
 //   |  [power][lock][reboot]|  al pie
 //   +----------------------+
@@ -20,8 +20,8 @@
 // Reserva su ancho via struts -> las ventanas maximizadas no quedan debajo.
 // GNOME Shell 46 / GJS 1.80. Sin polling, sin dependencias externas.
 //
-// Fuera de este incremento: meters del sistema (SISTEMA), lanzador con
-// busqueda, barra inferior. Van en incrementos 2/3/5.
+// Incrementos siguientes: meters del sistema (SISTEMA) en la sidebar (3),
+// barra inferior (5), wallpaper/tema (6), stage de instalador (7).
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -32,13 +32,11 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {buildModel, launch, invalidateIconCache} from './model.js';
+import {buildModel, invalidateIconCache} from './model.js';
+import {NebulaLauncher} from './launcher.js';
 
 const SIDEBAR_WIDTH = 236;    // px reservados al escritorio (struts)
-const DRAWER_WIDTH = 300;     // panel de apps de la categoria (overlay, sin struts)
 const CAT_ICON = 16;
-const APP_ICON = 20;
-const AUTOHIDE_MS = 350;
 const CLOCK_TICK_S = 15;
 const REPOPULATE_DEBOUNCE_MS = 1500;
 
@@ -60,13 +58,19 @@ export class NebulaSidebar {
         this._activeIndex = -1;
         this._catButtons = [];
 
+        this._launcher = new NebulaLauncher(extension, SIDEBAR_WIDTH,
+            () => this._clearActive());
+
         this._buildActors();
         this._place();
         this._populate();
         this._startClock();
         this._addKeybinding();
 
-        this._connect(Main.layoutManager, 'monitors-changed', () => this._place());
+        this._connect(Main.layoutManager, 'monitors-changed', () => {
+            this._place();
+            this._launcher.relayoutIfVisible();
+        });
         this._connect(Shell.AppSystem.get_default(), 'installed-changed', () =>
             this._scheduleRepopulate());
     }
@@ -78,32 +82,13 @@ export class NebulaSidebar {
             vertical: true,
             style_class: 'nebula-sidebar',
             reactive: true,
-            track_hover: true,
             width: SIDEBAR_WIDTH,
         });
-
-        this._drawer = new St.BoxLayout({
-            vertical: true,
-            style_class: 'nebula-drawer',
-            reactive: true,
-            track_hover: true,
-            width: DRAWER_WIDTH,
-            visible: false,
-        });
-
         Main.layoutManager.addChrome(this._sidebar, {
             affectsStruts: true,
             affectsInputRegion: true,
             trackFullscreen: true,
         });
-        Main.layoutManager.addChrome(this._drawer, {
-            affectsStruts: false,
-            affectsInputRegion: true,
-            trackFullscreen: true,
-        });
-
-        this._connect(this._sidebar, 'notify::hover', () => this._scheduleAutohide());
-        this._connect(this._drawer, 'notify::hover', () => this._scheduleAutohide());
     }
 
     _place() {
@@ -112,8 +97,6 @@ export class NebulaSidebar {
             return;
         this._sidebar.set_position(m.x, m.y);
         this._sidebar.set_height(m.height);
-        this._drawer.set_position(m.x + SIDEBAR_WIDTH, m.y);
-        this._drawer.set_height(m.height);
     }
 
     // --- contenido de la sidebar -------------------------------------
@@ -122,6 +105,7 @@ export class NebulaSidebar {
         this._sidebar.destroy_all_children();
         this._catButtons = [];
         this._model = buildModel(this._ext.path);
+        this._launcher.setModel(this._model);
 
         this._sidebar.add_child(this._buildHead());
         this._sidebar.add_child(this._buildClock());
@@ -147,7 +131,7 @@ export class NebulaSidebar {
                 style_class: 'nebula-cat-label',
             }));
             btn.set_child(row);
-            this._connect(btn, 'clicked', () => this._toggleCategory(i));
+            this._connect(btn, 'clicked', () => this._onCategory(i));
             list.add_child(btn);
             this._catButtons.push(btn);
         });
@@ -161,11 +145,6 @@ export class NebulaSidebar {
 
         this._sidebar.add_child(new St.Widget({y_expand: true}));  // empuja el pie
         this._sidebar.add_child(this._buildPowerRow());
-
-        if (this._activeIndex >= this._model.length)
-            this._hideDrawer();
-        else if (this._drawer.visible && this._activeIndex >= 0)
-            this._renderDrawer(this._activeIndex);
     }
 
     _buildHead() {
@@ -244,82 +223,35 @@ export class NebulaSidebar {
         }));
     }
 
-    // --- drawer de apps de una categoria --------------------------
+    // --- categorias / lanzador -----------------------------------
 
-    _renderDrawer(index) {
-        this._drawer.destroy_all_children();
-        const cat = this._model[index];
-        if (!cat)
+    _onCategory(index) {
+        if (this._launcher.visible && this._activeIndex === index) {
+            this._launcher.close();
             return;
-
-        const header = new St.BoxLayout({style_class: 'nebula-drawer-header'});
-        header.add_child(new St.Icon({gicon: cat.icono, icon_size: APP_ICON + 4}));
-        header.add_child(new St.Label({
-            text: cat.nombre,
-            y_align: Clutter.ActorAlign.CENTER,
-            style_class: 'nebula-drawer-title',
-        }));
-        this._drawer.add_child(header);
-
-        for (const app of cat.apps) {
-            const rowBtn = new St.Button({
-                style_class: 'nebula-app',
-                can_focus: true,
-                x_expand: true,
-            });
-            const box = new St.BoxLayout({style_class: 'nebula-app-box'});
-            box.add_child(new St.Icon({gicon: app.icono, icon_size: APP_ICON}));
-            box.add_child(new St.Label({
-                text: app.nombre,
-                y_align: Clutter.ActorAlign.CENTER,
-                style_class: 'nebula-app-label',
-            }));
-            rowBtn.set_child(box);
-            this._connect(rowBtn, 'clicked', () => {
-                launch(app.exec);
-                this._hideDrawer();
-            });
-            this._drawer.add_child(rowBtn);
         }
+        this._setActive(index);
+        this._launcher.open(index);
     }
 
-    _toggleCategory(index) {
-        if (this._drawer.visible && this._activeIndex === index)
-            this._hideDrawer();
+    _onToggleShortcut() {
+        if (this._launcher.visible)
+            this._launcher.close();
         else
-            this._showCategory(index);
+            this._launcher.open(-1);   // todas las apps
     }
 
-    _showCategory(index) {
-        if (index < 0 || index >= this._model.length)
-            return;
+    _setActive(index) {
         this._activeIndex = index;
-        this._renderDrawer(index);
-        this._drawer.show();
         this._catButtons.forEach((b, i) =>
             b.set_style_class_name(i === index
                 ? 'nebula-cat nebula-cat-active'
                 : 'nebula-cat'));
     }
 
-    _hideDrawer() {
-        this._drawer.hide();
+    _clearActive() {
         this._activeIndex = -1;
         this._catButtons.forEach(b => b.set_style_class_name('nebula-cat'));
-    }
-
-    _onToggleShortcut() {
-        if (this._drawer.visible)
-            this._hideDrawer();
-        else
-            this._showCategory(0);
-    }
-
-    _scheduleAutohide() {
-        this._addTimeout(AUTOHIDE_MS, () => {
-            if (!this._sidebar?.hover && !this._drawer?.hover && this._drawer?.visible)
-                this._hideDrawer();
-        });
     }
 
     _scheduleRepopulate() {
@@ -382,15 +314,13 @@ export class NebulaSidebar {
 
         this._removeKeybinding();
 
+        this._launcher?.destroy();
+        this._launcher = null;
+
         if (this._sidebar) {
             Main.layoutManager.removeChrome(this._sidebar);
             this._sidebar.destroy();
             this._sidebar = null;
-        }
-        if (this._drawer) {
-            Main.layoutManager.removeChrome(this._drawer);
-            this._drawer.destroy();
-            this._drawer = null;
         }
         this._catButtons = [];
         this._model = [];

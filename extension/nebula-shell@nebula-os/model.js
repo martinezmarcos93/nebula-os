@@ -80,35 +80,47 @@ export function launch(exec) {
 
 // --- Iconos --------------------------------------------------------------
 
-let _execIconCache = null;
+let _execInfoCache = null;
 
-/** Mapa {basename-del-ejecutable -> GIcon} a partir de Gio.AppInfo (lazy, 1 vez). */
-function execIconMap() {
-    if (_execIconCache)
-        return _execIconCache;
-    _execIconCache = new Map();
+/**
+ * Mapa {basename-del-ejecutable -> {icon, desc}} a partir de Gio.AppInfo
+ * (lazy, una vez). Sirve para dar icono tematico y descripcion a las entradas
+ * del .toml, que solo traen nombre + linea de comando.
+ */
+function execInfoMap() {
+    if (_execInfoCache)
+        return _execInfoCache;
+    _execInfoCache = new Map();
     for (const info of Gio.AppInfo.get_all()) {
         const exe = info.get_executable();
-        const icon = info.get_icon?.();
-        if (exe && icon) {
-            const base = exe.split('/').pop();
-            if (base && !_execIconCache.has(base))
-                _execIconCache.set(base, icon);
-        }
+        if (!exe)
+            continue;
+        const base = exe.split('/').pop();
+        if (!base || _execInfoCache.has(base))
+            continue;
+        _execInfoCache.set(base, {
+            icon: info.get_icon?.() ?? null,
+            desc: info.get_description?.() || info.get_generic_name?.() || '',
+        });
     }
-    return _execIconCache;
+    return _execInfoCache;
 }
 
 export function invalidateIconCache() {
-    _execIconCache = null;
+    _execInfoCache = null;
 }
 
 /** GIcon para una app: 1) icono tematico via AppInfo, 2) fallback simbolico. */
 export function iconForApp(app) {
-    const themed = execIconMap().get(firstToken(app.exec));
-    if (themed)
-        return themed;
+    const hit = execInfoMap().get(firstToken(app.exec));
+    if (hit?.icon)
+        return hit.icon;
     return new Gio.ThemedIcon({name: 'application-x-executable-symbolic'});
+}
+
+/** Descripcion corta para una app (AppInfo), o '' si no hay. */
+export function descForApp(app) {
+    return execInfoMap().get(firstToken(app.exec))?.desc ?? '';
 }
 
 /** Slug de un nombre de categoria -> nombre de PNG en icons/ ("IA Local" -> "ia-local"). */
@@ -168,6 +180,8 @@ export function buildModel(extensionPath) {
                 nombre: a.nombre ?? firstToken(a.exec),
                 exec: a.exec,
                 icono: iconForApp(a),
+                desc: a.desc ?? descForApp(a),
+                categoria: cat.nombre ?? '?',
             }));
         if (apps.length === 0)
             continue;
@@ -179,4 +193,30 @@ export function buildModel(extensionPath) {
         });
     }
     return out;
+}
+
+/** Lista plana de apps de todo el modelo, deduplicada por `exec`. */
+export function flatApps(model) {
+    const seen = new Set();
+    const out = [];
+    for (const cat of model) {
+        for (const app of cat.apps) {
+            if (seen.has(app.exec))
+                continue;
+            seen.add(app.exec);
+            out.push(app);
+        }
+    }
+    return out;
+}
+
+/** Filtra una lista de apps por texto (nombre + descripcion + categoria). */
+export function filterApps(apps, query) {
+    const q = (query ?? '').trim().toLowerCase();
+    if (!q)
+        return apps;
+    return apps.filter(a =>
+        a.nombre.toLowerCase().includes(q) ||
+        (a.desc ?? '').toLowerCase().includes(q) ||
+        (a.categoria ?? '').toLowerCase().includes(q));
 }

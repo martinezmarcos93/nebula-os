@@ -135,49 +135,69 @@
     color: #f3f4f6;
 }
 
-/* ---- Drawer de apps de una categoria -------------------------------- */
+/* ---- Lanzador con busqueda ("Buscar aplicaciones...") --------------- */
 
-.nebula-drawer {
-    background-color: rgba(10, 10, 20, 0.97);
-    border-right: 1px solid #22d3ee;
-    box-shadow: 2px 0 16px 0 rgba(0, 0, 0, 0.55);
-    padding: 14px 12px;
-    spacing: 2px;
+.nebula-launcher {
+    background-color: rgba(12, 12, 22, 0.98);
+    border: 1px solid rgba(124, 58, 237, 0.55);
+    border-radius: 14px;
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.60);
+    padding: 14px;
+    spacing: 12px;
     font-family: "Inter", "Cantarell", sans-serif;
 }
 
-.nebula-drawer-header {
-    spacing: 8px;
-    padding: 4px 6px 10px 6px;
-    border-bottom: 1px solid rgba(124, 58, 237, 0.35);
-    margin-bottom: 6px;
+.nebula-search {
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(124, 58, 237, 0.35);
+    border-radius: 10px;
+    padding: 9px 12px;
+    color: #f3f4f6;
+    font-size: 11pt;
 }
 
-.nebula-drawer-title {
-    color: #22d3ee;
-    font-weight: 700;
-    font-size: 13pt;
+.nebula-search:focus {
+    border-color: #22d3ee;
+    background-color: rgba(255, 255, 255, 0.09);
 }
 
-.nebula-app {
-    border-radius: 8px;
-    padding: 7px 8px;
+.nebula-search StLabel.hint-text {
+    color: #6b7280;
+}
+
+.nebula-results {
+    spacing: 2px;
+    padding-right: 4px;
+}
+
+.nebula-result {
+    border-radius: 10px;
+    padding: 8px 10px;
     transition-duration: 100ms;
 }
 
-.nebula-app:hover {
-    background-color: rgba(124, 58, 237, 0.28);
+.nebula-result:hover,
+.nebula-result:focus {
+    background-color: rgba(124, 58, 237, 0.32);
 }
 
-.nebula-app:focus {
-    background-color: rgba(34, 211, 238, 0.20);
+.nebula-result-box {
+    spacing: 12px;
 }
 
-.nebula-app-box {
-    spacing: 10px;
-}
-
-.nebula-app-label {
-    color: #e5e7eb;
+.nebula-result-name {
+    color: #f3f4f6;
     font-size: 11pt;
+    font-weight: 600;
+}
+
+.nebula-result-desc {
+    color: #9ca3af;
+    font-size: 8.5pt;
+}
+
+.nebula-result-empty {
+    color: #9ca3af;
+    font-size: 10pt;
+    padding: 12px 10px;
 }
