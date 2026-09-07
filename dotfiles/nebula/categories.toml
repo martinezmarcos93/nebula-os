@@ -1,25 +1,99 @@
 # dotfiles/nebula/categories.toml
 # ---------------------------------------------------------------------------
-# Fuente UNICA de datos del sidebar de eww y del lanzador rofi.
-# El generador `nebula-gen-panel` produce, a partir de este archivo:
-#   - la seccion de categorias del sidebar eww (dotfiles/eww/eww.yuck)
-#   - el menu rofi por categoria (nebula-gen-panel --menu)
+# Fuente UNICA de datos del panel de Nebula. La consumen:
+#   - la extension de GNOME Shell (extension/, via extension/build.sh que
+#     convierte este .toml a categories.json)
+#   - el sidebar de eww + el menu rofi de la sesion bspwm (fallback), via el
+#     generador `nebula-gen-panel`
 #
 # Cada categoria lista TODOS los programas tipicos de esa funcion (varios
-# navegadores, varios editores, etc.). El generador filtra por `command -v` del
-# primer token de `exec`:
-#   - instalado  -> fila normal, con :onclick
+# navegadores, varios editores, etc.). Se filtra por `command -v` del primer
+# token de `exec`:
+#   - instalado  -> se lista
 #   - ausente    -> NO se lista
 #   - categoria sin ninguna app instalada -> no se dibuja
 # Los `nebula-*` se asumen siempre disponibles (los instala 50-funciones.sh).
 #
-# polybar (fallback degradado si eww no compila, ver docs/DESIGN.md E1) NO lee
-# este archivo.
+# Orden y nombres alineados con la imagen objetivo (12 categorias). "Favoritos"
+# es provisional (sera una lista de pins del usuario) y "Configuracion" abre los
+# ajustes del sistema.
 #
-# Tras editar:  nebula-gen-panel     (o el atajo Super+Shift+C)
-# `icono` es un token corto para uso futuro; hoy el generador no lo usa.
+# Tras editar:
+#   - extension:  bash extension/build.sh        (regenera categories.json)
+#   - bspwm:      nebula-gen-panel               (o Super+Shift+C)
+# `icono` es un token corto para uso futuro; los generadores no lo usan.
 # Ver docs/DESIGN.md, seccion 6.
 # ---------------------------------------------------------------------------
+
+[[categoria]]
+nombre = "Favoritos"
+icono  = "star"
+
+[[categoria.app]]
+nombre = "Terminal"
+exec   = "alacritty"
+icono  = "terminal"
+
+[[categoria.app]]
+nombre = "Navegador web"
+exec   = "librewolf"
+icono  = "browser"
+
+[[categoria.app]]
+nombre = "Firefox"
+exec   = "firefox"
+icono  = "firefox"
+
+[[categoria.app]]
+nombre = "Archivos"
+exec   = "nautilus --new-window"
+icono  = "folder"
+
+[[categoria.app]]
+nombre = "Configuracion del sistema"
+exec   = "gnome-control-center"
+icono  = "settings"
+
+
+[[categoria]]
+nombre = "Terminales"
+icono  = "terminal"
+
+[[categoria.app]]
+nombre = "Alacritty"
+exec   = "alacritty"
+icono  = "terminal"
+
+[[categoria.app]]
+nombre = "Kitty"
+exec   = "kitty"
+icono  = "terminal"
+
+[[categoria.app]]
+nombre = "WezTerm"
+exec   = "wezterm"
+icono  = "terminal"
+
+[[categoria.app]]
+nombre = "GNOME Terminal"
+exec   = "gnome-terminal"
+icono  = "terminal"
+
+[[categoria.app]]
+nombre = "Tilix"
+exec   = "tilix"
+icono  = "terminal"
+
+[[categoria.app]]
+nombre = "Konsole"
+exec   = "konsole"
+icono  = "terminal"
+
+[[categoria.app]]
+nombre = "xterm"
+exec   = "xterm"
+icono  = "terminal"
+
 
 [[categoria]]
 nombre = "Navegadores"
@@ -29,6 +103,11 @@ icono  = "globe"
 nombre = "Firefox"
 exec   = "firefox"
 icono  = "firefox"
+
+[[categoria.app]]
+nombre = "LibreWolf"
+exec   = "librewolf"
+icono  = "librewolf"
 
 [[categoria.app]]
 nombre = "Google Chrome"
@@ -87,76 +166,6 @@ icono  = "database"
 
 
 [[categoria]]
-nombre = "Ofimatica"
-icono  = "document"
-
-[[categoria.app]]
-nombre = "LibreOffice"
-exec   = "libreoffice"
-icono  = "office"
-
-[[categoria.app]]
-nombre = "Writer"
-exec   = "libreoffice --writer"
-icono  = "writer"
-
-[[categoria.app]]
-nombre = "Calc"
-exec   = "libreoffice --calc"
-icono  = "calc"
-
-[[categoria.app]]
-nombre = "Impress"
-exec   = "libreoffice --impress"
-icono  = "impress"
-
-[[categoria.app]]
-nombre = "Visor de PDF"
-exec   = "evince"
-icono  = "pdf"
-
-[[categoria.app]]
-nombre = "Notas (Obsidian)"
-exec   = "obsidian"
-icono  = "notes"
-
-
-[[categoria]]
-nombre = "Graficos"
-icono  = "image"
-
-[[categoria.app]]
-nombre = "GIMP"
-exec   = "gimp"
-icono  = "gimp"
-
-[[categoria.app]]
-nombre = "Krita"
-exec   = "krita"
-icono  = "krita"
-
-[[categoria.app]]
-nombre = "Inkscape"
-exec   = "inkscape"
-icono  = "vector"
-
-[[categoria.app]]
-nombre = "Darktable"
-exec   = "darktable"
-icono  = "camera"
-
-[[categoria.app]]
-nombre = "Blender"
-exec   = "blender"
-icono  = "blender"
-
-[[categoria.app]]
-nombre = "Visor de imagenes"
-exec   = "nsxiv -t ."
-icono  = "eye"
-
-
-[[categoria]]
 nombre = "Multimedia"
 icono  = "play"
 
@@ -197,7 +206,102 @@ icono  = "tv"
 
 
 [[categoria]]
-nombre = "Juegos"
+nombre = "Graficos"
+icono  = "image"
+
+[[categoria.app]]
+nombre = "GIMP"
+exec   = "gimp"
+icono  = "gimp"
+
+[[categoria.app]]
+nombre = "Krita"
+exec   = "krita"
+icono  = "krita"
+
+[[categoria.app]]
+nombre = "Inkscape"
+exec   = "inkscape"
+icono  = "vector"
+
+[[categoria.app]]
+nombre = "Darktable"
+exec   = "darktable"
+icono  = "camera"
+
+[[categoria.app]]
+nombre = "Blender"
+exec   = "blender"
+icono  = "blender"
+
+[[categoria.app]]
+nombre = "Visor de imagenes"
+exec   = "nsxiv -t ."
+icono  = "eye"
+
+
+[[categoria]]
+nombre = "Ofimatica"
+icono  = "document"
+
+[[categoria.app]]
+nombre = "LibreOffice"
+exec   = "libreoffice"
+icono  = "office"
+
+[[categoria.app]]
+nombre = "Writer"
+exec   = "libreoffice --writer"
+icono  = "writer"
+
+[[categoria.app]]
+nombre = "Calc"
+exec   = "libreoffice --calc"
+icono  = "calc"
+
+[[categoria.app]]
+nombre = "Impress"
+exec   = "libreoffice --impress"
+icono  = "impress"
+
+[[categoria.app]]
+nombre = "Visor de PDF"
+exec   = "evince"
+icono  = "pdf"
+
+[[categoria.app]]
+nombre = "Notas (Obsidian)"
+exec   = "obsidian"
+icono  = "notes"
+
+
+[[categoria]]
+nombre = "IA Local"
+icono  = "brain"
+
+[[categoria.app]]
+nombre = "Iniciar Ollama"
+exec   = "nebula-ai-chat --serve"
+icono  = "server"
+
+[[categoria.app]]
+nombre = "Chat con modelo"
+exec   = "nebula-ai-chat"
+icono  = "message"
+
+[[categoria.app]]
+nombre = "Descargar modelo"
+exec   = "nebula-ai-chat --pull"
+icono  = "download"
+
+[[categoria.app]]
+nombre = "Estado GPU"
+exec   = "alacritty -e watch -n2 nvidia-smi"
+icono  = "gpu"
+
+
+[[categoria]]
+nombre = "Gaming"
 icono  = "gamepad"
 
 [[categoria.app]]
@@ -216,6 +320,16 @@ exec   = "heroic"
 icono  = "heroic"
 
 [[categoria.app]]
+nombre = "RetroArch"
+exec   = "retroarch"
+icono  = "retroarch"
+
+[[categoria.app]]
+nombre = "PrismLauncher"
+exec   = "prismlauncher"
+icono  = "minecraft"
+
+[[categoria.app]]
 nombre = "Modo Juego"
 exec   = "nebula-game-mode"
 icono  = "rocket"
@@ -231,8 +345,18 @@ exec   = "nautilus --new-window"
 icono  = "folder"
 
 [[categoria.app]]
+nombre = "Archivos (Thunar)"
+exec   = "thunar"
+icono  = "folder"
+
+[[categoria.app]]
 nombre = "Monitor de recursos"
 exec   = "alacritty -e btop"
+icono  = "activity"
+
+[[categoria.app]]
+nombre = "Monitor del sistema"
+exec   = "gnome-system-monitor"
 icono  = "activity"
 
 [[categoria.app]]
@@ -262,25 +386,70 @@ icono  = "power"
 
 
 [[categoria]]
-nombre = "IA Local"
-icono  = "brain"
+nombre = "Herramientas"
+icono  = "wrench"
 
 [[categoria.app]]
-nombre = "Iniciar Ollama"
-exec   = "nebula-ai-chat --serve"
-icono  = "server"
+nombre = "Gestor de archivos comprimidos"
+exec   = "file-roller"
+icono  = "archive"
 
 [[categoria.app]]
-nombre = "Chat con modelo"
-exec   = "nebula-ai-chat"
-icono  = "message"
+nombre = "Editor de particiones"
+exec   = "gparted"
+icono  = "disk"
 
 [[categoria.app]]
-nombre = "Descargar modelo"
-exec   = "nebula-ai-chat --pull"
-icono  = "download"
+nombre = "Uso de disco"
+exec   = "baobab"
+icono  = "chart"
 
 [[categoria.app]]
-nombre = "Estado GPU"
-exec   = "alacritty -e watch -n2 nvidia-smi"
-icono  = "gpu"
+nombre = "Ajustes avanzados"
+exec   = "gnome-tweaks"
+icono  = "tweaks"
+
+[[categoria.app]]
+nombre = "Editor de dconf"
+exec   = "dconf-editor"
+icono  = "settings"
+
+[[categoria.app]]
+nombre = "Contrasenas y claves"
+exec   = "seahorse"
+icono  = "key"
+
+[[categoria.app]]
+nombre = "Copias de seguridad"
+exec   = "timeshift-gtk"
+icono  = "backup"
+
+[[categoria.app]]
+nombre = "Tienda de software"
+exec   = "gnome-software"
+icono  = "store"
+
+[[categoria.app]]
+nombre = "Synaptic"
+exec   = "synaptic-pkexec"
+icono  = "package"
+
+
+[[categoria]]
+nombre = "Configuracion"
+icono  = "settings"
+
+[[categoria.app]]
+nombre = "Configuracion del sistema"
+exec   = "gnome-control-center"
+icono  = "settings"
+
+[[categoria.app]]
+nombre = "Ajustes avanzados"
+exec   = "gnome-tweaks"
+icono  = "tweaks"
+
+[[categoria.app]]
+nombre = "Impresoras"
+exec   = "system-config-printer"
+icono  = "printer"
