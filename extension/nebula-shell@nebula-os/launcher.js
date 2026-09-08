@@ -12,6 +12,7 @@
 // No reserva espacio (sin struts): las ventanas no se reacomodan.
 
 import Clutter from 'gi://Clutter';
+import Meta from 'gi://Meta';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -39,6 +40,7 @@ export class NebulaLauncher {
         this._stageCaptureId = 0;
         this._isOpen = false;   // estado explicito: NO depender de this._panel.visible
         this._lastMonitorLabel = 'n/a';
+        this._unredirectHeld = false;
 
         this._build();
     }
@@ -170,6 +172,7 @@ export class NebulaLauncher {
             `visible=${this._panel?.visible}`
         );
         this._removeStageCapture();
+        this._releaseUnredirect();
         const wasOpen = this._isOpen;
         // El estado logico se sincroniza SIEMPRE, pase lo que pase con el actor.
         this._isOpen = false;
@@ -191,12 +194,33 @@ export class NebulaLauncher {
                 trackFullscreen: true,
             });
         }
+        this._holdUnredirect();
         this._panel.show();
         this._panel.opacity = 255;
         this._panel.reactive = true;
         const parent = this._panel.get_parent();
         if (parent)
             parent.set_child_above_sibling(this._panel, null);   // raise_top() fue removido en GNOME 46
+    }
+
+    // Mientras el panel esta abierto, impedir que mutter haga "unredirect" de una
+    // ventana a pantalla completa. Al minimizar la ultima ventana del espacio de
+    // trabajo, la ventana de escritorio de Ubuntu (ding) pasa a ser la de mas
+    // arriba y se escanea directo, salteando el compositor -> tapa TODO el chrome
+    // del Shell y el panel quedaba mapeado y bien posicionado pero sin pintarse.
+    // Las llamadas de Meta llevan refcount: hay que balancear disable/enable.
+    _holdUnredirect() {
+        if (this._unredirectHeld)
+            return;
+        Meta.disable_unredirect_for_display(global.display);
+        this._unredirectHeld = true;
+    }
+
+    _releaseUnredirect() {
+        if (!this._unredirectHeld)
+            return;
+        Meta.enable_unredirect_for_display(global.display);
+        this._unredirectHeld = false;
     }
 
     // Cierra al hacer clic fuera del panel (y fuera de la sidebar) o con Esc,
@@ -337,6 +361,7 @@ export class NebulaLauncher {
     destroy() {
         this._isOpen = false;
         this._removeStageCapture();
+        this._releaseUnredirect();
         for (const [target, id] of this._signalIds)
             target.disconnect(id);
         this._signalIds = [];
