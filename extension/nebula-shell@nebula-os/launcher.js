@@ -315,7 +315,11 @@ export class NebulaLauncher {
             }
             box.add_child(txt);
             btn.set_child(box);
-            this._connect(btn, 'clicked', () => {
+            // La conexion pertenece al ciclo de vida del boton: cuando
+            // _rebuild() hace destroy_all_children() (o el panel se destruye),
+            // GObject la desconecta sola. NO va a this._signalIds, que queda
+            // reservado para conexiones que viven tanto como el NebulaLauncher.
+            btn.connect('clicked', () => {
                 launch(app.exec);
                 this.close('app-launch');
             });
