@@ -336,14 +336,18 @@ export class NebulaSidebar {
                 this._setActive(index);
             return;
         }
-        // Resaltado de la sidebar y estado del launcher se manejan por separado
-        // (dos sistemas a depurar de forma independiente por ahora).
-        if (this._launcher.visible && this._activeIndex === index) {
-            this._launcher.close('category-toggle');
-            return;
-        }
-        this._setActive(index);
-        this._launcher.open(index);
+        // UNICA puerta de entrada al estado del launcher. toggle() decide la
+        // transicion:
+        //   cerrado           -> open(index)
+        //   abierto en index  -> close()
+        //   abierto en otro   -> switch(index) sin cerrar ni reconstruir de cero
+        this._launcher.toggle(index);
+        // El resaltado de la sidebar se DERIVA del launcher (su fuente de
+        // verdad: _filterIndex), no se decide por separado aca.
+        if (this._launcher.visible)
+            this._setActive(this._launcher.filterIndex);
+        else
+            this._clearActive();
     }
 
     _onToggleShortcut() {
