@@ -5,7 +5,7 @@
 // vivo (Alt+F2 -> r y revisar `journalctl --user -f -o cat /usr/bin/gnome-shell`).
 
 export const FEATURES = {
-    launcher: false,     // incremento 2: panel "Buscar aplicaciones..."
+    launcher: true,      // incremento 2: panel "Buscar aplicaciones..."
     meters: false,       // incremento 3: bloque SISTEMA en la sidebar
     bottombar: false,    // incremento 5: barra inferior
 };

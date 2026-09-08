@@ -7,12 +7,11 @@
 //   - escribir en el campo                  -> filtra sobre TODAS las apps
 //   - Enter                                 -> lanza la primera de la lista
 //   - clic en una fila                      -> lanza esa
-//   - Esc / perder el foco / Super+B        -> cierra
+//   - Esc / clic afuera / Super+B           -> cierra
 //
 // No reserva espacio (sin struts): las ventanas no se reacomodan.
 
 import Clutter from 'gi://Clutter';
-import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -22,20 +21,24 @@ import {flatApps, filterApps, launch} from './model.js';
 const PANEL_WIDTH = 380;
 const MAX_HEIGHT = 560;
 const TOP_INSET = 118;
-const CLOSE_GRACE_MS = 250;
 
 export class NebulaLauncher {
-    constructor(extension, leftInset, onClose) {
+    constructor(extension, leftInset, onClose, getGuardActor) {
         this._ext = extension;
         this._leftInset = leftInset;
         this._onClose = onClose ?? (() => {});
+        // Devuelve un actor (la sidebar) cuyos clics NO deben cerrar el panel:
+        // asi cambiar de categoria no lo cierra-y-reabre con parpadeo.
+        this._getGuardActor = getGuardActor ?? (() => null);
         this._signalIds = [];
-        this._timeoutIds = new Set();
         this._model = [];
         this._flat = [];
         this._rows = [];
         this._firstApp = null;
         this._filterIndex = -1;
+        this._stageCaptureId = 0;
+        this._isOpen = false;   // estado explicito: NO depender de this._panel.visible
+        this._lastMonitorLabel = 'n/a';
 
         this._build();
     }
@@ -79,70 +82,192 @@ export class NebulaLauncher {
         this._connect(ct, 'activate', () => {
             if (this._firstApp) {
                 launch(this._firstApp.exec);
-                this.close();
+                this.close('app-launch-enter');
             }
         });
-        this._connect(ct, 'key-focus-out', () => this._scheduleClose());
         this._connect(this._panel, 'key-press-event', (_a, ev) => {
             if (ev.get_key_symbol() === Clutter.KEY_Escape) {
-                this.close();
+                this.close('escape-panel');
                 return Clutter.EVENT_STOP;
             }
             return Clutter.EVENT_PROPAGATE;
         });
     }
 
-    // --- API ------------------------------------------------------
+    // --- API -----------------------------------------------------------
+    //
+    // Maquina de estados con UNA sola fuente de verdad: (_isOpen, _filterIndex).
+    // Ningun metodo decide en base a this._panel.visible; el actor puede quedar
+    // oculto por fuera (minimizar todo, grabador de pantalla, cambios de sesion)
+    // sin que eso corrompa el estado logico.
+    //
+    //   toggle(i):  cerrado            -> open(i)
+    //               abierto, i == filtro actual -> close()
+    //               abierto, i != filtro actual -> recambiar contenido (sigue abierto)
 
     setModel(model) {
         this._model = model ?? [];
         this._flat = flatApps(this._model);
-        if (this._panel?.visible)
+        if (this._isOpen)
             this._rebuild();
     }
 
     get visible() {
-        return !!this._panel?.visible;
+        return this._isOpen;
     }
 
-    open(categoryIndex = -1) {
-        this._filterIndex = categoryIndex;
-        this._entry.set_text('');
-        this._relayout();
-        this._panel.show();
-        this._rebuild();
-        this._entry.grab_key_focus();
+    get filterIndex() {
+        return this._isOpen ? this._filterIndex : -1;
     }
 
     toggle(categoryIndex = -1) {
-        if (this.visible)
-            this.close();
-        else
+        if (!this._isOpen) {
             this.open(categoryIndex);
+            return;
+        }
+        if (this._filterIndex === categoryIndex) {
+            this.close('category-toggle');
+            return;
+        }
+        // Abierto + otra categoria: seguir abierto, recambiar el filtro/contenido.
+        this._filterIndex = categoryIndex;
+        this._entry.set_text('');
+        this._relayout();
+        this._rebuild();
+        this._present();
+        // this._installStageCapture();   // PRUEBA DE AISLAMIENTO: captura global desactivada
+        console.log(`[Nebula] SWITCH category=${categoryIndex} ` +
+            `isOpen=${this._isOpen} visible=${this._panel?.visible} mapped=${this._panel?.mapped} ` +
+            `pos=${JSON.stringify(this._panel?.get_position())} size=${JSON.stringify(this._panel?.get_size())} ` +
+            `mon=${this._lastMonitorLabel}`);
     }
 
-    close() {
-        if (!this._panel?.visible)
-            return;
-        this._panel.hide();
+    open(categoryIndex = -1) {
+        this._isOpen = true;
+        this._filterIndex = categoryIndex;
+        this._entry.set_text('');
+        this._relayout();
+        this._present();
+        this._rebuild();
+        this._entry.grab_key_focus();
+        // this._installStageCapture();   // PRUEBA DE AISLAMIENTO: captura global del stage desactivada
+        console.log(
+            `[Nebula] OPEN category=${categoryIndex} ` +
+            `isOpen=${this._isOpen} ` +
+            `visible=${this._panel?.visible} mapped=${this._panel?.mapped} ` +
+            `parent=${!!this._panel?.get_parent()} ` +
+            `pos=${JSON.stringify(this._panel?.get_position())} ` +
+            `size=${JSON.stringify(this._panel?.get_size())} ` +
+            `mon=${this._lastMonitorLabel}`
+        );
+    }
+
+    close(reason = 'unknown') {
+        console.log(
+            `[Nebula] CLOSE reason=${reason} ` +
+            `isOpen=${this._isOpen} ` +
+            `filter=${this._filterIndex} ` +
+            `visible=${this._panel?.visible}`
+        );
+        this._removeStageCapture();
+        const wasOpen = this._isOpen;
+        // El estado logico se sincroniza SIEMPRE, pase lo que pase con el actor.
+        this._isOpen = false;
         this._filterIndex = -1;
-        this._onClose();
+        if (this._panel)
+            this._panel.hide();
+        if (wasOpen)
+            this._onClose();
+    }
+
+    // Deja el panel efectivamente presente y al frente. Reparo defensivo para
+    // "se minimizo todo / grabador activo": el chrome puede quedar sin parent o
+    // por detras. NO es la solucion al bug de estado, es un seguro.
+    _present() {
+        if (this._panel && !this._panel.get_parent()) {
+            Main.layoutManager.addChrome(this._panel, {
+                affectsStruts: false,
+                affectsInputRegion: true,
+                trackFullscreen: true,
+            });
+        }
+        this._panel.show();
+        this._panel.opacity = 255;
+        this._panel.reactive = true;
+        const parent = this._panel.get_parent();
+        if (parent)
+            parent.set_child_above_sibling(this._panel, null);   // raise_top() fue removido en GNOME 46
+    }
+
+    // Cierra al hacer clic fuera del panel (y fuera de la sidebar) o con Esc,
+    // sin depender del foco de teclado.
+    // PRUEBA DE AISLAMIENTO EN CURSO: open()/toggle() NO llaman a este metodo,
+    // asi que la captura global del stage no se instala. Codigo intacto para
+    // reactivarlo descomentando las dos lineas `_installStageCapture()`.
+    _installStageCapture() {
+        if (this._stageCaptureId)
+            return;
+        this._stageCaptureId = global.stage.connect('captured-event', (_a, ev) => {
+            const t = ev.type();
+            if (t === Clutter.EventType.KEY_PRESS &&
+                ev.get_key_symbol() === Clutter.KEY_Escape) {
+                this.close('escape-stage');
+                return Clutter.EVENT_STOP;
+            }
+            if (t !== Clutter.EventType.BUTTON_PRESS &&
+                t !== Clutter.EventType.TOUCH_BEGIN)
+                return Clutter.EVENT_PROPAGATE;
+
+            const target = global.stage.get_event_actor
+                ? global.stage.get_event_actor(ev)
+                : ev.get_source();
+            if (this._isDescendant(this._panel, target) ||
+                this._isDescendant(this._getGuardActor(), target))
+                return Clutter.EVENT_PROPAGATE;
+
+            this.close('outside-click');
+            return Clutter.EVENT_PROPAGATE;   // no nos comemos el clic de afuera
+        });
+    }
+
+    _removeStageCapture() {
+        if (this._stageCaptureId) {
+            global.stage.disconnect(this._stageCaptureId);
+            this._stageCaptureId = 0;
+        }
+    }
+
+    _isDescendant(ancestor, actor) {
+        if (!ancestor || !actor)
+            return false;
+        for (let a = actor; a; a = a.get_parent()) {
+            if (a === ancestor)
+                return true;
+        }
+        return false;
     }
 
     relayoutIfVisible() {
-        if (this.visible)
+        if (this._isOpen)
             this._relayout();
     }
 
     // --- interno ------------------------------------------------
 
     _relayout() {
-        const m = Main.layoutManager.primaryMonitor;
-        if (!m)
-            return;
-        const h = Math.min(MAX_HEIGHT, Math.floor(m.height * 0.7));
-        this._panel.set_position(m.x + this._leftInset + 14, m.y + TOP_INSET);
+        // Igual que la sidebar: fallback en cadena, NUNCA salir sin posicionar.
+        // Un primaryMonitor null (reconfiguracion de pantallas al minimizar todo
+        // o al arrancar el grabador) dejaba el panel clavado en (0,0), tapado
+        // por la sidebar -> "el submenu no aparece".
+        const lm = Main.layoutManager;
+        const m = lm.primaryMonitor ?? lm.monitors?.[lm.primaryIndex] ?? lm.monitors?.[0] ?? null;
+        const mx = m?.x ?? 0;
+        const my = m?.y ?? 0;
+        const mh = m?.height ?? 720;
+        const h = Math.min(MAX_HEIGHT, Math.floor(mh * 0.7));
+        this._panel.set_position(mx + this._leftInset + 14, my + TOP_INSET);
         this._panel.set_height(h);
+        this._lastMonitorLabel = m ? `${mx},${my} ${m.width}x${mh}` : 'FALLBACK(none)';
     }
 
     _baseList() {
@@ -192,23 +317,11 @@ export class NebulaLauncher {
             btn.set_child(box);
             this._connect(btn, 'clicked', () => {
                 launch(app.exec);
-                this.close();
+                this.close('app-launch');
             });
             this._results.add_child(btn);
             this._rows.push(btn);
         }
-    }
-
-    _scheduleClose() {
-        // Cierra si al terminar la gracia el puntero no esta sobre el panel
-        // (permite hacer clic en una fila sin que se cierre antes).
-        const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CLOSE_GRACE_MS, () => {
-            this._timeoutIds.delete(id);
-            if (this._panel?.visible && !this._panel.hover)
-                this.close();
-            return GLib.SOURCE_REMOVE;
-        });
-        this._timeoutIds.add(id);
     }
 
     _connect(target, signal, cb) {
@@ -218,9 +331,8 @@ export class NebulaLauncher {
     }
 
     destroy() {
-        for (const id of this._timeoutIds)
-            GLib.source_remove(id);
-        this._timeoutIds.clear();
+        this._isOpen = false;
+        this._removeStageCapture();
         for (const [target, id] of this._signalIds)
             target.disconnect(id);
         this._signalIds = [];

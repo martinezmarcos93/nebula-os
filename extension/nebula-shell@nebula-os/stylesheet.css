@@ -19,7 +19,7 @@
 }
 
 .nebula-head {
-    spacing: 10px;
+    spacing: 8px;
 }
 
 .nebula-brand {
@@ -27,10 +27,31 @@
 }
 
 .nebula-title {
-    font-size: 13pt;
+    font-size: 12pt;
     font-weight: 800;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     color: #f3f4f6;
+}
+
+.nebula-collapse {
+    color: #9ca3af;
+    padding: 4px;
+    border-radius: 6px;
+    transition-duration: 110ms;
+}
+
+.nebula-collapse:hover {
+    background-color: rgba(124, 58, 237, 0.28);
+    color: #f3f4f6;
+}
+
+/* Franja invisible pegada al borde: solo un tenue destello al pasar el mouse. */
+.nebula-hot-edge {
+    background-color: transparent;
+}
+
+.nebula-hot-edge:hover {
+    background-color: rgba(124, 58, 237, 0.22);
 }
 
 .nebula-subtitle {
@@ -64,12 +85,13 @@
 }
 
 .nebula-cat-list {
-    spacing: 1px;
+    spacing: 2px;
 }
 
 .nebula-cat {
     border-radius: 8px;
-    padding: 7px 8px;
+    padding: 8px 10px;
+    border-left: 2px solid transparent;
     transition-duration: 110ms;
 }
 
@@ -79,6 +101,8 @@
 
 .nebula-cat-icon {
     color: #9ca3af;
+    width: 16px;
+    icon-size: 16px;
 }
 
 .nebula-cat-label {
@@ -87,7 +111,8 @@
 }
 
 .nebula-cat:hover {
-    background-color: rgba(124, 58, 237, 0.20);
+    background-color: rgba(124, 58, 237, 0.28);
+    border-left: 2px solid #e879f9;
 }
 
 .nebula-cat:hover .nebula-cat-icon,
