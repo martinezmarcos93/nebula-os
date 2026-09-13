@@ -50,9 +50,11 @@ const POWER_ACTIONS = {
 };
 
 export class NebulaSidebar {
-    constructor(extension) {
+    constructor(extension, unredirect) {
         this._ext = extension;
         this._settings = extension.getSettings();
+        this._unredirect = unredirect;
+        this._unredirectSignalId = 0;
 
         this._signalIds = [];        // [[gobject, id], ...]
         this._timeoutIds = new Set();
@@ -75,6 +77,7 @@ export class NebulaSidebar {
                         this._scheduleAutoCollapse();   // al cerrar el lanzador, retraer si el mouse ya no esta
                 },
                 () => this._sidebar,   // clics en la sidebar no cierran el lanzador
+                unredirect,
             )
             : null;
         this._meters = FEATURES.meters ? new NebulaMeters() : null;
@@ -130,6 +133,11 @@ export class NebulaSidebar {
             affectsInputRegion: true,
             trackFullscreen: true,
         });
+        // BUG-18/BUG-22 (docs/BUGS.md): sin esto, la sidebar tambien queda
+        // tapada por el unredirect de mutter con el escritorio sin ventanas -
+        // el fix original solo cubria el lanzador (launcher.js), no el panel
+        // que esta visible todo el tiempo.
+        this._unredirectSignalId = this._unredirect.track(this._sidebar);
 
         // Franja invisible pegada al borde izquierdo: al pasar el puntero por
         // encima con la sidebar retraida, la vuelve a mostrar. No reserva espacio.
@@ -375,11 +383,33 @@ export class NebulaSidebar {
             return;
         this._collapsed = false;
         this._sidebar.show();
+        // BUG-24 (docs/BUGS.md): show() no siempre alcanza para que el motor
+        // de layout recalcule la region de input a tiempo -- un clic que
+        // llega justo cuando se revela (el gesto real: acercar el mouse al
+        // borde y clickear ya) puede seguir pasando a la ventana de atras
+        // (misma correccion que usa dash-to-dock para este mismo problema).
+        Main.layoutManager._queueUpdateRegions?.();
         this._sidebar.ease({
             translation_x: 0,
             opacity: 255,
             duration: REVEAL_MS,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            onComplete: () => {
+                // BUG-24: `notify::visible` no se re-emite al terminar una
+                // animacion de `translation_x` (solo cambio el transform, no
+                // la propiedad `visible`), y LayoutManager recalcula la
+                // region de input especificamente en las señales show/hide,
+                // no en cualquier notify. `_queueUpdateRegions()` arriba no
+                // alcanza por si solo. Forzar un toggle hide()+show()
+                // sincronico (sin frame de por medio -> sin parpadeo visual)
+                // dispara esas señales reales. Mismo workaround que usa el
+                // propio GNOME Shell para este problema tras animaciones de
+                // slide.
+                if (!this._collapsed) {
+                    this._sidebar.hide();
+                    this._sidebar.show();
+                }
+            },
         });
     }
 
@@ -395,8 +425,10 @@ export class NebulaSidebar {
             duration: REVEAL_MS,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
             onComplete: () => {
-                if (this._collapsed)
+                if (this._collapsed) {
                     this._sidebar.hide();   // suelta los struts: las ventanas recuperan el ancho
+                    Main.layoutManager._queueUpdateRegions?.();
+                }
             },
         });
     }
@@ -514,10 +546,14 @@ export class NebulaSidebar {
             this._hotEdge = null;
         }
         if (this._sidebar) {
+            // Desconectar y liberar el unredirect ANTES de destruir el actor:
+            // untrack() necesita leerle `visible` todavia vivo.
+            this._unredirect?.untrack(this._sidebar, this._unredirectSignalId);
             Main.layoutManager.removeChrome(this._sidebar);
             this._sidebar.destroy();
             this._sidebar = null;
         }
+        this._unredirect = null;
         this._catButtons = [];
         this._catList = null;
         this._model = [];

@@ -265,6 +265,15 @@
     spacing: 12px;
 }
 
+/* Columna de icono a ancho fijo: sin esto, un icono resuelto mas chico que
+   28px (o el fallback simbolico, con mucho padding interno) angosta la
+   columna y descoloca el texto de esa fila respecto a las demas. Mismo
+   patron que .nebula-cat-icon para la sidebar. */
+.nebula-result-icon {
+    width: 28px;
+    icon-size: 28px;
+}
+
 .nebula-result-name {
     color: #f3f4f6;
     font-size: 11pt;

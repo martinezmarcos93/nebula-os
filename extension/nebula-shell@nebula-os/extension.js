@@ -17,10 +17,15 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {FEATURES} from './config.js';
 import {NebulaSidebar} from './sidebar.js';
 import {NebulaBottomBar} from './bottombar.js';
+import {UnredirectGuard} from './unredirect.js';
 
 export default class NebulaShellExtension extends Extension {
     enable() {
-        this._sidebar = new NebulaSidebar(this);
+        // Guarda compartida (BUG-18/BUG-22, docs/BUGS.md): inhibe el unredirect
+        // de mutter mientras la sidebar y/o el lanzador esten visibles, para
+        // que no queden tapados con el escritorio sin ventanas o en grabacion.
+        this._unredirect = new UnredirectGuard();
+        this._sidebar = new NebulaSidebar(this, this._unredirect);
         if (FEATURES.bottombar)
             this._bottomBar = new NebulaBottomBar();
     }
@@ -30,5 +35,9 @@ export default class NebulaShellExtension extends Extension {
         this._sidebar = null;
         this._bottomBar?.destroy();
         this._bottomBar = null;
+        // Red de seguridad: si algun track()/untrack() quedo desbalanceado, no
+        // dejar el unredirect de mutter inhibido para el resto de la sesion.
+        this._unredirect?.releaseAll();
+        this._unredirect = null;
     }
 }

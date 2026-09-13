@@ -12,7 +12,6 @@
 // No reserva espacio (sin struts): las ventanas no se reacomodan.
 
 import Clutter from 'gi://Clutter';
-import Meta from 'gi://Meta';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -24,13 +23,15 @@ const MAX_HEIGHT = 560;
 const TOP_INSET = 118;
 
 export class NebulaLauncher {
-    constructor(extension, leftInset, onClose, getGuardActor) {
+    constructor(extension, leftInset, onClose, getGuardActor, unredirect) {
         this._ext = extension;
         this._leftInset = leftInset;
         this._onClose = onClose ?? (() => {});
         // Devuelve un actor (la sidebar) cuyos clics NO deben cerrar el panel:
         // asi cambiar de categoria no lo cierra-y-reabre con parpadeo.
         this._getGuardActor = getGuardActor ?? (() => null);
+        this._unredirect = unredirect;
+        this._unredirectSignalId = 0;
         this._signalIds = [];
         this._model = [];
         this._flat = [];
@@ -40,7 +41,6 @@ export class NebulaLauncher {
         this._stageCaptureId = 0;
         this._isOpen = false;   // estado explicito: NO depender de this._panel.visible
         this._lastMonitorLabel = 'n/a';
-        this._unredirectHeld = false;
 
         this._build();
     }
@@ -78,6 +78,10 @@ export class NebulaLauncher {
             affectsInputRegion: true,
             trackFullscreen: true,
         });
+        // El hold/release del unredirect de mutter queda atado a la visibilidad
+        // real del panel (ver unredirect.js): cubre open()/close() Y cualquier
+        // show()/hide() que dispare GNOME por su cuenta (p. ej. trackFullscreen).
+        this._unredirectSignalId = this._unredirect.track(this._panel);
 
         const ct = this._entry.clutter_text;
         this._connect(ct, 'text-changed', () => this._rebuild());
@@ -172,13 +176,14 @@ export class NebulaLauncher {
             `visible=${this._panel?.visible}`
         );
         this._removeStageCapture();
-        this._releaseUnredirect();
         const wasOpen = this._isOpen;
         // El estado logico se sincroniza SIEMPRE, pase lo que pase con el actor.
         this._isOpen = false;
         this._filterIndex = -1;
-        if (this._panel)
+        if (this._panel) {
             this._panel.hide();
+            Main.layoutManager._queueUpdateRegions?.();
+        }
         if (wasOpen)
             this._onClose();
     }
@@ -194,33 +199,23 @@ export class NebulaLauncher {
                 trackFullscreen: true,
             });
         }
-        this._holdUnredirect();
         this._panel.show();
         this._panel.opacity = 255;
         this._panel.reactive = true;
         const parent = this._panel.get_parent();
         if (parent)
             parent.set_child_above_sibling(this._panel, null);   // raise_top() fue removido en GNOME 46
-    }
-
-    // Mientras el panel esta abierto, impedir que mutter haga "unredirect" de una
-    // ventana a pantalla completa. Al minimizar la ultima ventana del espacio de
-    // trabajo, la ventana de escritorio de Ubuntu (ding) pasa a ser la de mas
-    // arriba y se escanea directo, salteando el compositor -> tapa TODO el chrome
-    // del Shell y el panel quedaba mapeado y bien posicionado pero sin pintarse.
-    // Las llamadas de Meta llevan refcount: hay que balancear disable/enable.
-    _holdUnredirect() {
-        if (this._unredirectHeld)
-            return;
-        Meta.disable_unredirect_for_display(global.display);
-        this._unredirectHeld = true;
-    }
-
-    _releaseUnredirect() {
-        if (!this._unredirectHeld)
-            return;
-        Meta.enable_unredirect_for_display(global.display);
-        this._unredirectHeld = false;
+        // BUG-24 (docs/BUGS.md): forzar el recalculo de la region de input.
+        // Sin esto, un clic que llega muy pronto despues de abrir puede
+        // seguir pasando a la ventana de atras (mismo fix que usa
+        // dash-to-dock para este problema conocido de layout.js).
+        Main.layoutManager._queueUpdateRegions?.();
+        // Toggle de visibilidad: la señal real que espera LayoutManager para
+        // recalcular la region (no alcanza con _queueUpdateRegions sola en
+        // ciclos repetidos de abrir/cerrar). hide()+show() es sincronico
+        // (sin frame de por medio), no se nota como parpadeo.
+        this._panel.hide();
+        this._panel.show();
     }
 
     // Cierra al hacer clic fuera del panel (y fuera de la sidebar) o con Esc,
@@ -324,7 +319,16 @@ export class NebulaLauncher {
                 x_expand: true,
             });
             const box = new St.BoxLayout({style_class: 'nebula-result-box'});
-            box.add_child(new St.Icon({gicon: app.icono, icon_size: 28}));
+            // width fijo por CSS (.nebula-result-icon): icon_size es solo una
+            // sugerencia de tamaño, no reserva columna -- un icono resuelto
+            // mas chico (o el fallback simbolico, con mucho padding interno)
+            // angosta la columna y descoloca el texto de esa fila respecto a
+            // las demas ("tabulacion irregular").
+            box.add_child(new St.Icon({
+                gicon: app.icono,
+                icon_size: 28,
+                style_class: 'nebula-result-icon',
+            }));
             const txt = new St.BoxLayout({
                 vertical: true,
                 y_align: Clutter.ActorAlign.CENTER,
@@ -361,15 +365,18 @@ export class NebulaLauncher {
     destroy() {
         this._isOpen = false;
         this._removeStageCapture();
-        this._releaseUnredirect();
         for (const [target, id] of this._signalIds)
             target.disconnect(id);
         this._signalIds = [];
         if (this._panel) {
+            // Desconectar y liberar el unredirect ANTES de destruir el actor:
+            // untrack() necesita leerle `visible` todavia vivo.
+            this._unredirect?.untrack(this._panel, this._unredirectSignalId);
             Main.layoutManager.removeChrome(this._panel);
             this._panel.destroy();
             this._panel = null;
         }
+        this._unredirect = null;
         this._model = [];
         this._flat = [];
         this._rows = [];
