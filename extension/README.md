@@ -1,5 +1,12 @@
 # Nebula Shell — prototipo de viabilidad
 
+> ⚠️ **Al probar cambios de código, `Alt+F2` → `r` no alcanza.** En esta
+> máquina ni `Alt+F2` → `r` ni un logout/login reinician el proceso de
+> `gnome-shell` — el código de una extensión ya cargada puede quedar
+> cacheado en memoria pese a reinstalarla. Usar `gnome-shell --replace &`
+> (o un reboot) antes de sacar conclusiones sobre si un fix funcionó. Ver
+> `docs/BUGS.md` BUG-24 para el detalle de cómo se descubrió esto.
+
 Extensión de **GNOME Shell 46** que agrega **solo** el sidebar de Nebula sobre un
 GNOME normal. No restilea el resto del Shell, no reemplaza servicios, no toca
 `install.sh`. La sesión bspwm sigue registrada en GDM como fallback.
@@ -90,6 +97,32 @@ Quitarla:
 gnome-extensions disable nebula-shell@nebula-os
 rm ~/.local/share/gnome-shell/extensions/nebula-shell@nebula-os
 ```
+
+### Cursor y tema Cosmic Dark (opcional)
+
+`build.sh` **no** instala ni activa el cursor Bibata, el tema GTK ni los
+iconos Papirus-Dark — solo construye la extensión en sí. Esa parte ya existe
+y funciona en `install/40-tema.sh` (parte del instalador del núcleo bspwm,
+pero sin ninguna dependencia real de bspwm): descarga el cursor, lo deja en
+`~/.icons/`
+(ruta estándar que GNOME también resuelve) y aplica todo por `gsettings`
+(`org.gnome.desktop.interface` `cursor-theme` / `gtk-theme` / `icon-theme`),
+que es exactamente el mecanismo que usa una sesión GNOME normal (lo mismo
+que hace GNOME Tweaks por debajo). No hace falta reimplementar nada de eso
+para la extensión: alcanza con correr ese stage suelto, sin tocar bspwm ni
+el resto de la instalación:
+
+```bash
+# Desde la raíz del repo. --only 40 corre SOLO el stage de tema (no toca
+# Xorg/bspwm/eww); --yes evita la confirmación interactiva.
+./install.sh --only 40 --yes
+```
+
+Después de correrlo: `gsettings get org.gnome.desktop.interface cursor-theme`
+debería devolver `'Bibata-Modern-Ice'` (o `'Adwaita'` si `NEBULA_CURSOR=0` o
+falló la descarga por red). Variables de control:
+`NEBULA_THEME=nordic|fluent`, `NEBULA_CURSOR=0|1` (ver tabla en el
+[`README.md`](../README.md) raíz, sección "Variables de entorno de control").
 
 ## Checklist (incrementos 1-3, 5)
 

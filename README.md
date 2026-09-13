@@ -14,6 +14,7 @@ estetica oscura *Cosmic Dark*.
 > drivers y aplicaciones.
 
 - Diseno completo y decisiones: [`docs/DESIGN.md`](docs/DESIGN.md).
+- Bugs encontrados y su causa raiz: [`docs/BUGS.md`](docs/BUGS.md).
 - Hardware de referencia (verificado con CPU-Z el 2026-09-01): Intel Core
   i5-7400 - 16 GB DDR4 - NVIDIA GTX 1060 **3 GB** (GP106-300).
   La VRAM son 3 GB, no 6: eso limita los modelos de IA a 3B-4B cuantizados
@@ -31,7 +32,18 @@ resultado. Validado por partes en esta maquina; **pendiente una validacion
 integral** en una sesion real (arranque limpio, recorrido de cada componente
 del escritorio) y sobre una instalacion limpia (clon nuevo, usuario distinto).
 Ver [`CHANGELOG.md`](CHANGELOG.md) para el detalle de que se hizo y que sigue
-abierto.
+abierto, y [`docs/BUGS.md`](docs/BUGS.md) para los bugs ya encontrados
+(causa raiz y variables que los disparan) y los riesgos aun sin verificar.
+
+**Prototipo en paralelo: extension de GNOME Shell.** `extension/` (ver
+[`extension/README.md`](extension/README.md)) explora llevar el sidebar de
+Nebula a una **extension de GNOME 46** en vez de reemplazar el escritorio:
+sidebar de categorias, lanzador con busqueda, meters de sistema en vivo y
+barra inferior (escritorios, MPRIS, accesos), todo sobre una sesion GNOME
+normal (red, audio, Bluetooth, notificaciones intactos). Es un prototipo de
+viabilidad, no reemplaza el stack Xorg/bspwm/eww de arriba: la sesion bspwm
+sigue registrada en GDM como alternativa. Checklist de validacion y puntos
+sensibles a version de GNOME en `extension/README.md`.
 
 Piezas de diseno explicitamente diferidas (no bloquean el uso diario):
 cursores tematicos, un HUD/centro de control mas grande que el sidebar
@@ -138,7 +150,11 @@ nebula-os/
                             nebula-sync, nebula-mount-datos.
   tools/                  test-session.sh (bateria no interactiva: estatico + sandbox
                           Xephyr), test-nested.sh (sandbox interactivo bspwm/sxhkd).
+  extension/              Nebula Shell: prototipo de extension GNOME 46 (sidebar,
+                          lanzador, meters, barra inferior). Ver extension/README.md.
   docs/DESIGN.md          Documento de diseno completo (arquitectura, decisiones, plan).
+  docs/BUGS.md            Bugs encontrados: causa raiz, variables que los disparan,
+                          estado (resuelto / conocido / sin verificar).
 ```
 
 ## Logs

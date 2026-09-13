@@ -29,6 +29,84 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido (2026-09-13, extension GNOME — click-through y lanzador roto a partir del 2do ciclo)
+- **BUG-24 (`docs/BUGS.md`), resuelto y confirmado en vivo.** Sesion de
+  prueba en vivo: clickear una categoria de la sidebar tambien le llegaba el
+  clic a la ventana de atras (Chrome), y el lanzador no abria. Patron
+  reproducible clave: pasaba **a partir del segundo ciclo** de mostrar/ocultar
+  la sidebar en la misma sesion de Shell -- el primer reveal despues de
+  `Alt+F2 r` funcionaba perfecto (struts aplican, Chrome se redimensiona,
+  clics OK); el segundo reveal no aplicaba struts y ahi aparecia el
+  click-through.
+- Descartado como causa en esta sesion (con aislamiento en vivo): conflicto
+  con `ubuntu-dock@ubuntu.com`, conflicto con `tiling-assistant@ubuntu.com`,
+  ventana en fullscreen real, y el propio guard de unredirect de hoy
+  (`unredirect.js` / BUG-22) -- se suprimieron sus llamadas a
+  `Meta.disable/enable_unredirect_for_display` y el patron persistio igual.
+- **Causa raiz real:** `LayoutManager` recalcula la region de input
+  especificamente en las señales `show`/`hide` del actor, no ante cualquier
+  cambio de propiedad. La animacion de revelado solo cambiaba
+  `translation_x`/`opacity` (nunca volvia a llamar `show()`/`hide()`), asi
+  que esa señal no se re-emitia despues del primer ciclo y la region de
+  input quedaba desactualizada. `Main.layoutManager._queueUpdateRegions?.()`
+  (agregado primero, workaround de `dash-to-dock`) no alcanzaba por si solo
+  porque no dispara la señal correcta.
+- **Correccion:** toggle sincronico `hide()+show()` (sin parpadeo, sin frame
+  de por medio) al terminar la animacion de `_expand()` (`sidebar.js`) y al
+  final de `_present()` (`launcher.js`) -- mismo workaround usado en un
+  commit real de GNOME Shell para este problema documentado.
+- **Descubrimiento operativo importante de esta sesion:** ni `Alt+F2 r`
+  (`Meta.restart()`) ni un logout/login de GNOME reinician el proceso de
+  `gnome-shell` en esta maquina (mismo PID durante mas de una hora, varios
+  "reinicios" de por medio) -- el codigo de una extension ya cargada puede
+  quedar cacheado en memoria pese a reinstalarla. Confirmar un fix requiere
+  `gnome-shell --replace &` o un reboot completo. Documentado en
+  `extension/README.md` y `docs/BUGS.md` BUG-24 para no perder tiempo de
+  nuevo con esto.
+
+### Corregido (2026-09-13, extension GNOME — alineacion irregular en las filas del lanzador)
+- **BUG-25 (`docs/BUGS.md`).** El texto de algunas filas del lanzador
+  ("Buscar aplicaciones...") arrancaba mas a la izquierda que el de otras.
+  Causa: `icon_size: 28` en JS es solo una sugerencia de render, no reserva
+  columna; sin una regla CSS de ancho fijo, un icono resuelto mas chico (o
+  el fallback simbolico `application-x-executable-symbolic`, con mucho
+  relleno interno) angostaba la columna y corria el texto. La sidebar ya
+  resolvia esto para sus propias filas (`.nebula-cat-icon { width: 16px }`).
+- `launcher.js`: `style_class: 'nebula-result-icon'` en el `St.Icon` de cada
+  fila. `stylesheet.css`: `.nebula-result-icon { width: 28px; icon-size: 28px; }`.
+
+### Corregido (2026-09-13, extension GNOME — sidebar desaparecia + tema no aplicable desde el prototipo)
+- **Bug real (BUG-22, `docs/BUGS.md`):** el fix de unredirect de mutter
+  (`_holdUnredirect()`/`_releaseUnredirect()`, ver entrada anterior "el
+  launcher no se pintaba con el escritorio pelado") solo estaba en
+  `extension/nebula-shell@nebula-os/launcher.js`. La **sidebar**
+  (`sidebar.js`), el panel permanente que esta visible la mayor parte del
+  tiempo, no tenia ninguna proteccion y quedaba expuesta al mismo problema
+  (escritorio sin ventanas / grabacion de pantalla). Ademas, dos booleanos
+  independientes (uno por componente) no son robustos si ambos actores
+  necesitan sostener el unredirect a la vez: el primero en soltarlo
+  des-inhibia el compositor aunque el otro siguiera visible.
+  - Nuevo `extension/nebula-shell@nebula-os/unredirect.js`
+    (`UnredirectGuard`): guarda compartida y refcontada, con `track(actor)` /
+    `untrack(actor, id)` atados a `notify::visible` en vez de llamadas
+    manuales dispersas en `open()`/`close()`/`_present()`. Cubre por igual el
+    cierre manual, el auto-colapso de la sidebar y el ocultamiento automatico
+    de GNOME por pantalla completa (`trackFullscreen` en `addChrome`).
+  - `extension.js`: instancia la guarda en `enable()`, la pasa a
+    `NebulaSidebar` (y esta al `NebulaLauncher`), y llama a `releaseAll()` en
+    `disable()` como red de seguridad.
+  - `sidebar.js` y `launcher.js`: reemplazado el hold/release manual por
+    `unredirect.track()`/`untrack()` sobre sus respectivos actores.
+- **No-bug real, gap de flujo de trabajo (BUG-23, `docs/BUGS.md`):**
+  probando **solo** el prototipo de extension (sin el instalador completo),
+  el cursor Bibata y el tema Cosmic Dark nunca se aplicaban. La logica de
+  `install/40-tema.sh` (gsettings + `~/.icons/`) ya era correcta; lo que
+  faltaba era que `extension/build.sh` (que a proposito no toca
+  `install.sh`) no ofrecia ningun camino para aplicarla. Documentado en
+  `extension/README.md` (nueva seccion "Cursor y tema Cosmic Dark"): correr
+  `./install.sh --only 40 --yes` aparte, sin tocar bspwm.
+- `docs/BUGS.md`: nuevas entradas BUG-22 y BUG-23.
+
 ### Anadido (2026-09-06, pedido del usuario — disco de datos NTFS)
 - `bin/nebula-mount-datos` (nuevo): monta el disco NTFS donde vive el repo
   cuando Windows lo deja "dirty". `ntfsfix -d` (sudo/pkexec) + `udisksctl
