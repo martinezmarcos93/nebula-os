@@ -131,6 +131,21 @@ icono  = "vivaldi"
 
 
 [[categoria]]
+nombre = "Comunicacion"
+icono  = "message"
+
+[[categoria.app]]
+nombre = "Discord"
+exec   = "flatpak run com.discordapp.Discord"
+icono  = "discord"
+
+[[categoria.app]]
+nombre = "Thunderbird"
+exec   = "thunderbird"
+icono  = "mail"
+
+
+[[categoria]]
 nombre = "Desarrollo"
 icono  = "code"
 
@@ -147,6 +162,11 @@ icono  = "vscode"
 [[categoria.app]]
 nombre = "Editor (nvim)"
 exec   = "alacritty -e nvim"
+icono  = "edit"
+
+[[categoria.app]]
+nombre = "Editor de texto (GNOME)"
+exec   = "gnome-text-editor"
 icono  = "edit"
 
 [[categoria.app]]
@@ -180,8 +200,18 @@ exec   = "vlc"
 icono  = "vlc"
 
 [[categoria.app]]
+nombre = "Videos (Totem)"
+exec   = "totem"
+icono  = "film"
+
+[[categoria.app]]
 nombre = "Musica (cmus)"
 exec   = "alacritty -e cmus"
+icono  = "music"
+
+[[categoria.app]]
+nombre = "Rhythmbox"
+exec   = "rhythmbox"
 icono  = "music"
 
 [[categoria.app]]
@@ -239,6 +269,11 @@ nombre = "Visor de imagenes"
 exec   = "nsxiv -t ."
 icono  = "eye"
 
+[[categoria.app]]
+nombre = "Shotwell"
+exec   = "shotwell"
+icono  = "image"
+
 
 [[categoria]]
 nombre = "Ofimatica"
@@ -273,6 +308,11 @@ icono  = "pdf"
 nombre = "Notas (Obsidian)"
 exec   = "obsidian"
 icono  = "notes"
+
+[[categoria.app]]
+nombre = "ONLYOFFICE"
+exec   = "flatpak run org.onlyoffice.desktopeditors"
+icono  = "office"
 
 
 [[categoria]]
@@ -311,12 +351,12 @@ icono  = "steam"
 
 [[categoria.app]]
 nombre = "Lutris"
-exec   = "lutris"
+exec   = "flatpak run net.lutris.Lutris"
 icono  = "lutris"
 
 [[categoria.app]]
 nombre = "Heroic"
-exec   = "heroic"
+exec   = "flatpak run com.heroicgameslauncher.hgl"
 icono  = "heroic"
 
 [[categoria.app]]
@@ -375,6 +415,21 @@ exec   = "nebula-screenshot region"
 icono  = "camera"
 
 [[categoria.app]]
+nombre = "Portapapeles"
+exec   = "copyq toggle"
+icono  = "clipboard"
+
+[[categoria.app]]
+nombre = "Configuracion de GPU (NVIDIA)"
+exec   = "nvidia-settings"
+icono  = "gpu"
+
+[[categoria.app]]
+nombre = "Copias de seguridad (Deja Dup)"
+exec   = "deja-dup"
+icono  = "backup"
+
+[[categoria.app]]
 nombre = "Rescatar entorno"
 exec   = "nebula-rescue"
 icono  = "lifebuoy"
@@ -388,6 +443,36 @@ icono  = "power"
 [[categoria]]
 nombre = "Herramientas"
 icono  = "wrench"
+
+[[categoria.app]]
+nombre = "Calculadora"
+exec   = "gnome-calculator"
+icono  = "calculator"
+
+[[categoria.app]]
+nombre = "Calendario"
+exec   = "gnome-calendar"
+icono  = "calendar"
+
+[[categoria.app]]
+nombre = "Registros del sistema"
+exec   = "gnome-logs"
+icono  = "activity"
+
+[[categoria.app]]
+nombre = "Escaner de documentos"
+exec   = "simple-scan"
+icono  = "scan"
+
+[[categoria.app]]
+nombre = "Escritorio remoto (Remmina)"
+exec   = "remmina"
+icono  = "remote"
+
+[[categoria.app]]
+nombre = "Transmission (BitTorrent)"
+exec   = "transmission-gtk"
+icono  = "download"
 
 [[categoria.app]]
 nombre = "Gestor de archivos comprimidos"

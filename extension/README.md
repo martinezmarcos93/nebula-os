@@ -167,3 +167,12 @@ Migración: portar `nebula-gen-panel` (lógica categoría→apps) al build, deci
 hacer con `ubuntu-dock` (mover/desactivar), añadir clave opcional `desktop=` en el
 TOML para bindear a `Shell.App` (icono temático, instancia única, Flatpak/Snap),
 y recién entonces evaluar un shell theme para el resto de la estética.
+
+## Próxima ola de funciones (2026-09-13)
+
+Tecla Super, buscador en la sidebar, auditoría de categorización (incluye el
+mismo problema de Flatpak/Snap que ya señalaba el párrafo de arriba, con
+datos concretos de esta máquina), menú contextual, panel de accesos a
+discos/unidades y una lista de ventanas para `bottombar.js`. Plan completo,
+decisiones de diseño y preguntas abiertas en
+[`docs/EXTENSION-ROADMAP.md`](../docs/EXTENSION-ROADMAP.md).

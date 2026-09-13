@@ -29,6 +29,41 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-13, extension GNOME — Fases 0-2 de docs/EXTENSION-ROADMAP.md)
+- **Fase 0 - fundacion de persistencia:** `extension/nebula-shell@nebula-os/state.js`
+  (nuevo) -- `~/.config/nebula/shell-state.json` para favoritos, apps
+  ocultas y apps movidas de categoria, separado de `categories.json`
+  (generado, de solo lectura) para que sobreviva a un `build.sh` nuevo.
+  `model.js#buildModel()` mezcla `ocultos`/`categoria_override` al construir
+  el modelo. `favoritos` listo en el modulo, sin UI todavia (Fase 4).
+- **Fase 1 - auditoria de categorizacion:** comparados los 55 comandos de
+  `categories.toml` contra los 96 `.desktop` realmente instalados en esta
+  maquina (sistema + usuario + Flatpak). Hallazgos:
+  - **Bug real:** Heroic y Lutris estan instalados por Flatpak pero
+    `categories.toml` usaba `exec = "heroic"`/`"lutris"` (sin binario en el
+    PATH) -> invisibles pese a estar instalados. Corregido a
+    `flatpak run <app-id>`.
+  - `model.js#isInstalled()`/`iconForApp()`/`descForApp()`: deteccion de
+    apps Flatpak por app-id via `Gio.DesktopAppInfo` (no
+    `GLib.find_program_in_path`, que nunca las encuentra).
+  - Categoria nueva "Comunicacion" (Discord + Thunderbird, hueco real de
+    cobertura). 14 apps mas sumadas a sus categorias (Calculadora,
+    Calendario, Editor de texto GNOME, nvidia-settings, Rhythmbox, Totem,
+    Shotwell, Transmission, Simple Scan, Remmina, Deja Dup, GNOME Logs,
+    ONLYOFFICE, CopyQ). 13 categorias, 90 apps declaradas (antes 12/74).
+  - Verificado con `gjs` standalone contra el codigo real instalado (sin
+    reload de Shell): Heroic/Lutris resuelven `isInstalled()=true` y
+    aparecen en Gaming; Discord aparece en Comunicacion.
+- **Fase 2 - buscador en la sidebar:** `sidebar.js#_buildQuickSearch()`, un
+  `St.Entry` fijo arriba de la fila de energia. No duplica el filtrado de
+  `launcher.js`: al tomar foco abre el lanzador con todas las apps y le cede
+  el foco de teclado real (disparador sin estado propio).
+- Documentado en `docs/EXTENSION-ROADMAP.md` (roadmap de 7 fases para los
+  6 pedidos de la sesion: tecla Super, buscador, auditoria, menu contextual,
+  panel de discos/unidades, lista de ventanas).
+- Pendiente de confirmacion visual en vivo (recordatorio de la sesion
+  anterior: `gnome-shell --replace &`, no alcanza `Alt+F2` -> `r`).
+
 ### Corregido (2026-09-13, extension GNOME — click-through y lanzador roto a partir del 2do ciclo)
 - **BUG-24 (`docs/BUGS.md`), resuelto y confirmado en vivo.** Sesion de
   prueba en vivo: clickear una categoria de la sidebar tambien le llegaba el
