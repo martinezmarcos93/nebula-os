@@ -19,6 +19,8 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 
+import {isHidden, categoryOverride} from './state.js';
+
 /** Lee y parsea categories.json. Devuelve [] si falta o esta corrupto. */
 export function loadCategories(extensionPath) {
     const path = GLib.build_filenamev([extensionPath, 'categories.json']);
@@ -56,8 +58,32 @@ export function firstToken(exec) {
     return String(exec).trim().split(/\s+/)[0] ?? '';
 }
 
+/** Si `exec` es "flatpak run <app-id> ..." (con flags opcionales de por
+ * medio, ej. --branch=X), devuelve el app-id; si no, null. */
+function flatpakAppId(exec) {
+    let argv;
+    try {
+        [, argv] = GLib.shell_parse_argv(exec);
+    } catch (_e) {
+        argv = String(exec).trim().split(/\s+/);
+    }
+    if (!argv || argv[0] !== 'flatpak' || argv[1] !== 'run')
+        return null;
+    const id = argv.slice(2).find(t => !t.startsWith('-'));
+    return id ?? null;
+}
+
 /** ¿El binario del `exec` esta en el PATH? */
 export function isInstalled(exec) {
+    // Flatpak: "flatpak run <id>" no deja binario en el PATH -- find_program_in_path
+    // solo encontraria "flatpak" (el runtime), no si esa app puntual esta
+    // instalada. Gio.AppInfo.get_all() SI ve los .desktop exportados por
+    // Flatpak (system/user), asi que resolver por Gio.DesktopAppInfo es la
+    // forma correcta de detectarlo -- BUG-24bis / auditoria docs/EXTENSION-ROADMAP.md.
+    const appId = flatpakAppId(exec);
+    if (appId)
+        return Gio.DesktopAppInfo.new(`${appId}.desktop`) !== null;
+
     const bin = firstToken(exec);
     if (!bin)
         return false;
@@ -110,8 +136,19 @@ export function invalidateIconCache() {
     _execInfoCache = null;
 }
 
-/** GIcon para una app: 1) icono tematico via AppInfo, 2) fallback simbolico. */
+/** AppInfo de Flatpak resuelta por app-id (el mapa por basename no sirve: el
+ * ejecutable real es "flatpak", no la app). null si no aplica o no se encuentra. */
+function flatpakAppInfo(exec) {
+    const id = flatpakAppId(exec);
+    return id ? Gio.DesktopAppInfo.new(`${id}.desktop`) : null;
+}
+
+/** GIcon para una app: 1) Flatpak por app-id, 2) tematico via AppInfo por
+ * basename, 3) fallback simbolico. */
 export function iconForApp(app) {
+    const fp = flatpakAppInfo(app.exec);
+    if (fp)
+        return fp.get_icon();
     const hit = execInfoMap().get(firstToken(app.exec));
     if (hit?.icon)
         return hit.icon;
@@ -120,6 +157,9 @@ export function iconForApp(app) {
 
 /** Descripcion corta para una app (AppInfo), o '' si no hay. */
 export function descForApp(app) {
+    const fp = flatpakAppInfo(app.exec);
+    if (fp)
+        return fp.get_description() || fp.get_generic_name() || '';
     return execInfoMap().get(firstToken(app.exec))?.desc ?? '';
 }
 
@@ -149,6 +189,7 @@ const CATEGORY_SYMBOLIC = {
     'favoritos': 'starred-symbolic',
     'terminales': 'utilities-terminal-symbolic',
     'navegadores': 'web-browser-symbolic',
+    'comunicacion': 'mail-unread-symbolic',
     'desarrollo': 'applications-engineering-symbolic',
     'multimedia': 'applications-multimedia-symbolic',
     'graficos': 'applications-graphics-symbolic',
@@ -168,27 +209,45 @@ export function symbolicForCategory(nombre) {
 
 /**
  * Construye el modelo visible: categorias con al menos una app instalada,
- * cada una con solo sus apps instaladas.
+ * cada una con solo sus apps instaladas. Aplica los overrides del usuario
+ * (state.js, docs/EXTENSION-ROADMAP.md seccion 0): apps ocultas se excluyen,
+ * apps movidas via categoria_override aparecen en la categoria elegida en
+ * vez de la del TOML (si esa categoria existe; si no, se ignora el override
+ * y queda en la original -- nunca se inventa una categoria nueva aca).
  * Devuelve [{ nombre, icono(GIcon), apps: [{ nombre, exec, icono(GIcon) }] }]
  */
 export function buildModel(extensionPath) {
-    const out = [];
-    for (const cat of loadCategories(extensionPath)) {
-        const apps = (Array.isArray(cat.app) ? cat.app : [])
-            .filter(a => a?.exec && isInstalled(a.exec))
-            .map(a => ({
+    const rawCats = loadCategories(extensionPath);
+    const knownNames = new Set(rawCats.map(c => c.nombre ?? '?'));
+    const buckets = new Map(rawCats.map(c => [c.nombre ?? '?', []]));
+
+    for (const cat of rawCats) {
+        const catName = cat.nombre ?? '?';
+        for (const a of (Array.isArray(cat.app) ? cat.app : [])) {
+            if (!a?.exec || !isInstalled(a.exec) || isHidden(a.exec))
+                continue;
+            const override = categoryOverride(a.exec);
+            const effectiveCat = (override && knownNames.has(override)) ? override : catName;
+            buckets.get(effectiveCat).push({
                 nombre: a.nombre ?? firstToken(a.exec),
                 exec: a.exec,
                 icono: iconForApp(a),
                 desc: a.desc ?? descForApp(a),
-                categoria: cat.nombre ?? '?',
-            }));
+                categoria: effectiveCat,
+            });
+        }
+    }
+
+    const out = [];
+    for (const cat of rawCats) {
+        const catName = cat.nombre ?? '?';
+        const apps = buckets.get(catName);
         if (apps.length === 0)
             continue;
         out.push({
-            nombre: cat.nombre ?? '?',
+            nombre: catName,
             icono: iconForCategory(extensionPath, cat),
-            simbolico: symbolicForCategory(cat.nombre),
+            simbolico: symbolicForCategory(catName),
             apps,
         });
     }

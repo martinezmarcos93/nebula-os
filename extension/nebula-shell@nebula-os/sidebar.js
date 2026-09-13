@@ -126,6 +126,8 @@ export class NebulaSidebar {
         this._sidebar.add_child(new St.Widget({y_expand: true}));   // empuja lo de abajo
         if (this._meters)
             this._sidebar.add_child(this._meters.actor);
+        if (this._launcher)
+            this._sidebar.add_child(this._buildQuickSearch());
         this._sidebar.add_child(this._buildPowerRow());
 
         Main.layoutManager.addChrome(this._sidebar, {
@@ -280,6 +282,28 @@ export class NebulaSidebar {
         box.add_child(this._dateLabel);
         box.add_child(this._timeLabel);
         return box;
+    }
+
+    // Recuadro de busqueda permanente, arriba de la fila de energia. No
+    // duplica la logica de filtrado/resultados (que ya vive en
+    // launcher.js): es un disparador -- al tomar foco, abre el lanzador con
+    // TODAS las apps y le pasa el foco de teclado a su campo real. Como el
+    // foco se mueve ANTES de que el usuario llegue a tipear nada (se dispara
+    // en key-focus-in, no en el primer caracter), este campo nunca procesa
+    // texto el mismo: las teclas siguientes van directo al campo del
+    // lanzador, sin dos entradas peleando por el mismo tipeo.
+    _buildQuickSearch() {
+        this._quickSearch = new St.Entry({
+            style_class: 'nebula-search nebula-quick-search',
+            hint_text: 'Buscar aplicaciones...',
+            can_focus: true,
+            x_expand: true,
+        });
+        this._connect(this._quickSearch.clutter_text, 'key-focus-in', () => {
+            this._quickSearch.set_text('');   // nunca retiene texto: es un disparador, no un campo real
+            this._launcher.open(-1);
+        });
+        return this._quickSearch;
     }
 
     _buildPowerRow() {
