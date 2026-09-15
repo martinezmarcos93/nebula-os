@@ -615,6 +615,100 @@ Convención de estado:
 
 ---
 
+### BUG-26 — GNOME Shell crashea (signal 11) usando la sidebar/launcher
+- **Componente:** `extension/nebula-shell@nebula-os/launcher.js`, `sidebar.js`,
+  `unredirect.js`
+- **Síntoma:** GNOME Shell entero muere con segfault nativo (no una excepción
+  JS: sin traza de JS en el journal, `journalctl` solo marca `GNOME Shell
+  crashed with signal 11`) usando la sidebar/launcher. Pasó **3 veces en el
+  mismo día** (2026-09-13): 14:45:31, 17:48:38 y 18:14:49 — cada vez, GDM
+  relanza `gnome-shell` automáticamente unos segundos después.
+- **Nota de numeración — importante para no confundirse:** los comentarios
+  agregados al código (todavía sin commitear al cerrar esta sesión)
+  referencian este bug como **"BUG-25"** y un archivo
+  `docs/CRASH-BUG25.md` que nunca llegó a crearse. Ese número ya lo usa en
+  este mismo archivo el bug de alineación del lanzador (resuelto, más
+  arriba). Se registra acá como **BUG-26** para no pisar esa entrada;
+  renombrar los comentarios en `launcher.js`/`sidebar.js`/`unredirect.js` la
+  próxima vez que se toquen esos archivos.
+- **Causa raíz — confirmada (con `gdb` sobre el coredump real):** el toggle
+  sincrónico `hide()+show()` introducido para BUG-24 (para forzar el
+  recálculo de la región de input tras la animación de revelado) se
+  ejecutaba **dentro** del callback nativo `onComplete` de una animación de
+  Clutter — es decir, en medio de un frame del compositor. Llamar ahí mismo
+  a `Meta.disable_unredirect_for_display()` / `enable_unredirect_for_display()`
+  (disparado indirectamente por `notify::visible` vía `UnredirectGuard`)
+  reentra sobre mutter a mitad de frame/evento X11, lo que produce el
+  segfault nativo. La variable disparadora es **desde qué contexto se llama
+  a la API de mutter** (frame callback nativo vs. main loop libre), no la
+  lógica de hold/release en sí (que ya estaba bien balanceada desde BUG-22).
+- **Corrección — implementada en el código (sin commitear):**
+  - `launcher.js`/`sidebar.js`: el `hide()+show()` se difiere con
+    `GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, …)` en vez de correr
+    sincrónico, sacándolo del frame callback.
+  - `unredirect.js`: `hold()`/`release()` dejan de llamar a
+    `Meta.disable/enable_unredirect_for_display` de forma sincrónica; ahora
+    encolan un delta neto (`_pending`) y lo aplican una sola vez en el
+    próximo ciclo del main loop (`_apply()`, también vía `GLib.idle_add`).
+    `releaseAll()` (llamada desde `disable()`) sigue siendo sincrónica a
+    propósito, para no dejar nada pendiente tras desactivar la extensión.
+  - Revisión estática (2026-09-15) confirma que el patrón se aplica de forma
+    consistente en los tres puntos que originaban el segfault (`_expand()` y
+    `_collapse()` de la sidebar, `_present()` del launcher) y que la llamada
+    a la API de mutter queda además doblemente diferida (el toggle visual Y
+    el `_apply()` del guard corren en idles separados). No se detectó ningún
+    camino de código que siga llamando a `Meta.disable/enable_unredirect_for_display`
+    de forma sincrónica.
+- **Nota histórica — el crash de 18:14:49 (2026-09-13) NO probó ni refutó
+  este fix:** la copia que GNOME Shell realmente carga
+  (`~/.local/share/gnome-shell/extensions/nebula-shell@nebula-os/`) tenía
+  mtime **14:18:30**, anterior a la edición del fix (18:11–18:13). Entre
+  medio se corrió `gnome-extensions enable nebula-shell@nebula-os`, pero ese
+  comando **no** reconstruye ni recopia nada — eso solo lo hace
+  `extension/build.sh --install`, que no se corrió después de editar. Es
+  decir: ese crash pasó **con el código viejo, sin el fix**. Por eso la
+  validación en vivo sigue pendiente y no se puede dar por hecha con datos
+  de esa sesión.
+- **Estado:** 🔴 **FIX IMPLEMENTADO — PENDIENTE VALIDACIÓN EN VIVO.** Causa
+  raíz confirmada y corrección aplicada en el código (revisión estática
+  conforme), pero **sin ejecutar el proyecto ni GNOME Shell en ninguna
+  sesión desde entonces** — no hay todavía una sola corrida real que
+  confirme que el segfault no vuelve a ocurrir. No dar por buena ni por mala
+  esta corrección hasta completar el criterio de aceptación de abajo.
+- **Criterio de aceptación para la validación en vivo (próxima sesión que
+  sí ejecute el proyecto):**
+  1. `./extension/build.sh --install` para copiar el fix a la ruta real que
+     carga GNOME Shell.
+  2. Reiniciar el **proceso** de `gnome-shell` de verdad — recordar la nota
+     operativa de BUG-24: en esta máquina ni `Alt+F2` → `r` ni logout/login
+     reinician el proceso (mismo PID persiste); hace falta
+     `gnome-shell --replace &` (X11) o reboot completo.
+  3. Repetir, sobre código confirmado fresco, el ciclo completo sin que
+     aparezca ningún crash ni warning nuevo en el journal:
+     - abrir la sidebar;
+     - cerrar la sidebar;
+     - volver a abrirla (el punto exacto que rompía antes, 2° ciclo);
+     - abrir el launcher;
+     - cerrar el launcher;
+     - repetir apertura/cierre de ambos varias veces;
+     - alternar sidebar/launcher (abrir uno, abrir el otro, cerrar);
+     - lanzar aplicaciones desde el launcher durante ese ciclo;
+     - interactuar con ventanas reales mientras la sidebar está expandida
+       (arrastrar, maximizar, minimizar);
+     - dejar la sidebar visible en reposo durante uso normal un rato, no
+       solo en la secuencia de prueba puntual;
+     - repetir toda la secuencia más de una vez en la misma sesión de Shell
+       (el bug original solo aparecía a partir del 2°/3er ciclo, nunca en
+       el primero).
+  4. Si vuelve a crashear con código confirmado fresco, extraer la traza
+     nativa real del coredump (`/var/crash/_usr_bin_gnome-shell.1000.crash`,
+     `apport-unpack` + `gdb` sobre el ejecutable) en vez de asumir que la
+     causa raíz de más arriba es la única posible.
+  - Solo si los 4 puntos pasan sin incidentes, la entrada pasa a
+    ✅ **Resuelto** con la fecha y el commit de validación.
+
+---
+
 ## 3. Conocidos, no resueltos
 
 Diagnosticados pero pospuestos a propósito — no bloquean el uso diario.

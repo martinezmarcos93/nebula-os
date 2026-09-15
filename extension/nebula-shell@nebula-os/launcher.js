@@ -12,6 +12,7 @@
 // No reserva espacio (sin struts): las ventanas no se reacomodan.
 
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -41,6 +42,8 @@ export class NebulaLauncher {
         this._stageCaptureId = 0;
         this._isOpen = false;   // estado explicito: NO depender de this._panel.visible
         this._lastMonitorLabel = 'n/a';
+        this._toggleIdleId = 0;             // BUG-25: hide()+show() diferido de _present()
+        this._togglingVisibility = false;   // true durante ese hide()+show()
 
         this._build();
     }
@@ -212,10 +215,24 @@ export class NebulaLauncher {
         Main.layoutManager._queueUpdateRegions?.();
         // Toggle de visibilidad: la señal real que espera LayoutManager para
         // recalcular la region (no alcanza con _queueUpdateRegions sola en
-        // ciclos repetidos de abrir/cerrar). hide()+show() es sincronico
-        // (sin frame de por medio), no se nota como parpadeo.
-        this._panel.hide();
-        this._panel.show();
+        // ciclos repetidos de abrir/cerrar).
+        //
+        // BUG-25 (docs/CRASH-BUG25.md): este hide()+show() causo un segfault
+        // nativo real en mutter cuando corria sincronicamente desde un
+        // contexto de evento/frame nativo (confirmado con gdb sobre el
+        // coredump). Diferido a GLib.idle_add corre ya fuera de ese contexto.
+        if (this._toggleIdleId)
+            GLib.source_remove(this._toggleIdleId);
+        this._toggleIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._toggleIdleId = 0;
+            if (!this._isOpen || !this._panel)
+                return GLib.SOURCE_REMOVE;
+            this._togglingVisibility = true;
+            this._panel.hide();
+            this._panel.show();
+            this._togglingVisibility = false;
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     // Cierra al hacer clic fuera del panel (y fuera de la sidebar) o con Esc,
@@ -364,6 +381,10 @@ export class NebulaLauncher {
 
     destroy() {
         this._isOpen = false;
+        if (this._toggleIdleId) {
+            GLib.source_remove(this._toggleIdleId);
+            this._toggleIdleId = 0;
+        }
         this._removeStageCapture();
         for (const [target, id] of this._signalIds)
             target.disconnect(id);
