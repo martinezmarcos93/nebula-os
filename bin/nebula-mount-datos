@@ -9,11 +9,32 @@
 # tolera de entrada, por eso el automontaje que instala este script usa
 # ntfs-3g.
 #
+# NO se usa la opcion de fstab `x-gvfs-show`: hace que el disco aparezca como
+# icono "mountable-volume" clickeable en el Ubuntu Dock (extension GNOME
+# ubuntu-dock@ubuntu.com), y su locations.js tiene un bug con volumenes ya
+# montados por fstab (no por udisks2): al clickear tira "Mount and launch
+# mountable-volume:UUID: Error: Action %s is not supported by %s" y no pasa
+# nada (visto en journalctl -> gnome-shell). En su lugar, `--fstab --apply`
+# deja un bookmark en ~/.config/gtk-3.0/bookmarks: aparece igual en la
+# sidebar de Nautilus pero como un acceso directo comun (navega al path, no
+# pasa por el codigo de "mount and launch" del volumen).
+#
 # Uso:
-#   nebula-mount-datos                 monta el disco ahora (ntfsfix -d + mount)
-#   nebula-mount-datos --fstab         imprime la linea recomendada de /etc/fstab
-#   nebula-mount-datos --fstab --apply la agrega a /etc/fstab (con backup) y
-#                                      la activa (systemd automount). Idempotente.
+#   nebula-mount-datos                  monta el disco ahora (ntfsfix -d + mount)
+#   nebula-mount-datos --fstab          imprime la linea recomendada de /etc/fstab
+#   nebula-mount-datos --fstab --apply  la agrega a /etc/fstab (con backup) y
+#                                       la activa (systemd automount). Idempotente.
+#   nebula-mount-datos --service        imprime las unidades systemd de refuerzo
+#   nebula-mount-datos --service --apply las instala y activa. Idempotente.
+#                                       Requiere el automount de --fstab ya puesto.
+#                                       Resuelve el hueco del automount "perezoso"
+#                                       (solo monta al primer acceso, asi que recien
+#                                       arrancado el equipo el disco parece "no
+#                                       montado" hasta que algo lo toca): un servicio
+#                                       dispara el montaje real ya en el boot, y un
+#                                       timer cada 5 min lo re-dispara solo si hiciera
+#                                       falta (systemctl start sobre un mount ya activo
+#                                       no hace nada).
 #   nebula-mount-datos --help
 #
 # Disco: por UUID. Default el de este equipo; override con NEBULA_DATOS_UUID.
@@ -27,8 +48,9 @@ MODE="mount"
 APPLY=0
 for a in "$@"; do
     case "$a" in
-        -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
         --fstab)   MODE="fstab" ;;
+        --service) MODE="service" ;;
         --apply)   APPLY=1 ;;
         *) echo "nebula-mount-datos: opcion desconocida: $a" >&2; exit 2 ;;
     esac
@@ -42,8 +64,23 @@ priv() {
 }
 
 fstab_line() {
-    printf 'UUID=%s  %s  ntfs-3g  uid=%s,gid=%s,dmask=022,fmask=133,windows_names,nofail,x-systemd.automount,x-gvfs-show  0  0\n' \
+    printf 'UUID=%s  %s  ntfs-3g  uid=%s,gid=%s,dmask=022,fmask=133,windows_names,nofail,x-systemd.automount  0  0\n' \
         "$UUID" "$MOUNTPOINT" "$(id -u)" "$(id -g)"
+}
+
+# Bookmark en ~/.config/gtk-3.0/bookmarks -> aparece en la sidebar de
+# Nautilus como acceso directo comun (sin pasar por GVolume mount-and-launch,
+# ver nota de x-gvfs-show mas arriba). Idempotente, sin privilegios.
+ensure_gtk_bookmark() {
+    local bm="$HOME/.config/gtk-3.0/bookmarks"
+    local line="file://$MOUNTPOINT Disco de datos"
+    mkdir -p -- "$(dirname "$bm")"
+    touch -- "$bm"
+    if grep -qxF "$line" "$bm" 2>/dev/null; then
+        return 0
+    fi
+    printf '%s\n' "$line" >> "$bm"
+    echo "Bookmark agregado en Nautilus: Disco de datos -> $MOUNTPOINT"
 }
 
 # --------------------------------------------------------------------------
@@ -58,7 +95,28 @@ fstab)
     # Chequeo previo SIN privilegios (/etc/fstab es legible) para no pedir
     # contrasena si ya esta.
     if grep -qsE "^[^#]*UUID=${UUID}[[:space:]]" /etc/fstab; then
+        # Migracion: instalaciones viejas tenian x-gvfs-show (icono roto en
+        # el Ubuntu Dock, ver nota arriba de fstab_line). Lo sacamos si sigue.
+        if grep -qsE "^[^#]*UUID=${UUID}[[:space:]].*x-gvfs-show" /etc/fstab; then
+            echo "Entrada existente todavia tiene 'x-gvfs-show' (icono roto en el Ubuntu Dock); la saco."
+            if priv bash -c '
+                set -eu
+                bk="/etc/fstab.nebula-bak.$(date +%Y%m%d-%H%M%S)"
+                cp -- /etc/fstab "$bk"
+                echo "backup: $bk"
+                sed -i "s/,x-gvfs-show\b//" /etc/fstab
+                systemctl daemon-reload
+                echo "OK: x-gvfs-show removido."
+            '; then
+                ensure_gtk_bookmark
+                exit 0
+            else
+                echo "ERROR: no se pudo migrar la entrada (contrasena incorrecta o cancelado)." >&2
+                exit 1
+            fi
+        fi
         echo "Ya hay una entrada para UUID=$UUID en /etc/fstab; nada que hacer."
+        ensure_gtk_bookmark
         exit 0
     fi
     echo "Voy a agregar a /etc/fstab (con backup):"
@@ -85,12 +143,168 @@ fi
 echo "OK: entrada agregada y automount activado."
 PRIV
     then
+        ensure_gtk_bookmark
         echo "Listo. El disco se montara solo al primer acceso a $MOUNTPOINT."
         note "Automontaje configurado en /etc/fstab."
         exit 0
     else
         echo "ERROR: no se pudo configurar el automontaje (contrasena incorrecta o cancelado)." >&2
         note "No se pudo configurar el automontaje."
+        exit 1
+    fi
+    ;;
+service)
+    if ! command -v systemd-escape >/dev/null 2>&1; then
+        echo "ERROR: no encuentro systemd-escape; hace falta systemd." >&2
+        exit 1
+    fi
+    if ! grep -qsE "^[^#]*UUID=${UUID}[[:space:]].*x-systemd\.automount" /etc/fstab; then
+        echo "ERROR: no hay entrada de automount para UUID=$UUID en /etc/fstab todavia." >&2
+        echo "Corre primero:  nebula-mount-datos --fstab --apply" >&2
+        exit 1
+    fi
+    MOUNT_UNIT="$(systemd-escape -p --suffix=mount "$MOUNTPOINT")"
+
+    svc_mount="/etc/systemd/system/nebula-datos-mount.service"
+    svc_health="/etc/systemd/system/nebula-datos-healthcheck.service"
+    timer_health="/etc/systemd/system/nebula-datos-healthcheck.timer"
+    svc_notify="/etc/systemd/system/nebula-datos-notify-failure.service"
+    # Notificacion de escritorio SOLO si el montaje realmente falla (disco
+    # desconectado, falla fisica, etc.) - sin esto el timer de 5 min
+    # reintenta en silencio para siempre y el usuario nunca se entera.
+    # runuser -u marcos con XDG_RUNTIME_DIR/DBUS_SESSION_BUS_ADDRESS a mano
+    # porque este servicio corre como root (system, no --user), sin sesion.
+    notify_cmd='/usr/sbin/runuser -u marcos -- env XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send -a Nebula -u critical "Disco de datos" "No se pudo montar (UUID '"$UUID"'). Revisalo a mano: nebula-mount-datos"'
+
+    render_units() {
+        cat <<EOF
+# --- $svc_mount ---
+[Unit]
+Description=Nebula OS - disco de datos: montaje temprano en el boot (no esperar el primer acceso)
+After=local-fs.target
+ConditionPathExists=/dev/disk/by-uuid/$UUID
+OnFailure=nebula-datos-notify-failure.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/systemctl start $MOUNT_UNIT
+
+[Install]
+WantedBy=multi-user.target
+
+# --- $svc_health ---
+[Unit]
+Description=Nebula OS - disco de datos: chequeo periodico (re-monta si hizo falta)
+ConditionPathExists=/dev/disk/by-uuid/$UUID
+OnFailure=nebula-datos-notify-failure.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl start $MOUNT_UNIT
+
+# --- $timer_health ---
+[Unit]
+Description=Nebula OS - disco de datos: timer del chequeo periodico
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=1min
+Persistent=false
+
+[Install]
+WantedBy=timers.target
+
+# --- $svc_notify ---
+[Unit]
+Description=Nebula OS - disco de datos: aviso de escritorio si el montaje fallo
+
+[Service]
+Type=oneshot
+ExecStart=$notify_cmd
+EOF
+    }
+
+    if [[ "$APPLY" -eq 0 ]]; then
+        render_units
+        echo "# instalalas con:  nebula-mount-datos --service --apply" >&2
+        exit 0
+    fi
+
+    if [[ -f "$svc_mount" && -f "$svc_health" && -f "$timer_health" && -f "$svc_notify" ]] \
+        && grep -q "$MOUNT_UNIT" "$svc_mount" "$svc_health" 2>/dev/null \
+        && grep -q "OnFailure=nebula-datos-notify-failure.service" "$svc_mount" "$svc_health" 2>/dev/null \
+        && systemctl is-enabled nebula-datos-mount.service >/dev/null 2>&1 \
+        && systemctl is-enabled nebula-datos-healthcheck.timer >/dev/null 2>&1; then
+        echo "Los servicios de refuerzo ya estaban instalados y activos; nada que hacer."
+        exit 0
+    fi
+
+    echo "Voy a instalar y activar:"
+    echo "  $svc_mount (dispara el montaje real en cada boot)"
+    echo "  $svc_health + $timer_health (re-chequea cada 5 min)"
+    echo "  $svc_notify (aviso de escritorio si alguna vez falla de verdad)"
+    if priv bash -c "cat > '$svc_mount'" <<UNIT_MOUNT
+[Unit]
+Description=Nebula OS - disco de datos: montaje temprano en el boot (no esperar el primer acceso)
+After=local-fs.target
+ConditionPathExists=/dev/disk/by-uuid/$UUID
+OnFailure=nebula-datos-notify-failure.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/systemctl start $MOUNT_UNIT
+
+[Install]
+WantedBy=multi-user.target
+UNIT_MOUNT
+    then :; else
+        echo "ERROR: no se pudo escribir $svc_mount (contrasena incorrecta o cancelado)." >&2
+        note "No se pudo instalar el refuerzo de montaje."
+        exit 1
+    fi
+    priv bash -c "cat > '$svc_health'" <<UNIT_HEALTH
+[Unit]
+Description=Nebula OS - disco de datos: chequeo periodico (re-monta si hizo falta)
+ConditionPathExists=/dev/disk/by-uuid/$UUID
+OnFailure=nebula-datos-notify-failure.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl start $MOUNT_UNIT
+UNIT_HEALTH
+    priv bash -c "cat > '$timer_health'" <<UNIT_TIMER
+[Unit]
+Description=Nebula OS - disco de datos: timer del chequeo periodico
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=1min
+Persistent=false
+
+[Install]
+WantedBy=timers.target
+UNIT_TIMER
+    priv bash -c "cat > '$svc_notify'" <<UNIT_NOTIFY
+[Unit]
+Description=Nebula OS - disco de datos: aviso de escritorio si el montaje fallo
+
+[Service]
+Type=oneshot
+ExecStart=$notify_cmd
+UNIT_NOTIFY
+    if priv systemctl daemon-reload \
+        && priv systemctl enable --now nebula-datos-mount.service \
+        && priv systemctl enable --now nebula-datos-healthcheck.timer; then
+        echo "Listo. El disco se monta ya en el boot, se re-chequea cada 5 min, y avisa si falla."
+        note "Refuerzo de montaje instalado y activo."
+        exit 0
+    else
+        echo "ERROR: se escribieron las unidades pero fallo enable/start." >&2
+        note "Refuerzo de montaje: fallo al activar."
         exit 1
     fi
     ;;
