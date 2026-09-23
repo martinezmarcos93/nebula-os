@@ -7,7 +7,12 @@
 //   - escribir en el campo                  -> filtra sobre TODAS las apps
 //   - Enter                                 -> lanza la primera de la lista
 //   - clic en una fila                      -> lanza esa
-//   - Esc / clic afuera / Super+B           -> cierra
+//   - Esc (con foco en el panel) / Super+B  -> cierra
+//
+// "clic afuera cierra" NO esta activo hoy: _installStageCapture() implementa
+// esto pero open()/toggle() no lo invocan (deshabilitado a mitad de la
+// investigacion de BUG-24, docs/BUGS.md; reactivar requiere confirmar en una
+// sesion GNOME real que no reintroduce ese bug). Ver docs/BUGS.md.
 //
 // No reserva espacio (sin struts): las ventanas no se reacomodan.
 
