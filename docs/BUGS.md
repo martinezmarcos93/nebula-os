@@ -669,12 +669,121 @@ Convención de estado:
   decir: ese crash pasó **con el código viejo, sin el fix**. Por eso la
   validación en vivo sigue pendiente y no se puede dar por hecha con datos
   de esa sesión.
-- **Estado:** 🔴 **FIX IMPLEMENTADO — PENDIENTE VALIDACIÓN EN VIVO.** Causa
-  raíz confirmada y corrección aplicada en el código (revisión estática
-  conforme), pero **sin ejecutar el proyecto ni GNOME Shell en ninguna
-  sesión desde entonces** — no hay todavía una sola corrida real que
-  confirme que el segfault no vuelve a ocurrir. No dar por buena ni por mala
-  esta corrección hasta completar el criterio de aceptación de abajo.
+- **Estado:** 🔴 **VOLVIÓ A CRASHEAR CON EL FIX INSTALADO — el fix de esta
+  entrada NO quedó confirmado; hace falta seguir investigando.** Ver el
+  crash de 2026-09-15 00:53:57 más abajo, que sí corrió sobre código fresco
+  (a diferencia del de 18:14:49) y crasheó igual.
+
+#### Crash de 2026-09-15 00:53:57 — con el fix ya instalado, causa aún sin confirmar
+
+- **A diferencia del crash de 18:14:49 (2026-09-13), este sí corrió con el
+  fix:** `extension/build.sh --install` se ejecutó a las 00:52:19 (mtime de
+  los `.js` en `~/.local/share/gnome-shell/extensions/nebula-shell@nebula-os/`),
+  11 minutos después del commit `243db54` (00:41:28). El `diff` entre esa
+  copia instalada y el `unredirect.js`/`sidebar.js`/`launcher.js` del repo en
+  ese commit es **vacío** — es decir, el código con `GLib.idle_add` y
+  `_pending`/`_apply()` diferido sí estaba corriendo quando pasó esto.
+- **Secuencia reconstruida (journal + `.bash_history`, sin timestamps en el
+  history así que el orden exacto de los últimos dos pasos es aproximado):**
+  1. `extension/build.sh --install` — 00:52:19.
+  2. `gnome-extensions enable nebula-shell@nebula-os` (CLI explícito, no
+     interno del shell) — 00:52:44.
+  3. Uso normal ~70 s (sidebar/launcher, ventanas reales — coherente con el
+     patrón ya conocido de que esto tiende a tardar un par de ciclos en
+     aparecer).
+  4. `gnome-shell[330996]: GNOME Shell crashed with signal 11` — 00:53:57.
+  5. Recién **1 segundo después** aparece en el journal la primera actividad
+     dbus de un proceso `comm="gnome-shell --replace"` (pid 403096) — que
+     por tiempo de arranque (conectar a X, compilar shaders, etc.) tuvo que
+     haberse lanzado antes de ese log, es decir, probablemente ya estaba
+     arrancando *en el momento del crash*. El último comando de
+     `~/.bash_history` es justamente `gnome-shell --replace & disown`
+     (parte del flujo de recarga habitual de esta máquina, ver BUG-24).
+- **Traza nativa simbolizada — confirmada con `gdb` + símbolos de depuración
+  exactos (2026-09-15, sesión posterior):** se instalaron
+  `gnome-shell-dbgsym=46.0-0ubuntu6~24.04.14` y
+  `libmutter-14-0-dbgsym=46.2-1ubuntu0.24.04.16` (versiones exactas
+  confirmadas contra `Package`/`RelatedPackageVersions` del propio crash
+  report — coinciden con lo instalado en la máquina, nada se actualizó desde
+  el crash) vía `ddebs.ubuntu.com`, y se re-corrió `gdb` sobre el mismo
+  coredump (`/var/crash/_usr_bin_gnome-shell.1000.crash`, intacto) con
+  `thread apply all bt full`. El thread que crasheó es el principal
+  (LWP 330996). Frames relevantes, de la más reciente a la más vieja
+  (`#4`/`#5` son el propio manejador de señales de GNOME Shell
+  re-mandándose la señal para generar el core; la traza real del momento
+  del fallo empieza en `#6`):
+  ```
+  #4  dump_gjs_stack_on_signal_handler (signo=11) at ../src/main.c:481
+  #5  <signal handler called>
+  #6  meta_compositor_get_plugin_manager (compositor=<optimized out>)
+        at ../src/compositor/compositor.c:1498
+  #7  handle_host_xevent (event=..., backend=0x572985418fd0)
+        at ../src/backends/x11/meta-backend-x11.c:376
+        compositor = 0x0          <-- NULL en el momento de la llamada
+  #8  x_event_source_dispatch (...) at ../src/backends/x11/meta-backend-x11.c:493
+        event = { type = 18, ... }   <-- 18 = X11 UnmapNotify
+  #9  ??? () at libglib-2.0.so.0
+  #10 ??? () at libglib-2.0.so.0
+  #11 g_main_context_iteration () at libglib-2.0.so.0
+  #12 ??? () at libgjs.so.0
+  #13 gjs_context_eval_module () at libgjs.so.0
+  #14 gjs_context_eval_module_file () at libgjs.so.0
+  #15 main (...) at ../src/main.c:781
+  ```
+  Salida completa (los 11 threads) guardada en
+  `/tmp/claude-*/…/scratchpad/crash-unpack/gdb-full-bt.txt` de esa sesión
+  (no versionado; regenerar con el mismo comando si hace falta —
+  `apport-unpack` sobre el `.crash` + `gdb -ex "thread apply all bt full"`
+  sobre `/usr/bin/gnome-shell`).
+- **Lectura de esta traza — corrige las dos hipótesis anteriores, ninguna de
+  las dos era el mecanismo real:**
+  - **No es la reentrada de `unredirect.js`/BUG-26 original.** No aparece
+    ninguna frame de `Meta.disable/enable_unredirect_for_display` ni de
+    código JS de la extensión en absoluto. La traza es 100% nativa.
+  - **Causa real: `handle_host_xevent` despacha un evento X11
+    `UnmapNotify` (`type = 18`) con el `compositor` local en `NULL`,** y
+    `meta_compositor_get_plugin_manager(compositor)` lo desreferencia sin
+    chequear null → segfault. Esto es consistente con el timing ya
+    observado (crash justo cuando un segundo proceso `gnome-shell
+    --replace` estaba arrancando, según el journal): apunta a una carrera
+    nativa de mutter donde el compositor del proceso viejo ya está
+    parcialmente destruido/desenchufado pero todavía le llega (y despacha)
+    un evento X11 pendiente en la cola.
+  - **No confirmado quién generó ese `UnmapNotify`** — podría ser el propio
+    `hide()` de la sidebar/launcher (aunque diferido por el fix de BUG-26,
+    sigue siendo un `hide()` real de un actor con backing X11 en algún
+    momento) coincidiendo en mal timing con el arranque de
+    `gnome-shell --replace`, o podría ser el shutdown normal del shell
+    viejo desmapeando sus propias ventanas — la traza no distingue el
+    origen del evento, solo que llegó con el compositor ya en NULL.
+  - **`releaseAll()`/`disable()` quedan descartados como causa de *este*
+    crash concreto** — no hay ninguna frame de esas rutas. No se debe tocar
+    ese código en base a esta evidencia (si se investiga en el futuro, que
+    sea por otra razón, con su propia evidencia).
+- **Qué falta para cerrar esto con confianza:**
+  1. Determinar si esto es un bug conocido de Mutter/upstream (buscar en el
+     issue tracker de GNOME/mutter por `handle_host_xevent` +
+     `meta_compositor_get_plugin_manager` + compositor NULL durante
+     shutdown/replace) — si lo es, puede no ser corregible desde el lado de
+     la extensión.
+  2. Reproducir **sin** solapar `gnome-shell --replace` con actividad de la
+     extensión (dejar la sesión corriendo ya con el fix cargado, sin
+     relanzar el proceso a mitad de la prueba) para aislar si el
+     `UnmapNotify` problemático depende del hand-off o puede pasar en uso
+     normal también.
+  3. Si se confirma que el origen es el propio flujo de recarga de esta
+     máquina (`build.sh --install` + `gnome-extensions enable` +
+     `gnome-shell --replace & disown` corridos en rápida sucesión, ver
+     BUG-24), evaluar si ese flujo necesita un margen de tiempo entre pasos
+     antes de considerarlo seguro para probar cambios.
+- **Estado de este sub-hallazgo:** 🔴 Causa raíz del crash nativo confirmada
+  con traza simbolizada (NULL compositor en `handle_host_xevent` al
+  despachar un `UnmapNotify`, ver arriba). Sigue sin confirmarse si esto es
+  atribuible al código de nebula-shell o es un bug de mutter disparado por
+  el flujo de recarga de la máquina — no tocar `releaseAll()`/`disable()`
+  en base a este crash. No marcar BUG-26 como resuelto (el fix de BUG-26
+  sigue siendo válido para lo que corrigió — la reentrada de Clutter — pero
+  no es lo que causó este crash).
 - **Criterio de aceptación para la validación en vivo (próxima sesión que
   sí ejecute el proyecto):**
   1. `./extension/build.sh --install` para copiar el fix a la ruta real que
