@@ -865,6 +865,30 @@ Diagnosticados pero pospuestos a propósito — no bloquean el uso diario.
   `extension/README.md`; el prototipo todavía está en fase de viabilidad.
 - **Estado:** 🟡 Conocido, no resuelto.
 
+### KNOWN-04 — "Clic afuera cierra" del lanzador GNOME está implementado pero deshabilitado desde la investigación de BUG-24
+- **Componente:** `extension/nebula-shell@nebula-os/launcher.js`
+- **Síntoma:** `docs/AUDIT.md`/`docs/FORENSIC_AUDIT.md` (`BUG-004`) detectaron que
+  `extension/README.md` y el comentario de cabecera de `launcher.js` prometían
+  que un clic fuera del panel lo cierra, pero el código que lo hace
+  (`_installStageCapture()`) nunca se invoca: las dos líneas que lo activarían
+  en `open()`/`toggle()` quedaron comentadas con la marca "PRUEBA DE
+  AISLAMIENTO" de la sesión de diagnóstico de BUG-24 (2026-09-13) y no se
+  revirtieron.
+- **Causa raíz / variables:** decisión de diagnóstico congelada, no un bug de
+  lógica — la variable es si `_installStageCapture()` se invoca o no desde
+  `open()`/`toggle()`.
+- **Por qué se pospone:** reactivarlo sin poder probarlo en una sesión GNOME
+  46 real arriesga reintroducir BUG-24 (click-through de la sidebar/lanzador),
+  que costó una sesión completa de diagnóstico cerrar. La documentación ya se
+  corrigió (2026-09-23) para reflejar el comportamiento actual (solo `Esc`
+  con foco en el panel, o `Super+B`, cierran el lanzador).
+- **Próximo paso:** al validar en una sesión GNOME 46 real (Fase de
+  validación en Linux), descomentar las dos llamadas a
+  `_installStageCapture()` en `launcher.js` y repetir el ciclo de prueba de
+  BUG-24 (expandir → colapsar → expandir → clic, más de una vez) antes de
+  volver a documentarlo como activo.
+- **Estado:** 🟡 Conocido, no resuelto.
+
 ---
 
 ## 4. Sin verificar

@@ -23,12 +23,17 @@ en la memoria del proyecto / los commits `feat(extension): ...`.
 
 Hace:
 
-- **Sidebar ancha permanente** (~236 px) en el borde izquierdo del monitor
-  primario. Reserva su ancho (`struts`) → las ventanas maximizadas no quedan
-  debajo. Contenido:
+- **Sidebar ancha** (~236 px) en el borde izquierdo del monitor primario, con
+  **auto-colapso**: se retrae sola 1.6 s después de iniciar si el puntero no
+  está encima (`FIRST_COLLAPSE_MS`), y de nuevo 350 ms después de que el
+  puntero se aleja (`AUTO_COLLAPSE_MS`); se revela acercando el puntero a una
+  franja de 6 px pegada al borde (`HOT_EDGE_W`) — mismo patrón de *hot edge*
+  que `nebula-edge-sidebar` en el núcleo bspwm, no una ventana siempre fija.
+  Reserva su ancho (`struts`) mientras está expandida → las ventanas
+  maximizadas no quedan debajo en ese momento. Contenido:
   - cabecera: marca (`brand-mark.png`) + "NEBULA OS" + "cosmic minimalism";
   - reloj en vivo (fecha en español + hora grande);
-  - lista de las 12 categorías (icono de línea simbólico + nombre); clic → abre
+  - lista de las 13 categorías (icono de línea simbólico + nombre); clic → abre
     el lanzador filtrado a esa categoría;
   - bloque **SISTEMA** (`meters.js`): barras en vivo CPU (`/proc/stat`), RAM y
     SWAP (`/proc/meminfo`), GPU (`nvidia-smi`, se oculta si no está), Disco
@@ -39,9 +44,13 @@ Hace:
 - **Lanzador con búsqueda** (`launcher.js`), panel flotante a la derecha de la
   sidebar (no reserva espacio): campo "Buscar aplicaciones..." + lista de apps
   (icono + nombre + descripción). Clic en categoría → filtrado a esa categoría;
-  escribir → filtra sobre todas las apps; `Enter` lanza la primera; `Esc` /
-  perder foco / `Super+B` cierra. La descripción sale de `Gio.AppInfo` cuando se
-  puede resolver el `exec`.
+  escribir → filtra sobre todas las apps; `Enter` lanza la primera; `Esc` (con
+  foco en el panel) o `Super+B` cierra. **Cerrar haciendo clic afuera del panel
+  todavía no está activo**: el código que lo implementa (`_installStageCapture()`
+  en `launcher.js`) existe completo pero quedó deshabilitado a mitad de la
+  investigación de BUG-24 (`docs/BUGS.md`) y no se reactivó — reactivarlo
+  requiere confirmar en una sesión GNOME real que no reintroduce ese bug. La
+  descripción sale de `Gio.AppInfo` cuando se puede resolver el `exec`.
 - **Barra inferior** (`bottombar.js`), franja full-width al pie (reserva su alto
   con struts): indicador de escritorios (`global.workspace_manager`, clic para
   cambiar), now-playing MPRIS (título + artista + `Previous`/`PlayPause`/`Next`
@@ -130,7 +139,7 @@ En una sesión GNOME normal:
 
 - [ ] la sidebar se ve con la estética Cosmic Dark, borde izquierdo, altura completa;
 - [ ] cabecera (marca + textos) y reloj en vivo (fecha en español + hora) correctos;
-- [ ] las 12 categorías se listan; cada una muestra **solo** apps instaladas;
+- [ ] las 13 categorías se listan; cada una muestra **solo** apps instaladas;
 - [ ] clic en una categoría abre el lanzador filtrado a esa categoría;
 - [ ] escribir en "Buscar aplicaciones..." filtra sobre todas las apps; `Enter` lanza la primera;
 - [ ] clic en una fila lanza la app y el lanzador se cierra;
