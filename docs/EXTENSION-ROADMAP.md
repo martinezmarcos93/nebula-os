@@ -332,9 +332,9 @@ que hay realmente montado/configurado y abre Nautilus ahí con un clic.
 - Disco NTFS de datos: `/media/marcos/A68072A880727F1D` (el mismo que
   gestiona `nebula-mount-datos` del núcleo).
 - **4 cuentas de Google configuradas via GNOME Online Accounts**, cada una
-  expuesta como un volumen GVfs (`GProxyVolumeMonitorGoa`): las cuentas
-  `<correo-omitido>`, `<correo-omitido>`,
-  `<correo-omitido>`, `<correo-omitido>`. **Esto es
+  expuesta como un volumen GVfs (`GProxyVolumeMonitorGoa`), una por cada
+  cuenta `<usuario>@gmail.com` configurada (direcciones omitidas a
+  proposito: no versionar datos personales). **Esto es
   literalmente "mis unidades de drive configuradas"** — Google Drive vía GOA,
   ya anda en este equipo, Nebula solo necesita listarlas y abrirlas.
 
