@@ -46,6 +46,6 @@ jobs:
       # X virtual y exigir cero warnings/errores al evaluar los widgets.
       - name: Validar eww.yuck con eww real (Xvfb)
         run: |
-          sudo apt-get install -y xvfb
+          sudo apt-get install -y xvfb x11-utils
           export PATH="$HOME/.local/bin:$PATH"
           xvfb-run -a bash tools/test-session.sh --static

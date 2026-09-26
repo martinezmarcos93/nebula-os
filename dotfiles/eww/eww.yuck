@@ -181,24 +181,23 @@
       (label :halign "start" :class "temp-label" :text {TEMP != "" ? "TEMP ${TEMP}" : ""})
       (label :halign "start" :class "clock" :text "${DATE}  ${TIME}"))))
 
-;; UNA sola ventana. Sin :exclusive (no reserva strut, no empuja las ventanas
-;; tiled) y con :wm-ignore (bspwm no la gestiona). :focusable false para que
-;; nunca robe el foco del teclado (coherente con focus_follows_pointer false).
+;; UNA sola ventana, sin strut (no empuja las ventanas) y con :wm-ignore
+;; (bspwm no la gestiona).
 ;; Se abre llevando el puntero al borde izquierdo (nebula-edge-sidebar) o con
 ;; Super + B; el daemon lo arranca bspwmrc sin abrir esta ventana.
 (defwindow nebula-sidebar
   :monitor 0
   :geometry (geometry :x "0" :y "0" :width "260px" :height "100%" :anchor "left center")
   :stacking "fg"
-  :exclusive false
-  :focusable false
+  ;; Sin :reserve: el sidebar se superpone, no empuja las ventanas.
+  ;; (:exclusive/:focusable eran propiedades de Wayland, ignoradas en X11.)
   :wm-ignore true
   (sidebar-content))
 
 ;; --- Barra de estado superior -----------------------------------------
 ;; Siempre visible (la abre bspwmrc al iniciar sesion). Marca (izq.) · taskbar
 ;; de ventanas del escritorio enfocado (centro) · reloj-fecha + CPU/RAM/GPU/temp
-;; (der.). :exclusive true -> reserva la franja superior, las ventanas no la
+;; (der.). :reserve -> reserva la franja superior, las ventanas no la
 ;; tapan. Sin glyphs de Nerd Font (la UI usa Inter): texto plano.
 
 ;; Taskbar: un boton por ventana del escritorio enfocado (TASKWINS, via
@@ -231,6 +230,9 @@
   :monitor 0
   :geometry (geometry :x "0" :y "0" :width "100%" :height "26px" :anchor "top center")
   :stacking "fg"
-  :exclusive true
-  :focusable false
+  ;; X11 (bspwm): :reserve publica _NET_WM_STRUT_PARTIAL y bspwm deja libre
+  ;; la franja superior. :exclusive/:focusable son SOLO de Wayland: en X11 se
+  ;; ignoraban y la barra no reservaba nada (medido con xprop: strut 0).
+  :windowtype "dock"
+  :reserve (struts :side "top" :distance "26px")
   (bar-content))

@@ -108,6 +108,16 @@ elif command -v eww >/dev/null 2>&1; then
         [[ "$act" == *nebula-bar* && "$act" == *nebula-sidebar* ]] \
             && ok "eww: abre nebula-bar y nebula-sidebar" \
             || bad "eww: no pudo abrir las ventanas ('$act')"
+        # nebula-bar debe reservar su franja en X11 (_NET_WM_STRUT_PARTIAL
+        # top = 26). Con :exclusive (solo Wayland) quedaba en 0 y las
+        # ventanas maximizadas se metian debajo de la barra (FS-21).
+        if command -v xprop >/dev/null 2>&1 && command -v xwininfo >/dev/null 2>&1; then
+            bar_id="$(xwininfo -root -children 2>/dev/null | awk '/"Eww - nebula-bar"/ {print $1; exit}')"
+            strut="$(xprop -id "$bar_id" _NET_WM_STRUT_PARTIAL 2>/dev/null | awk -F'= ' '{split($2,a,", "); print a[3]}')"
+            [[ "$strut" == "26" ]] \
+                && ok "eww: nebula-bar reserva 26px arriba (strut X11)" \
+                || bad "eww: nebula-bar no reserva su franja (strut top='$strut', esperado 26)"
+        fi
         probs="$(sed 's/\x1b\[[0-9;]*m//g' /tmp/nebula-eww-test.$$ | grep -iE '^(warning|error)' | sort -u | head -3)"
         [[ -z "$probs" ]] \
             && ok "eww: sin warnings ni errores al evaluar los widgets" \
