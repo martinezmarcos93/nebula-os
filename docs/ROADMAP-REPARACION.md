@@ -31,6 +31,7 @@ para que se pueda revisar después con criterio, no por gusto.
 | **D12** | **Un solo registro de bugs: `docs/BUGS.md`.** Las auditorías (`AUDIT*.md`, `FORENSIC_AUDIT.md`) se mueven a `docs/archive/` una vez migrados sus hallazgos abiertos. Numeración única `BUG-NN`, sin prefijos paralelos. | Hoy hay 4 esquemas de IDs (BUG-NN, BUG-0NN, AUD-, FS-) y dos bugs distintos llamados "BUG-25". |
 | **D13** | **Versionado:** tags semver. `v0.2.0` al cerrar la Fase 2, `v0.3.0` con la Fase 3, **`v1.0.0` cuando se cumpla la definición de "100%" (§8)**. | Hoy no hay ningún tag. Sin un punto al que volver, el rollback es imposible. |
 | **D14** | **Purga del historial de las direcciones de correo (BUG-012):** decidida. Se ejecuta con `git filter-repo` + force-push **cuando el autor confirme que su clon local no tiene trabajo sin pushear** (después tiene que re-clonar). En HEAD ya están quitadas (este commit). | El repo es público y las direcciones siguen en el historial (`fd3bc8c`). Reescribir `main` invalida los clones existentes: por eso se coordina y no se hace en silencio. |
+| **D16** | **La experiencia de usuario completa es requisito de v1.0** en ambas sesiones (ver Fase UX): deslizamiento, menús/submenús, búsqueda, Alt+Tab, capturas y grabación de pantalla, verificadas con uso real en CI. | Pedido explícito del autor: sin esto Nebula no es usable a diario, por más estable que sea. |
 | **D15** | **Los daemons que sondean se reescriben en Rust (Fase 5):** `nebula-edge-sidebar` y `nebula-taskbar` se unen en un binario `nebula-edged` (crate `x11rb`, el mismo que usa eww). | Hoy hacen 20 fork/exec por segundo sin parar y tienen carreras de estado (FS-25). Un proceso nativo lleva ese costo a casi cero. |
 
 ---
@@ -153,6 +154,29 @@ reposo 10 min). Sin warnings nuevos en `journalctl`.
 
 ---
 
+## 6b. Fase UX — Experiencia de usuario completa (pedido del autor, 2026-09-26)
+
+**Decisión D16:** la experiencia de usuario de Nebula tiene que estar
+**totalmente cubierta en las dos sesiones** (GNOME + extensión, y bspwm + eww).
+"Cubierta" = implementada **y** verificada con uso real automatizado (clics,
+teclas y ventanas reales bajo Xvfb / GNOME Shell headless) en CI. Una función
+sin test que la use no cuenta como hecha.
+
+| ID | Función | bspwm + eww (estado inicial) | GNOME + extensión (estado inicial) |
+|---|---|---|---|
+| U-01 | Barra lateral que **se desliza** al revelarse/ocultarse | ❌ aparece de golpe | ✅ (animación de translation) |
+| U-02 | **Menús y submenús** (categorías que despliegan sus apps) | ❌ lista plana | ✅ categoría → lanzador filtrado |
+| U-03 | **Barra de búsqueda** de apps (tipear filtra, Enter lanza) | ❌ solo rofi (Super+Espacio) | ✅ |
+| U-04 | **Alt+Tab** entre ventanas | ⚠️ `alttab` sin probar | GNOME nativo, sin verificar junto a la extensión |
+| U-05 | **Capturas** (pantalla, región, ventana, portapapeles) | ⚠️ `nebula-screenshot` sin probar | GNOME nativo (Imp Pant), sin verificar |
+| U-06 | **Grabar la pantalla** (con indicador y detener) | ❌ no existe | GNOME nativo, sin verificar |
+| U-07 | Menú de energía, portapapeles, notificaciones | ⚠️ sin probar | GNOME nativo |
+
+Criterio de salida: cada fila en ✅ con su test en CI (`tests/*.bats` bajo
+`xvfb-run` con bspwm/eww reales, y `tools/test-extension.sh` en GNOME Shell).
+
+---
+
 ## 7. Fase 6 — Retomar features (después de v1.0)
 
 Se retoma `docs/EXTENSION-ROADMAP.md` Fases 3-6 (panel de discos con GOA,
@@ -174,7 +198,8 @@ Todas deben cumplirse, con evidencia enlazada en el release:
 5. Una semana de uso real sin crash de GNOME Shell ni warnings de la extensión.
 6. `docs/BUGS.md` sin bugs abiertos de severidad ≥ MEDIA.
 7. Sin datos personales en el historial (R-004).
-8. `categories.toml` es la única fuente: modificarla y correr un comando
+8. Toda la tabla de la Fase UX en ✅ con tests de uso real en CI.
+9. `categories.toml` es la única fuente: modificarla y correr un comando
    actualiza eww, rofi y la extensión, y CI lo verifica.
 
 ---

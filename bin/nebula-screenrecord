@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# nebula-screenrecord - Grabacion de pantalla para la sesion Nebula (X11).
+#
+#   nebula-screenrecord [toggle]      empieza o detiene (pantalla completa)
+#   nebula-screenrecord region        empieza eligiendo una region con el mouse
+#   nebula-screenrecord start|stop    explicitos
+#   nebula-screenrecord status        imprime "rec" o "off" (indicador de eww)
+#
+# Opciones de entorno:
+#   NEBULA_REC_AUDIO=desktop|none     (desktop: lo que suena, via PipeWire)
+#   NEBULA_REC_FPS=30                 cuadros por segundo
+#   NEBULA_REC_DIR=<dir>              (def. ~/Videos/Grabaciones)
+#
+# Encoder: NVENC por hardware si la NVIDIA responde (casi sin CPU), si no
+# libx264. MP4 fragmentado: se puede reproducir aunque se corte de golpe.
+# Atajos (sxhkdrc): Ctrl+Imp Pant (toggle), Ctrl+Shift+Imp Pant (region).
+set -uo pipefail
+
+case "${1:-toggle}" in
+    -h|--help) sed -n '2,17p' "$0"; exit 0 ;;
+esac
+
+STATE_DIR="${XDG_RUNTIME_DIR:-/tmp/nebula-$(id -u)}/nebula"
+PIDF="$STATE_DIR/rec.pid"
+FILEF="$STATE_DIR/rec.file"
+mkdir -p "$STATE_DIR"
+
+notify() { command -v notify-send >/dev/null 2>&1 && notify-send -a "Nebula" "$@" || true; }
+
+# Vivo = el PID existe, NO es zombi y es ffmpeg. `kill -0` solo daba "vivo"
+# para un zombi (ffmpeg muerto sin reap) o para un PID reutilizado por otro.
+recording() {
+    local pid state
+    [[ -f "$PIDF" ]] || return 1
+    pid="$(cat "$PIDF")"
+    [[ "$pid" =~ ^[0-9]+$ && -r "/proc/$pid/stat" ]] || return 1
+    state="$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null)"
+    [[ "$state" != Z ]] || return 1
+    grep -qa ffmpeg "/proc/$pid/cmdline" 2>/dev/null
+}
+
+out_dir() {
+    local d="${NEBULA_REC_DIR:-}"
+    if [[ -z "$d" ]]; then
+        d="$(xdg-user-dir VIDEOS 2>/dev/null || true)"
+        [[ -n "$d" && "$d" != "$HOME" ]] || d="$HOME/Videos"
+        d="$d/Grabaciones"
+    fi
+    mkdir -p "$d" && printf '%s' "$d"
+}
+
+encoder_args() {
+    # NVENC solo si la placa responde: el encoder figura en el ffmpeg de Ubuntu
+    # aunque no haya NVIDIA, y ahi fallaria al arrancar.
+    if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi >/dev/null 2>&1 \
+        && ffmpeg -hide_banner -encoders 2>/dev/null | grep -q h264_nvenc; then
+        echo "-c:v h264_nvenc -preset p4 -cq 23 -pix_fmt yuv420p"
+    else
+        echo "-c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p"
+    fi
+}
+
+audio_args() {
+    [[ "${NEBULA_REC_AUDIO:-desktop}" == desktop ]] || return 0
+    command -v pactl >/dev/null 2>&1 || return 0
+    local sink
+    sink="$(pactl get-default-sink 2>/dev/null)" || return 0
+    [[ -n "$sink" ]] || return 0
+    echo "-f pulse -i ${sink}.monitor -c:a aac -b:a 160k"
+}
+
+start() {
+    local mode="$1" geom size off file enc aud
+    if recording; then
+        echo "ya se esta grabando: $(cat "$FILEF")" >&2
+        return 0
+    fi
+    command -v ffmpeg >/dev/null 2>&1 || { notify "Grabacion" "Falta ffmpeg."; echo "falta ffmpeg" >&2; return 1; }
+    [[ -n "${DISPLAY:-}" ]] || { echo "sin DISPLAY (X11)" >&2; return 1; }
+
+    if [[ "$mode" == region ]]; then
+        command -v slop >/dev/null 2>&1 || { notify "Grabacion" "Falta slop para elegir region."; return 1; }
+        geom="$(slop -f '%wx%h+%x+%y' 2>/dev/null)" || return 0   # Esc: cancelado
+    else
+        geom="$(xdotool getdisplaygeometry 2>/dev/null | awk '{print $1"x"$2"+0+0"}')"
+        [[ -n "$geom" ]] || geom="$(xdpyinfo 2>/dev/null | awk '/dimensions:/ {print $2"+0+0"; exit}')"
+    fi
+    # x264/NVENC exigen dimensiones pares.
+    size="${geom%%+*}"; off="${geom#*+}"
+    local w="${size%x*}" h="${size#*x}"
+    w=$(( w / 2 * 2 )); h=$(( h / 2 * 2 ))
+    (( w >= 16 && h >= 16 )) || { echo "region invalida: $geom" >&2; return 1; }
+
+    file="$(out_dir)/$(date +%Y-%m-%d_%H-%M-%S).mp4"
+    read -r -a enc <<< "$(encoder_args)"
+    read -r -a aud <<< "$(audio_args)"
+    # setsid: la grabacion no muere si se cierra quien la lanzo (sxhkd, eww).
+    setsid ffmpeg -hide_banner -loglevel error -y \
+        -f x11grab -framerate "${NEBULA_REC_FPS:-30}" -video_size "${w}x${h}" \
+        -i "${DISPLAY}+${off/+/,}" \
+        "${aud[@]}" "${enc[@]}" \
+        -g "$(( ${NEBULA_REC_FPS:-30} * 2 ))" \
+        -movflags +frag_keyframe+empty_moov+default_base_moof -frag_duration 1000000 \
+        -flush_packets 1 \
+        "$file" > "$STATE_DIR/rec.log" 2>&1 < /dev/null &
+    echo $! > "$PIDF"
+    printf '%s\n' "$file" > "$FILEF"
+    sleep 0.5
+    if ! recording; then
+        notify -u critical "Grabacion" "ffmpeg no pudo arrancar: $(head -c 200 "$STATE_DIR/rec.log")"
+        rm -f "$PIDF"
+        return 1
+    fi
+    notify "Grabando pantalla" "Ctrl+Imp Pant para detener"
+}
+
+stop() {
+    recording || { rm -f "$PIDF"; echo "no hay grabacion en curso" >&2; return 0; }
+    local pid file
+    pid="$(cat "$PIDF")"; file="$(cat "$FILEF" 2>/dev/null)"
+    kill -INT "$pid" 2>/dev/null          # ffmpeg cierra el archivo prolijamente
+    for _ in $(seq 1 50); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+    kill -0 "$pid" 2>/dev/null && kill -TERM "$pid" 2>/dev/null
+    rm -f "$PIDF"
+    notify "Grabacion guardada" "${file/#"$HOME"/~}"
+    printf '%s\n' "$file"
+}
+
+case "${1:-toggle}" in
+    toggle) if recording; then stop; else start full; fi ;;
+    start)  start full ;;
+    region) start region ;;
+    stop)   stop ;;
+    status) recording && echo rec || echo off ;;
+    *)      echo "uso: nebula-screenrecord [toggle|region|start|stop|status]" >&2; exit 2 ;;
+esac

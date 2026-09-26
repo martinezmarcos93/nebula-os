@@ -132,6 +132,14 @@ super + Print
 super + shift + s
     nebula-screenshot clip
 
+# Grabacion de pantalla (toggle): Ctrl+Imp Pant = pantalla completa,
+# Ctrl+Shift+Imp Pant = elegir region. Se detiene con el mismo atajo o con
+# el indicador "REC" de la barra superior.
+ctrl + Print
+    nebula-screenrecord toggle
+ctrl + shift + Print
+    nebula-screenrecord region
+
 # --- Audio / brillo / media (PipeWire via wpctl) ------------------
 XF86Audio{RaiseVolume,LowerVolume}
     wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%{+,-} -l 1.5

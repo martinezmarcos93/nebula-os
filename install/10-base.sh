@@ -38,6 +38,10 @@ PKGS_BASE=(
     # xdotool resuelve la ventana activa para el modo 'window'. xclip (arriba)
     # copia la imagen al portapapeles.
     maim xdotool
+    # Grabacion de pantalla (bin/nebula-screenrecord): ffmpeg (x11grab + NVENC
+    # o libx264) y slop para elegir region. pulseaudio-utils -> pactl (audio
+    # del escritorio via pipewire-pulse).
+    ffmpeg slop pulseaudio-utils
     pipewire pipewire-pulse wireplumber
     lxpolkit i3lock xss-lock
     fonts-jetbrains-mono fonts-inter papirus-icon-theme

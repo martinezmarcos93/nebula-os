@@ -31,6 +31,9 @@
 (defpoll TEMP :interval "5s"  :initial ""
   "sensors 2>/dev/null | awk '/Package id 0/ {print $4; exit}'")
 
+;; Grabacion de pantalla en curso (bin/nebula-screenrecord): indicador REC.
+(defpoll REC :interval "1s" :initial "off" "nebula-screenrecord status")
+
 ;; Ventanas del escritorio enfocado (incluye las minimizadas), para el taskbar
 ;; de nebula-bar. bin/nebula-taskbar re-emite el JSON ante cada cambio de bspwm.
 (deflisten TASKWINS :initial "[]" "nebula-taskbar")
@@ -222,6 +225,8 @@
     (box :class "bar-center" :halign "center" :hexpand true
       (taskbar))
     (box :class "bar-right" :halign "end" :space-evenly false :spacing 14
+      (button :class "bar-rec" :visible {REC == "rec"} :onclick "nebula-screenrecord stop"
+        (label :text "● REC"))
       (label :class "bar-clock" :text "${DATE}   ${TIME}")
       (label :class "bar-stat" :text "CPU ${CPU}%")
       (label :class "bar-stat" :text "RAM ${MEM}%")

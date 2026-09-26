@@ -166,3 +166,11 @@ $cian:    #22d3ee;
   color: rgba(156, 163, 175, 0.55);
   font-style: italic;
 }
+
+/* Indicador de grabacion (nebula-screenrecord): clic = detener. */
+.bar-rec {
+  color: #ef4444;
+  font-weight: bold;
+  padding: 0 6px;
+}
+.bar-rec:hover { color: #fca5a5; }

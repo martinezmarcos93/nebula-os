@@ -21,7 +21,10 @@ command -v maim >/dev/null 2>&1 || { notify "Captura" "Falta 'maim' en el PATH."
 
 have_clip=0
 command -v xclip >/dev/null 2>&1 && have_clip=1
-copy_png() { [[ "$have_clip" -eq 1 ]] && xclip -selection clipboard -t image/png; }
+# xclip queda en segundo plano sirviendo el portapapeles: sin redirigir su
+# salida, heredaba el stdout del script y quien lo capturara esperaba para
+# siempre.
+copy_png() { [[ "$have_clip" -eq 1 ]] && xclip -selection clipboard -t image/png >/dev/null 2>&1; }
 
 mode="${1:-full}"
 
@@ -43,7 +46,19 @@ case "$mode" in
     window)
         command -v xdotool >/dev/null 2>&1 \
             || { notify "Captura" "Falta 'xdotool' para el modo 'window'."; exit 1; }
-        args=(-u -i "$(xdotool getactivewindow)") ;;
+        # Solo el contenido de la ventana: `maim -i` incluye el borde de bspwm
+        # (2 px violeta alrededor de cada captura). xwininfo da la esquina
+        # absoluta y el tamano del area cliente, sin borde.
+        wid="$(xdotool getactivewindow)"
+        geo="$(xwininfo -id "$wid" 2>/dev/null | awk '
+            /Absolute upper-left X/ {x=$NF} /Absolute upper-left Y/ {y=$NF}
+            /^ *Width:/ {w=$NF} /^ *Height:/ {h=$NF}
+            END { if (w && h) printf "%dx%d+%d+%d", w, h, x, y }')"
+        if [[ -n "$geo" ]]; then
+            args=(-u -g "$geo")
+        else
+            args=(-u -i "$wid")
+        fi ;;
     *)
         echo "uso: nebula-screenshot [full|region|window|clip]" >&2
         exit 2 ;;

@@ -48,7 +48,7 @@ for f in "$REPO"/bin/nebula-* "$REPO"/extras/nebula-* "$REPO"/install/*.sh "$REP
 done
 [[ "$synbad" -eq 0 ]] && ok "bash -n sobre todos los scripts"
 
-for b in nebula-gpu-stat nebula-screenshot nebula-powermenu nebula-edge-sidebar nebula-rescue \
+for b in nebula-gpu-stat nebula-screenrecord nebula-screenshot nebula-powermenu nebula-edge-sidebar nebula-rescue \
          nebula-window-switcher nebula-gen-panel nebula-sync nebula-taskbar \
          ../extras/nebula-mount-datos; do
     s="$REPO/bin/$b"
@@ -160,7 +160,7 @@ dups="$(grep -E '^[^# ]' "$REPO/dotfiles/sxhkd/sxhkdrc" | grep -vE '^\s' | sort 
 
 # PKGS_BASE: las deps declaradas de las features nuevas
 missing_pkg=0
-for p in alttab copyq maim xdotool x11-xkb-utils libnotify-bin git unzip curl ca-certificates xclip python3 x11-utils; do
+for p in alttab copyq maim xdotool x11-xkb-utils libnotify-bin git unzip curl ca-certificates xclip python3 x11-utils ffmpeg slop; do
     grep -qw "$p" "$REPO/install/10-base.sh" || { bad "install/10-base.sh: falta '$p' en PKGS_BASE"; missing_pkg=1; }
 done
 [[ "$missing_pkg" -eq 0 ]] && ok "install/10-base.sh: deps de las features nuevas declaradas"

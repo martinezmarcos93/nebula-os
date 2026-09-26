@@ -59,6 +59,7 @@ declare -A DESC=(
     [nebula-rescue]="Rescatar el entorno Nebula"
     [nebula-gen-panel]="Regenerar panel/menu de categorias"
     [nebula-screenshot]="Captura de pantalla"
+    [nebula-screenrecord]="Grabar la pantalla (iniciar / detener)"
     [nebula-powermenu]="Menu de energia (bloquear / salir / apagar)"
     [nebula-sync]="Sincronizar la sesion (dotfiles + paquetes)"
 )
