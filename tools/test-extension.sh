@@ -60,6 +60,18 @@ GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => { w.close(); loop.quit(
 loop.run();
 EOF
 
+# App de prueba para launch() (R-309): un .desktop que ejecuta un script que
+# deja rastro de como lo llamaron.
+mkdir -p "$T/bin" "$XDG_DATA_HOME/applications"
+cat > "$T/bin/nebtestapp" <<EOF
+#!/bin/sh
+echo "\$*" >> "$T/launched.txt"
+EOF
+chmod +x "$T/bin/nebtestapp"
+printf '[Desktop Entry]\nType=Application\nName=Nebula Test App\nExec=%s\n' "$T/bin/nebtestapp" \
+    > "$XDG_DATA_HOME/applications/nebtestapp.desktop"
+export PATH="$T/bin:$PATH"
+
 cat > "$T/common.sh" <<'SCEN'
 e() {  # e JS -> imprime el valor devuelto por Eval (sin el envoltorio de gdbus)
     gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
@@ -119,6 +131,17 @@ check "fullscreen: rozar el borde no revela la sidebar" "!S._sidebar.visible"
 sleep 4
 check "fin del fullscreen: vuelve la franja de borde"   "!S._monitor().inFullscreen && S._hotEdge.visible"
 check "fin del fullscreen: la sidebar respeta su estado" "S._sidebar.visible === !S._collapsed"
+
+# launch() (R-309): sin argumentos -> Shell.App del .desktop; con argumentos
+# -> AppInfo desde la linea de comandos (conserva los argumentos).
+e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__nl = [m.launch('nebtestapp'), m.launch('nebtestapp --con-args')].join(','); }); 1" >/dev/null
+sleep 2
+check "launch(): sin argumentos usa Shell.App; con argumentos, AppInfo" "globalThis.__nl === 'app,appinfo'"
+if grep -qx -- '--con-args' "$T/launched.txt" 2>/dev/null && grep -qx '' "$T/launched.txt" 2>/dev/null; then
+    ok "launch(): la app corrio las dos veces y conservo los argumentos"
+else
+    bad "launch(): la app no corrio como se esperaba ($(tr '\n' '|' < "$T/launched.txt" 2>/dev/null))"
+fi
 
 # Barra inferior (enable-bottombar) con un reproductor MPRIS simulado.
 if [[ -n "$MOCKPY" ]]; then
