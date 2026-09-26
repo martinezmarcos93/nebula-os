@@ -14,7 +14,7 @@
 #   - categoria sin ninguna app instalada -> no se dibuja
 # Los `nebula-*` se asumen siempre disponibles (los instala 50-funciones.sh).
 #
-# Orden y nombres alineados con la imagen objetivo (12 categorias). "Favoritos"
+# Orden y nombres alineados con la imagen objetivo (13 categorias). "Favoritos"
 # es provisional (sera una lista de pins del usuario) y "Configuracion" abre los
 # ajustes del sistema.
 #

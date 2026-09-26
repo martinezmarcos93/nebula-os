@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+"""nebula-categories - lector UNICO de categories.toml (Nebula OS).
+
+Todas las piezas que consumen la taxonomia del panel pasan por aca, con la
+misma validacion y la misma regla de "app instalada" (docs/ROADMAP-REPARACION.md
+D2, R-201/R-202). Antes habia tres parsers distintos (awk del generador, awk
+del test y tomllib de la extension) y ya habian causado BUG-001 y BUG-003.
+
+Uso:
+  nebula-categories check        [--toml F] [--icons-dir D]
+  nebula-categories tsv          [--toml F] [--installed]
+  nebula-categories json         [--toml F]
+  nebula-categories render-yuck  YUCK [--toml F] [--all] [--icons-dir D] [--check]
+
+  check        valida el archivo (sale 1 si hay errores).
+  tsv          CATEGORIA<TAB>APP<TAB>EXEC por linea (para rofi).
+  json         el TOML como JSON (lo usa extension/build.sh).
+  render-yuck  reescribe el bloque entre los marcadores autogen de YUCK.
+               --all   todas las apps (el eww.yuck versionado del repo).
+               --check no escribe: sale 1 si YUCK no coincide (para CI).
+
+--toml por defecto: $NEBULA_CATEGORIES o ~/.config/nebula/categories.toml.
+NEBULA_GEN_ASSUME_ALL=1 equivale a --all / trata todo como instalado.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shlex
+import shutil
+import sys
+import tomllib
+import unicodedata
+from dataclasses import dataclass, field
+from pathlib import Path
+
+BEGIN_MARK = ";; --- nebula:autogen BEGIN"
+END_MARK = ";; --- nebula:autogen END"
+INDENT = " " * 8
+
+
+@dataclass(frozen=True)
+class App:
+    """Una entrada [[categoria.app]]."""
+
+    nombre: str
+    exec: str
+
+
+@dataclass
+class Categoria:
+    """Una entrada [[categoria]] con sus apps en orden."""
+
+    nombre: str
+    apps: list[App] = field(default_factory=list)
+
+
+class CategoriesError(Exception):
+    """Error de formato de categories.toml (mensaje apto para el usuario)."""
+
+
+# ---------------------------------------------------------------------------
+# Carga y validacion
+# ---------------------------------------------------------------------------
+def default_toml() -> Path:
+    env = os.environ.get("NEBULA_CATEGORIES")
+    if env:
+        return Path(env)
+    cfg = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    return Path(cfg) / "nebula" / "categories.toml"
+
+
+def _str_field(obj: dict, key: str, where: str) -> str:
+    val = obj.get(key)
+    if not isinstance(val, str) or not val.strip():
+        raise CategoriesError(f"{where}: falta '{key}' (texto no vacio)")
+    return val.strip()
+
+
+def load(path: Path) -> list[Categoria]:
+    """Lee y valida categories.toml. Lanza CategoriesError con el problema."""
+    try:
+        with path.open("rb") as fh:
+            data = tomllib.load(fh)
+    except FileNotFoundError as exc:
+        raise CategoriesError(f"no existe {path}") from exc
+    except tomllib.TOMLDecodeError as exc:
+        raise CategoriesError(f"{path}: TOML invalido: {exc}") from exc
+
+    raw = data.get("categoria")
+    if not isinstance(raw, list) or not raw:
+        raise CategoriesError(f"{path}: no hay ninguna [[categoria]]")
+
+    cats: list[Categoria] = []
+    seen: set[str] = set()
+    for i, c in enumerate(raw, 1):
+        where = f"categoria #{i}"
+        nombre = _str_field(c, "nombre", where)
+        if nombre in seen:
+            # Antes se fusionaban en silencio (el Map de JS y el awk).
+            raise CategoriesError(f"{where}: nombre duplicado '{nombre}'")
+        seen.add(nombre)
+        cat = Categoria(nombre)
+        for j, a in enumerate(c.get("app", []) or [], 1):
+            awhere = f"{where} ({nombre}), app #{j}"
+            app = App(_str_field(a, "nombre", awhere), _str_field(a, "exec", awhere))
+            try:
+                shlex.split(app.exec)
+            except ValueError as exc:
+                raise CategoriesError(f"{awhere}: exec con comillas sin cerrar: {app.exec!r}") from exc
+            if "${" in app.exec or "${" in app.nombre:
+                # eww interpretaria ${...} como interpolacion de variables.
+                raise CategoriesError(f"{awhere}: '${{' no esta permitido (eww lo interpola)")
+            cat.apps.append(app)
+        cats.append(cat)
+    return cats
+
+
+def slug(nombre: str) -> str:
+    """'IA Local' -> 'ia-local' (misma regla que categorySlug() de model.js)."""
+    s = unicodedata.normalize("NFD", nombre)
+    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
+    s = "-".join(s.lower().split())
+    return "".join(ch for ch in s if ch.isascii() and (ch.isalnum() or ch == "-"))
+
+
+# ---------------------------------------------------------------------------
+# "Instalada": UNA sola regla para eww, rofi y la extension (R-202, BUG-003)
+# ---------------------------------------------------------------------------
+def _flatpak_app_id(argv: list[str]) -> str | None:
+    if len(argv) >= 3 and argv[0] == "flatpak" and argv[1] == "run":
+        return next((t for t in argv[2:] if not t.startswith("-")), None)
+    return None
+
+
+def _desktop_dirs() -> list[Path]:
+    data_home = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local/share")
+    data_dirs = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
+    dirs = [data_home, *data_dirs.split(":"),
+            str(Path(data_home) / "flatpak/exports/share"),
+            "/var/lib/flatpak/exports/share"]
+    return [Path(d) / "applications" for d in dirs if d]
+
+
+def installed(exec_line: str) -> bool:
+    """True si el programa de `exec_line` esta disponible en este sistema.
+
+    - nebula-*            -> siempre (los instala install/50-funciones.sh,
+                             que corre DESPUES del generador).
+    - flatpak run <id>    -> existe el .desktop exportado de ESE app-id (el
+                             binario `flatpak` solo no prueba nada), igual que
+                             Gio.DesktopAppInfo en la extension.
+    - ruta absoluta       -> archivo ejecutable.
+    - resto               -> primer token en el PATH.
+    """
+    if os.environ.get("NEBULA_GEN_ASSUME_ALL") == "1":
+        return True
+    argv = shlex.split(exec_line)
+    if not argv:
+        return False
+    if argv[0].startswith("nebula-"):
+        return True
+    app_id = _flatpak_app_id(argv)
+    if app_id:
+        return any((d / f"{app_id}.desktop").is_file() for d in _desktop_dirs())
+    if argv[0].startswith("/"):
+        return os.access(argv[0], os.X_OK)
+    return shutil.which(argv[0]) is not None
+
+
+# ---------------------------------------------------------------------------
+# Salidas
+# ---------------------------------------------------------------------------
+def _yuck_str(s: str) -> str:
+    """Literal de string de yuck: escapa barra invertida y comillas."""
+    return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def yuck_block(cats: list[Categoria], icons_dir: Path | None, all_apps: bool) -> str:
+    """Lineas del bloque autogen de eww.yuck (sin los marcadores).
+
+    Una categoria sin apps visibles no se dibuja (ni su titulo). El icono se
+    referencia con ${EWW_CONFIG_DIR}: una ruta absoluta de ESTA maquina
+    romperia el archivo versionado para cualquier otro usuario (BUG-14).
+    """
+    out: list[str] = []
+    for cat in cats:
+        apps = [a for a in cat.apps if all_apps or installed(a.exec)]
+        if not apps:
+            continue
+        s = slug(cat.nombre)
+        if icons_dir is not None and (icons_dir / f"{s}.png").is_file():
+            icon = "${EWW_CONFIG_DIR}/../nebula/icons/" + s + ".png"
+            out.append(f"{INDENT}(cat-icon :name {_yuck_str(cat.nombre)} :icon \"{icon}\")")
+        else:
+            out.append(f"{INDENT}(cat :name {_yuck_str(cat.nombre)})")
+        for a in apps:
+            out.append(f"{INDENT}(launcher :label {_yuck_str(a.nombre)} :cmd {_yuck_str(a.exec + ' &')})")
+    return "".join(line + "\n" for line in out)
+
+
+def render_yuck(text: str, block: str) -> str:
+    """Reemplaza el contenido entre los marcadores autogen (exactamente 1+1)."""
+    lines = text.splitlines(keepends=True)
+    nb = sum(BEGIN_MARK in ln for ln in lines)
+    ne = sum(END_MARK in ln for ln in lines)
+    if nb != 1 or ne != 1:
+        raise CategoriesError(f"marcadores autogen ausentes o duplicados (BEGIN={nb} END={ne})")
+    out: list[str] = []
+    skipping = False
+    for ln in lines:
+        if BEGIN_MARK in ln:
+            out.append(ln)
+            out.append(block)
+            skipping = True
+            continue
+        if END_MARK in ln:
+            skipping = False
+        if not skipping:
+            out.append(ln)
+    return "".join(out)
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+def _default_icons_dir(toml: Path) -> Path:
+    return toml.parent / "icons"
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    cats = load(args.toml)
+    icons = args.icons_dir or _default_icons_dir(args.toml)
+    napps = sum(len(c.apps) for c in cats)
+    print(f"OK: {len(cats)} categorias, {napps} apps ({args.toml})")
+    missing = [c.nombre for c in cats if not (icons / f"{slug(c.nombre)}.png").is_file()]
+    for m in missing:
+        print(f"AVISO: categoria '{m}' sin icono {icons / (slug(m) + '.png')}", file=sys.stderr)
+    return 0
+
+
+def cmd_tsv(args: argparse.Namespace) -> int:
+    for cat in load(args.toml):
+        for a in cat.apps:
+            if not args.installed or installed(a.exec):
+                print(f"{cat.nombre}\t{a.nombre}\t{a.exec}")
+    return 0
+
+
+def cmd_json(args: argparse.Namespace) -> int:
+    load(args.toml)  # valida antes de emitir
+    with args.toml.open("rb") as fh:
+        data = tomllib.load(fh)
+    json.dump(data, sys.stdout, ensure_ascii=False, indent=2)
+    sys.stdout.write("\n")
+    return 0
+
+
+def cmd_render_yuck(args: argparse.Namespace) -> int:
+    cats = load(args.toml)
+    icons = args.icons_dir or _default_icons_dir(args.toml)
+    all_apps = args.all or os.environ.get("NEBULA_GEN_ASSUME_ALL") == "1"
+    yuck = Path(args.yuck)
+    old = yuck.read_text(encoding="utf-8")
+    new = render_yuck(old, yuck_block(cats, icons, all_apps))
+    if args.check:
+        if new != old:
+            print(f"{yuck}: el bloque autogen NO coincide con {args.toml} "
+                  f"(regenerar: bin/nebula-categories render-yuck {yuck} --all --toml {args.toml})",
+                  file=sys.stderr)
+            return 1
+        print(f"{yuck}: bloque autogen sincronizado con {args.toml}")
+        return 0
+    if new != old:
+        tmp = yuck.with_name(yuck.name + ".tmp")
+        tmp.write_text(new, encoding="utf-8")
+        tmp.replace(yuck)
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="nebula-categories",
+                                description="Lector unico de categories.toml (Nebula OS).")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    def common(sp: argparse.ArgumentParser) -> None:
+        sp.add_argument("--toml", type=Path, default=None, help="ruta a categories.toml")
+
+    sp = sub.add_parser("check", help="valida categories.toml")
+    common(sp)
+    sp.add_argument("--icons-dir", type=Path, default=None)
+    sp.set_defaults(func=cmd_check)
+
+    sp = sub.add_parser("tsv", help="CATEGORIA<TAB>APP<TAB>EXEC")
+    common(sp)
+    sp.add_argument("--installed", action="store_true", help="solo apps instaladas")
+    sp.set_defaults(func=cmd_tsv)
+
+    sp = sub.add_parser("json", help="el TOML como JSON")
+    common(sp)
+    sp.set_defaults(func=cmd_json)
+
+    sp = sub.add_parser("render-yuck", help="reescribe el bloque autogen de eww.yuck")
+    sp.add_argument("yuck")
+    common(sp)
+    sp.add_argument("--all", action="store_true", help="todas las apps (archivo del repo)")
+    sp.add_argument("--icons-dir", type=Path, default=None)
+    sp.add_argument("--check", action="store_true", help="no escribe; sale 1 si difiere")
+    sp.set_defaults(func=cmd_render_yuck)
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.toml is None:
+        args.toml = default_toml()
+    try:
+        return args.func(args)
+    except CategoriesError as exc:
+        print(f"nebula-categories: {exc}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

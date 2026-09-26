@@ -81,3 +81,28 @@ setup() { setup_home; }
     run bash -c "timeout 3 '$REPO/bin/nebula-taskbar' | head -n1"
     echo "$output" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d[0]["label"]=="a \"b\" \\ c", d'
 }
+
+@test "nebula-gen-panel: regenera eww.yuck solo con apps instaladas (lector unico)" {
+    mkdir -p "$HOME/.config/eww" "$HOME/.config/nebula"
+    cp "$REPO/dotfiles/eww/eww.yuck" "$HOME/.config/eww/"
+    cp "$REPO/dotfiles/nebula/categories.toml" "$HOME/.config/nebula/"
+    cp -r "$REPO/dotfiles/nebula/icons" "$HOME/.config/nebula/"
+    stub alacritty 'exit 0'
+    run env PATH="$STUBS:/usr/bin:/bin" "$REPO/bin/nebula-gen-panel"
+    [ "$status" -eq 0 ]
+    y="$HOME/.config/eww/eww.yuck"
+    grep -q '(launcher :label "Alacritty" :cmd "alacritty &")' "$y"
+    ! grep -q '(launcher :label "Kitty"' "$y"             # no instalada
+    grep -q ':label "Chat con IA local"' "$y" || grep -q 'nebula-ai-chat' "$y"   # nebula-* siempre
+}
+
+@test "nebula-gen-panel: un categories.toml invalido NO toca eww.yuck" {
+    mkdir -p "$HOME/.config/eww" "$HOME/.config/nebula"
+    cp "$REPO/dotfiles/eww/eww.yuck" "$HOME/.config/eww/"
+    printf '[[categoria]]\nnombre = "A"\n[[categoria]]\nnombre = "A"\n' > "$HOME/.config/nebula/categories.toml"
+    before="$(sha256sum "$HOME/.config/eww/eww.yuck")"
+    run "$REPO/bin/nebula-gen-panel"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"duplicado"* ]]
+    [ "$(sha256sum "$HOME/.config/eww/eww.yuck")" = "$before" ]
+}

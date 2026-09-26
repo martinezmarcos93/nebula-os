@@ -900,7 +900,7 @@ todavía nadie confirmó punto por punto:
 
 - Estética Cosmic Dark del sidebar en borde izquierdo, altura completa.
 - Cabecera + reloj en vivo (fecha en español + hora) correctos.
-- Las 12 categorías listan solo apps instaladas.
+- Las 13 categorías listan solo apps instaladas.
 - Clic en categoría abre el launcher filtrado correctamente.
 - Búsqueda filtra sobre todas las apps; `Enter` lanza la primera.
 - Bloque SISTEMA: CPU/RAM/SWAP/Disco se mueven; GPU aparece (o se oculta sin

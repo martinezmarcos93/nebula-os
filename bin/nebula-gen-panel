@@ -5,7 +5,7 @@
 #   nebula-gen-panel            regenera la seccion de categorias de eww.yuck
 #   nebula-gen-panel --menu     muestra el menu rofi de categorias/apps y lanza
 #
-# Parser minimalista, valido para el formato de categories.toml de este repo.
+# La lectura/validacion del TOML la hace bin/nebula-categories (lector unico).
 set -euo pipefail
 
 case "${1:-}" in
@@ -16,46 +16,18 @@ CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 TOML="${NEBULA_CATEGORIES:-$CFG/nebula/categories.toml}"
 [[ -f "$TOML" ]] || { echo "no existe $TOML" >&2; exit 1; }
 
-# Emite lineas:  CATEGORIA <TAB> APP <TAB> EXEC
-parse() {
-    awk '
-        /^\[\[categoria\]\]/       { ctx="cat"; next }
-        /^\[\[categoria\.app\]\]/  { ctx="app"; name=""; ex=""; next }
-        /^[[:space:]]*nombre[[:space:]]*=/ {
-            v=$0; sub(/^[^=]*=[[:space:]]*"/,"",v); sub(/"[[:space:]]*$/,"",v)
-            if (ctx=="cat") cat=v; else name=v
-        }
-        /^[[:space:]]*exec[[:space:]]*=/ {
-            v=$0; sub(/^[^=]*=[[:space:]]*"/,"",v); sub(/"[[:space:]]*$/,"",v)
-            ex=v
-            printf "%s\t%s\t%s\n", cat, name, ex
-        }
-    ' "$TOML"
-}
-
-# Una app esta "disponible" si su ejecutable (primer token del exec) esta en el
-# PATH. Los propios comandos de Nebula (nebula-*) se asumen siempre disponibles:
-# los instala install/50-funciones.sh, que corre DESPUES de este generador, asi
-# que aun no estarian en el PATH al generar.
-# NEBULA_GEN_ASSUME_ALL=1 -> todas las apps se tratan como disponibles. Sirve
-# para regenerar el eww.yuck "de fabrica" del repo (neutro, con TODAS las apps).
-# En una instalacion real se corre sin esa variable: las apps que no esten
-# instaladas NO se listan (ni en el sidebar ni en el menu rofi), y una categoria
-# sin ninguna app instalada no se dibuja.
-app_available() {
-    [[ "${NEBULA_GEN_ASSUME_ALL:-0}" == "1" ]] && return 0
-    local bin="${1%% *}"
-    case "$bin" in
-        nebula-*) return 0 ;;
-    esac
-    command -v "$bin" >/dev/null 2>&1
-}
+# Toda la lectura de categories.toml pasa por el lector UNICO
+# (bin/nebula-categories, R-201): mismo parser, misma validacion y misma regla
+# de "app instalada" (incluida la de Flatpak, R-202) que la extension. Antes
+# habia un parser awk propio aca, otro en el test y tomllib en la extension.
+# Se busca junto a este script (repo o ~/.local/bin) y si no, en el PATH.
+CATS="$(dirname "$(readlink -f "$0")")/nebula-categories"
+[[ -x "$CATS" ]] || CATS="$(command -v nebula-categories || true)"
+[[ -n "$CATS" ]] || { echo "falta nebula-categories (corre install/50-funciones.sh)" >&2; exit 1; }
 
 do_menu() {
     local rows sel app ex
-    rows="$(parse | while IFS=$'\t' read -r c n e; do
-        if app_available "$e"; then printf '%s\t%s\t%s\n' "$c" "$n" "$e"; fi
-    done)"
+    rows="$("$CATS" tsv --installed --toml "$TOML")" || exit 1
     [[ -n "$rows" ]] || { echo "categories.toml vacio (o nada instalado)" >&2; exit 1; }
     if ! command -v rofi >/dev/null 2>&1; then
         printf '%s\n' "$rows"
@@ -73,65 +45,14 @@ do_menu() {
     setsid -f sh -c "$ex" >/dev/null 2>&1 || sh -c "$ex" &
 }
 
-BEGIN_MARK=';; --- nebula:autogen BEGIN'
-END_MARK=';; --- nebula:autogen END'
-
 do_gen() {
     local yuck="$CFG/eww/eww.yuck"
     [[ -f "$yuck" ]] || { echo "sin $yuck; nada que regenerar" >&2; return 0; }
-
-    local nb ne
-    nb="$(grep -cF -- "$BEGIN_MARK" "$yuck" || true)"
-    ne="$(grep -cF -- "$END_MARK"   "$yuck" || true)"
-    if [[ "$nb" != "1" || "$ne" != "1" ]]; then
-        echo "eww.yuck: marcadores autogen ausentes o duplicados (BEGIN=$nb END=$ne); no toco el archivo." >&2
+    # Los iconos de categoria viven junto al categories.toml desplegado.
+    if ! "$CATS" render-yuck "$yuck" --toml "$TOML" --icons-dir "$CFG/nebula/icons"; then
+        echo "eww.yuck: no se regenero (ver el error de arriba); el archivo queda como estaba." >&2
         return 1
     fi
-
-    local icons_dir="$CFG/nebula/icons"
-    slugify() {
-        local s="${1,,}"
-        s="$(printf '%s' "$s" | sed 'y/áéíóúñ/aeioun/')"
-        s="${s// /-}"
-        printf '%s' "$s"
-    }
-
-    # El encabezado de categoria se emite DIFERIDO: solo si la categoria tiene
-    # al menos una app instalada. Asi no quedan titulos huerfanos cuando todas
-    # sus apps estan ausentes.
-    local block="" cur="" hdr="" cat name ex slug icon_path
-    while IFS=$'\t' read -r cat name ex; do
-        [[ -n "$cat" ]] || continue
-        if [[ "$cat" != "$cur" ]]; then
-            cur="$cat"
-            slug="$(slugify "$cat")"
-            icon_path="$icons_dir/$slug.png"
-            if [[ -f "$icon_path" ]]; then
-                # Ruta portable en el .yuck (${EWW_CONFIG_DIR} la resuelve eww
-                # en runtime): si se escribiera la ruta absoluta de ESTA
-                # maquina ($icon_path), el archivo commiteado en el repo
-                # quedaria roto para cualquier otro usuario/maquina.
-                hdr="        (cat-icon :name \"$cat\" :icon \"\${EWW_CONFIG_DIR}/../nebula/icons/$slug.png\")"$'\n'
-            else
-                hdr="        (cat :name \"$cat\")"$'\n'
-            fi
-        fi
-        app_available "$ex" || continue
-        if [[ -n "$hdr" ]]; then
-            block+="$hdr"
-            hdr=""
-        fi
-        block+="        (launcher :label \"$name\" :cmd \"$ex &\")"$'\n'
-    done < <(parse)
-
-    local tmp
-    tmp="$(mktemp)"
-    awk -v b="$block" -v bm="$BEGIN_MARK" -v em="$END_MARK" '
-        index($0, bm) { print; printf "%s", b; skip=1; next }
-        index($0, em) { skip=0 }
-        !skip         { print }
-    ' "$yuck" > "$tmp" && mv "$tmp" "$yuck"
-
     command -v eww >/dev/null 2>&1 && eww -c "$CFG/eww" reload >/dev/null 2>&1 || true
     echo "eww.yuck: seccion de categorias regenerada."
 }

@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Instalar shellcheck y bats
-        run: sudo apt-get update && sudo apt-get install -y shellcheck bats
+        run: sudo apt-get update && sudo apt-get install -y shellcheck bats python3-pytest
 
       - name: shellcheck
         run: make lint
@@ -33,3 +33,7 @@ jobs:
       # runner de GitHub es no-root, igual que un usuario real.
       - name: Tests bats (tests/*.bats)
         run: bats tests/
+
+      # Lector unico de categories.toml (bin/nebula-categories).
+      - name: Tests Python (pytest)
+        run: python3 -m pytest -q tests/

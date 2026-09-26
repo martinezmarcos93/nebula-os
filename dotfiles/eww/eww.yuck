@@ -86,7 +86,7 @@
         (launcher :label "Chromium" :cmd "chromium &")
         (launcher :label "Brave" :cmd "brave-browser &")
         (launcher :label "Vivaldi" :cmd "vivaldi-stable &")
-        (cat :name "Comunicacion")
+        (cat-icon :name "Comunicacion" :icon "${EWW_CONFIG_DIR}/../nebula/icons/comunicacion.png")
         (launcher :label "Discord" :cmd "flatpak run com.discordapp.Discord &")
         (launcher :label "Thunderbird" :cmd "thunderbird &")
         (cat-icon :name "Desarrollo" :icon "${EWW_CONFIG_DIR}/../nebula/icons/desarrollo.png")

@@ -40,8 +40,10 @@ else
 fi
 
 synbad=0
-for f in "$REPO"/bin/nebula-* "$REPO"/install/*.sh "$REPO"/lib/*.sh "$REPO"/tools/*.sh; do
+for f in "$REPO"/bin/nebula-* "$REPO"/extras/nebula-* "$REPO"/install/*.sh "$REPO"/lib/*.sh "$REPO"/tools/*.sh; do
     [[ -f "$f" ]] || continue
+    # Solo scripts bash (bin/nebula-categories es Python: lo cubre pytest).
+    head -n1 "$f" | grep -q bash || continue
     bash -n "$f" 2>/dev/null || { bad "bash -n falla: ${f#"$REPO"/}"; synbad=1; }
 done
 [[ "$synbad" -eq 0 ]] && ok "bash -n sobre todos los scripts"
@@ -85,7 +87,9 @@ grep -q '(deflisten TASKWINS' "$YUCK" && grep -q 'nebula-taskbar' "$YUCK" \
     && ok "eww.yuck: taskbar cableado (deflisten TASKWINS -> nebula-taskbar)" \
     || bad "eww.yuck: falta el deflisten TASKWINS del taskbar"
 
-if command -v eww >/dev/null 2>&1; then
+if command -v eww >/dev/null 2>&1 && [[ -z "${DISPLAY:-}" ]]; then
+    warn "eww instalado pero sin DISPLAY: no valido la carga del .yuck (correr bajo xvfb-run)"
+elif command -v eww >/dev/null 2>&1; then
     d="$REPO/dotfiles/eww"; sock=""
     eww -c "$d" daemon --no-daemonize >/tmp/nebula-eww-test.$$ 2>&1 &
     epid=$!
@@ -122,14 +126,21 @@ else
     warn "eww no instalado: no valido la carga del .yuck"
 fi
 
-# categories.toml -> el mismo parser awk que usa nebula-gen-panel
-rows="$(awk '
-    /^\[\[categoria\]\]/       { ctx="cat"; next }
-    /^\[\[categoria\.app\]\]/  { ctx="app"; next }
-    /^[[:space:]]*nombre[[:space:]]*=/ { v=$0; sub(/^[^=]*=[[:space:]]*"/,"",v); sub(/"[[:space:]]*$/,"",v); if(ctx=="cat")cat=v; else name=v }
-    /^[[:space:]]*exec[[:space:]]*=/   { printf "%s\n", name }
-' "$REPO/dotfiles/nebula/categories.toml" | grep -c .)"
-[[ "$rows" -ge 20 ]] && ok "categories.toml: $rows apps parseadas" || bad "categories.toml: solo $rows apps (parser roto o archivo vacio?)"
+# categories.toml -> el lector UNICO (bin/nebula-categories): valida el
+# archivo y exige que el bloque autogen del eww.yuck versionado sea
+# exactamente lo que genera (D9): desincronizarlos hace fallar CI (BUG-001).
+TOML="$REPO/dotfiles/nebula/categories.toml"
+if cat_out="$("$REPO/bin/nebula-categories" check --toml "$TOML" 2>&1)"; then
+    ok "categories.toml: ${cat_out%%$'\n'*}"
+    grep -q '^AVISO' <<<"$cat_out" && warn "categories.toml: $(grep '^AVISO' <<<"$cat_out" | head -1)"
+else
+    bad "categories.toml invalido: $cat_out"
+fi
+if "$REPO/bin/nebula-categories" render-yuck "$YUCK" --all --toml "$TOML" --check >/dev/null 2>&1; then
+    ok "eww.yuck: bloque autogen == lo que genera categories.toml"
+else
+    bad "eww.yuck desincronizado de categories.toml -> bin/nebula-categories render-yuck $YUCK --all --toml $TOML"
+fi
 
 # sxhkdrc: colisiones de atajos (misma combinacion dos veces)
 dups="$(grep -E '^[^# ]' "$REPO/dotfiles/sxhkd/sxhkdrc" | grep -vE '^\s' | sort | uniq -d)"
@@ -137,7 +148,7 @@ dups="$(grep -E '^[^# ]' "$REPO/dotfiles/sxhkd/sxhkdrc" | grep -vE '^\s' | sort 
 
 # PKGS_BASE: las deps declaradas de las features nuevas
 missing_pkg=0
-for p in alttab copyq maim xdotool x11-xkb-utils libnotify-bin git unzip curl ca-certificates xclip; do
+for p in alttab copyq maim xdotool x11-xkb-utils libnotify-bin git unzip curl ca-certificates xclip python3 x11-utils; do
     grep -qw "$p" "$REPO/install/10-base.sh" || { bad "install/10-base.sh: falta '$p' en PKGS_BASE"; missing_pkg=1; }
 done
 [[ "$missing_pkg" -eq 0 ]] && ok "install/10-base.sh: deps de las features nuevas declaradas"

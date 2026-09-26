@@ -54,6 +54,10 @@ PKGS_BASE=(
     #                           para "copiar al portapapeles" en general)
     # Sin esto los stages caian a `warn` y la sesion quedaba sin glyphs ni tema.
     git ca-certificates unzip curl xclip
+    # python3 -> bin/nebula-categories (lector unico de categories.toml; usa
+    # tomllib de la stdlib, Python >= 3.11). Viene en Ubuntu, pero minimal/
+    # server no lo garantiza con --no-install-recommends.
+    python3
     # x11-utils -> xprop (bin/nebula-window-switcher). No viene en una
     # instalacion minima con --no-install-recommends.
     x11-utils
