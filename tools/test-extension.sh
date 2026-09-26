@@ -120,6 +120,24 @@ sleep 4
 check "fin del fullscreen: vuelve la franja de borde"   "!S._monitor().inFullscreen && S._hotEdge.visible"
 check "fin del fullscreen: la sidebar respeta su estado" "S._sidebar.visible === !S._collapsed"
 
+# Barra inferior (enable-bottombar) con un reproductor MPRIS simulado.
+if [[ -n "$MOCKPY" ]]; then
+    "$MOCKPY" -m dbusmock org.mpris.MediaPlayer2.nebulatest /org/mpris/MediaPlayer2 \
+        org.mpris.MediaPlayer2.Player >/dev/null 2>&1 &
+    MOCK=$!
+    sleep 1.5
+fi
+e "$X X._settings.set_boolean('enable-bottombar', true); 1" >/dev/null; sleep 2
+check "enable-bottombar=true crea la barra inferior" "X._bottomBar !== undefined && X._bottomBar !== null"
+if [[ -n "$MOCKPY" ]]; then
+    check "barra inferior: se engancha al reproductor MPRIS" "X._bottomBar._mprisName === 'org.mpris.MediaPlayer2.nebulatest'"
+fi
+# Prender y apagar sin esperar: los callbacks D-Bus en vuelo quedan cancelados
+# (R-308); cualquier error saldria en el chequeo de log del final.
+e "$X X._settings.set_boolean('enable-bottombar', false); X._settings.set_boolean('enable-bottombar', true); X._settings.set_boolean('enable-bottombar', false); 1" >/dev/null; sleep 2
+check "enable-bottombar=false la quita" "!X._bottomBar"
+[[ -n "${MOCK:-}" ]] && kill "$MOCK" 2>/dev/null
+
 # disable() limpio y re-enable.
 e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 1
 check "disable: no quedan actores de Nebula en el Shell" "!Main.layoutManager.uiGroup.get_children().some(a => /nebula/.test(a.style_class ?? ''))"
@@ -136,7 +154,12 @@ check "shell-state.json corrupto: la sidebar arma sus categorias"  "S && S._mode
 SCEN
 
 export -f ok bad
-export FSWIN="$T/fswin.js" T
+# python con dbusmock (reproductor MPRIS simulado); opcional.
+MOCKPY=""
+for py in /usr/bin/python3 /usr/bin/python3.[0-9]* python3; do
+    "$py" -c 'import dbusmock' >/dev/null 2>&1 && { MOCKPY="$py"; break; }
+done
+export FSWIN="$T/fswin.js" T MOCKPY
 RESULTS="$T/results.txt"; : > "$RESULTS"
 : > "$T/shell.log"
 run_phase() {  # run_phase SCRIPT -> un GNOME Shell headless nuevo por fase
