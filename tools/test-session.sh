@@ -105,11 +105,17 @@ elif command -v eww >/dev/null 2>&1; then
         # aca (ej. :preserve-aspect-ratio, que eww 0.6 no conoce).
         eww -c "$d" open nebula-bar >/dev/null 2>&1
         eww -c "$d" open nebula-sidebar >/dev/null 2>&1
-        sleep 3
-        act="$(eww -c "$d" active-windows 2>/dev/null)"
+        # Esperar (hasta 15 s) en vez de un sleep fijo: en el runner de CI
+        # 3 s no alcanzaban y la barra, ya mapeada, aun no figuraba.
+        act=""
+        for _ in $(seq 1 30); do
+            act="$(eww -c "$d" active-windows 2>/dev/null)"
+            [[ "$act" == *nebula-bar* && "$act" == *nebula-sidebar* ]] && break
+            sleep 0.5
+        done
         [[ "$act" == *nebula-bar* && "$act" == *nebula-sidebar* ]] \
             && ok "eww: abre nebula-bar y nebula-sidebar" \
-            || bad "eww: no pudo abrir las ventanas ('$act')"
+            || bad "eww: no pudo abrir las ventanas (activas: '$(tr '\n' ';' <<<"$act")'; X: '$(xwininfo -root -children 2>/dev/null | grep -o '"Eww - [^"]*"' | tr '\n' ' ')')"
         # nebula-bar debe reservar su franja en X11 (_NET_WM_STRUT_PARTIAL
         # top = 26). Con :exclusive (solo Wayland) quedaba en 0 y las
         # ventanas maximizadas se metian debajo de la barra (FS-21).
