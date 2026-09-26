@@ -18,6 +18,13 @@ command -v "$BROWSER" >/dev/null 2>&1 || BROWSER="firefox"
 command -v "$BROWSER" >/dev/null 2>&1 || { echo "no hay navegador (librewolf/firefox)" >&2; exit 1; }
 
 PROFILE_ROOT="$HOME/.nebula/profiles"
+# Firefox de Ubuntu 24.04 es un snap: su confinamiento NO deja leer carpetas
+# ocultas de $HOME (~/.nebula), asi que --profile fallaba. Para el snap, los
+# perfiles van dentro de su propio directorio de datos.
+# (/usr/bin/firefox es un wrapper del paquete de transicion: se pregunta a snap.)
+if command -v snap >/dev/null 2>&1 && snap list "$BROWSER" >/dev/null 2>&1; then
+    PROFILE_ROOT="$HOME/snap/$(basename "$BROWSER")/common/nebula-profiles"
+fi
 
 declare -A URL=(
     [Netflix]="https://www.netflix.com"

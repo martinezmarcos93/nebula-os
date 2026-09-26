@@ -224,7 +224,13 @@ export class NebulaSidebar {
                 style_class: 'nebula-cat-label',
             }));
             btn.set_child(row);
-            this._connect(btn, 'clicked', () => this._onCategory(i));
+            // Conexion atada al ciclo de vida del boton (igual que las filas
+            // del lanzador, BUG-19): _populate() se re-ejecuta en cada
+            // 'installed-changed' y destroy_all_children() destruye estos
+            // botones. Registrarla en _signalIds acumulaba ids de objetos ya
+            // destruidos (crece con cada instalacion/desinstalacion de apps) y
+            // destroy() intentaba desconectarlos -> warnings de GObject.
+            btn.connect('clicked', () => this._onCategory(i));
             this._catList.add_child(btn);
             this._catButtons.push(btn);
         });

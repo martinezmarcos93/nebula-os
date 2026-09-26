@@ -84,6 +84,10 @@ export NEBULA_LOGIN="${NEBULA_LOGIN:-startx}"
 export NEBULA_LINK="${NEBULA_LINK:-copy}"
 export NEBULA_THEME="${NEBULA_THEME:-nordic}"
 export NEBULA_CURSOR="${NEBULA_CURSOR:-1}"
+# Un solo directorio de backup por corrida (BUG-008): lib/common.sh le pone
+# timestamp al cargarse, y cada stage es un proceso `bash` aparte que volveria
+# a calcular uno nuevo si no se exporta aca.
+export NEBULA_BACKUP_DIR
 
 # ---------------------------------------------------------------------------
 # Descubrir y seleccionar stages

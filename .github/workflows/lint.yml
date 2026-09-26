@@ -22,3 +22,9 @@ jobs:
             echo "Hay scripts con CRLF; deben ser LF." >&2
             exit 1
           fi
+
+      # Bateria estatica completa (bash -n, --help de cada bin/nebula-*,
+      # marcadores autogen de eww.yuck, parseo de categories.toml, atajos
+      # duplicados, deps declaradas). Antes CI solo corria shellcheck.
+      - name: Tests estaticos (tools/test-session.sh --static)
+        run: bash tools/test-session.sh --static

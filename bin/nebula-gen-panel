@@ -8,6 +8,10 @@
 # Parser minimalista, valido para el formato de categories.toml de este repo.
 set -euo pipefail
 
+case "${1:-}" in
+    -h|--help) sed -n '2,9p' "$0"; exit 0 ;;
+esac
+
 CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 TOML="${NEBULA_CATEGORIES:-$CFG/nebula/categories.toml}"
 [[ -f "$TOML" ]] || { echo "no existe $TOML" >&2; exit 1; }
@@ -135,6 +139,5 @@ do_gen() {
 case "${1:-gen}" in
     --menu)     do_menu ;;
     gen)        do_gen ;;
-    -h|--help)  sed -n '2,9p' "$0" ;;
     *)          echo "uso: nebula-gen-panel [--menu]" >&2; exit 2 ;;
 esac

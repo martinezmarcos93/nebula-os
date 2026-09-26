@@ -24,12 +24,17 @@ nebula_notify() {
 }
 
 # nebula_panel_start / nebula_panel_stop - abren y cierran el panel activo.
-# Con eww es UNA sola ventana ("nebula-sidebar"), sin ventana-sensor: son
-# exactamente simetricas. El daemon de eww queda vivo desde bspwmrc; aca
-# solo se abre/cierra la ventana.
+# El daemon de eww queda vivo desde bspwmrc; aca solo se abren/cierran
+# ventanas.
+#
+# La barra superior (nebula-bar) es la que queda visible siempre y la que hay
+# que cerrar en Modo Juego/Foco; el sidebar arranca cerrado (lo abre el gesto
+# de borde o Super+B), asi que start NO lo abre: antes stop solo cerraba el
+# sidebar (la barra seguia arriba, sondeando nvidia-smi) y start lo dejaba
+# abierto tapando el escritorio al salir del modo.
 nebula_panel_start() {
     if [[ "${NEBULA_PANEL:-eww}" == "eww" ]] && command -v eww >/dev/null 2>&1; then
-        eww -c "$NEBULA_RT_CFG/eww" open nebula-sidebar >/dev/null 2>&1 || true
+        eww -c "$NEBULA_RT_CFG/eww" open nebula-bar >/dev/null 2>&1 || true
     elif [[ -x "$NEBULA_RT_CFG/polybar/launch.sh" ]]; then
         "$NEBULA_RT_CFG/polybar/launch.sh" >/dev/null 2>&1 || true
     fi
@@ -37,7 +42,11 @@ nebula_panel_start() {
 
 nebula_panel_stop() {
     pkill -x polybar >/dev/null 2>&1 || true
-    command -v eww >/dev/null 2>&1 && eww -c "$NEBULA_RT_CFG/eww" close nebula-sidebar >/dev/null 2>&1 || true
+    command -v eww >/dev/null 2>&1 || return 0
+    # Una llamada por ventana: cerrar una que no esta abierta devuelve error
+    # y no debe impedir cerrar la otra.
+    eww -c "$NEBULA_RT_CFG/eww" close nebula-sidebar >/dev/null 2>&1 || true
+    eww -c "$NEBULA_RT_CFG/eww" close nebula-bar >/dev/null 2>&1 || true
 }
 
 nebula_reload_sxhkd() {

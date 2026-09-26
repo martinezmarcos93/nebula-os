@@ -116,11 +116,15 @@ bspc config presel_feedback_color "#22d3ee"
 # entre ellas. Para tilear una ventana puntualmente: Super + T. Quitar esta
 # regla vuelve al tiling automatico. Por eso las reglas `state=floating` por
 # app (Pavucontrol, Nsxiv, mpv) ya no hacen falta: quedan cubiertas por el '*'.
+# `bspc wm -r` (Super+Shift+R, nebula-sync, nebula-rescue) re-ejecuta este
+# archivo: sin limpiar primero, cada recarga DUPLICABA todas las reglas.
+bspc rule -r '*'
 bspc rule -a '*'             state=floating
 # Nota: sin reglas para Lutris/Heroic/RetroArch - se descartaron del alcance
 # (solo Steam, ver dotfiles/nebula/categories.toml y memoria de proyecto).
 bspc rule -a Steam           desktop='^3' follow=on
-bspc rule -a steam_app_*     state=fullscreen
+# (Sin regla para `steam_app_*`: bspwm solo acepta la clase exacta o '*' en
+# `bspc rule`, no comodines parciales, asi que esa regla nunca coincidia.)
 bspc rule -a "*:Toolkit:Picture-in-Picture" state=floating sticky=on
 
 # --- Sincronizacion al login (una vez por sesion, en segundo plano) -----

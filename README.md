@@ -15,6 +15,7 @@ estetica oscura *Cosmic Dark*.
 
 - Diseno completo y decisiones: [`docs/DESIGN.md`](docs/DESIGN.md).
 - Bugs encontrados y su causa raiz: [`docs/BUGS.md`](docs/BUGS.md).
+- Auditoria ejecutada (fallos corregidos y pendientes, que falta para operar al 100%): [`docs/AUDIT-FAILSAFE.md`](docs/AUDIT-FAILSAFE.md).
 - Hardware de referencia (verificado con CPU-Z el 2026-09-01): Intel Core
   i5-7400 - 16 GB DDR4 - NVIDIA GTX 1060 **3 GB** (GP106-300).
   La VRAM son 3 GB, no 6: eso limita los modelos de IA a 3B-4B cuantizados

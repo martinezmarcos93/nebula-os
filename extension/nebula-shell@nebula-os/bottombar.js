@@ -133,7 +133,9 @@ export class NebulaBottomBar {
                 label: `${i + 1}`,
                 can_focus: true,
             });
-            this._connect(b, 'clicked', () => {
+            // Atada al ciclo de vida del boton: _syncWorkspaces() los destruye
+            // y recrea en cada cambio de n-workspaces (ver sidebar.js/BUG-19).
+            b.connect('clicked', () => {
                 wm.get_workspace_by_index(i)?.activate(global.get_current_time());
             });
             this._wsBox.add_child(b);

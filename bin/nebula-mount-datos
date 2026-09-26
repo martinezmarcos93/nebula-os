@@ -41,14 +41,18 @@
 set -uo pipefail
 
 UUID="${NEBULA_DATOS_UUID:-A68072A880727F1D}"
-MOUNTPOINT="${NEBULA_DATOS_MOUNTPOINT:-/media/$USER/$UUID}"
+# $USER no siempre esta definido (cron, systemd, `env -i`) y con `set -u` el
+# script moria antes de mirar los argumentos, incluso con --help.
+USER_NAME="$(id -un)"
+USER_UID="$(id -u)"
+MOUNTPOINT="${NEBULA_DATOS_MOUNTPOINT:-/media/$USER_NAME/$UUID}"
 DEV="/dev/disk/by-uuid/$UUID"
 
 MODE="mount"
 APPLY=0
 for a in "$@"; do
     case "$a" in
-        -h|--help) sed -n '2,32p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,40p' "$0"; exit 0 ;;
         --fstab)   MODE="fstab" ;;
         --service) MODE="service" ;;
         --apply)   APPLY=1 ;;
@@ -99,6 +103,7 @@ fstab)
         # el Ubuntu Dock, ver nota arriba de fstab_line). Lo sacamos si sigue.
         if grep -qsE "^[^#]*UUID=${UUID}[[:space:]].*x-gvfs-show" /etc/fstab; then
             echo "Entrada existente todavia tiene 'x-gvfs-show' (icono roto en el Ubuntu Dock); la saco."
+            # shellcheck disable=SC2016  # expande dentro del bash con privilegios
             if priv bash -c '
                 set -eu
                 bk="/etc/fstab.nebula-bak.$(date +%Y%m%d-%H%M%S)"
@@ -172,9 +177,11 @@ service)
     # Notificacion de escritorio SOLO si el montaje realmente falla (disco
     # desconectado, falla fisica, etc.) - sin esto el timer de 5 min
     # reintenta en silencio para siempre y el usuario nunca se entera.
-    # runuser -u marcos con XDG_RUNTIME_DIR/DBUS_SESSION_BUS_ADDRESS a mano
+    # runuser -u <usuario> con XDG_RUNTIME_DIR/DBUS_SESSION_BUS_ADDRESS a mano
     # porque este servicio corre como root (system, no --user), sin sesion.
-    notify_cmd='/usr/sbin/runuser -u marcos -- env XDG_RUNTIME_DIR=/run/user/1000 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send -a Nebula -u critical "Disco de datos" "No se pudo montar (UUID '"$UUID"'). Revisalo a mano: nebula-mount-datos"'
+    # Usuario/UID del que instala las unidades (antes estaban fijos a los de
+    # la maquina de desarrollo y el aviso nunca llegaba en otro equipo).
+    notify_cmd="/usr/sbin/runuser -u $USER_NAME -- env XDG_RUNTIME_DIR=/run/user/$USER_UID DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$USER_UID/bus notify-send -a Nebula -u critical \"Disco de datos\" \"No se pudo montar (UUID $UUID). Revisalo a mano: nebula-mount-datos\""
 
     render_units() {
         cat <<EOF

@@ -54,6 +54,9 @@ PKGS_BASE=(
     #                           para "copiar al portapapeles" en general)
     # Sin esto los stages caian a `warn` y la sesion quedaba sin glyphs ni tema.
     git ca-certificates unzip curl xclip
+    # x11-utils -> xprop (bin/nebula-window-switcher). No viene en una
+    # instalacion minima con --no-install-recommends.
+    x11-utils
 )
 
 info "Paquetes (${#PKGS_BASE[@]}): ${PKGS_BASE[*]}"
@@ -175,7 +178,24 @@ EOF
     # shellcheck disable=SC2016  # se escribe literal: expande recien al loguearse
     local line='[[ -z "$DISPLAY" && "$(tty)" == "/dev/tty1" ]] && exec startx'
     local profile="$HOME/.bash_profile"
-    [[ -f "$profile" ]] || backup_path "$profile"
+    # Si ~/.bash_profile existe, bash NO lee ~/.profile en el login: sin esta
+    # linea se pierde el PATH a ~/.local/bin (donde viven los nebula-*) y todo
+    # lo que Ubuntu pone en ~/.profile. Tiene que ir ANTES del `exec startx`.
+    # shellcheck disable=SC2016  # literal: expande al loguearse
+    local src_profile='[ -f "$HOME/.profile" ] && . "$HOME/.profile"'
+    [[ -f "$profile" ]] && backup_path "$profile"
+    if [[ -f "$profile" ]] && ! grep -qxF -- "$src_profile" "$profile"; then
+        if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
+            info "[dry-run] antepondria a $profile: $src_profile"
+        else
+            local tmp_p; tmp_p="$(mktemp)"
+            { printf '%s\n' "$src_profile"; cat "$profile"; } > "$tmp_p"
+            mv "$tmp_p" "$profile"
+            info "$profile: ahora carga ~/.profile antes de startx"
+        fi
+    else
+        ensure_line "$src_profile" "$profile"
+    fi
     ensure_line "$line" "$profile"
 }
 

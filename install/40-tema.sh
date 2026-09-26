@@ -48,12 +48,17 @@ fi
 install_nordic() {
     [[ -d "$THEMES_DIR/Nordic-darker" ]] && { info "Nordic-darker ya instalado"; return 0; }
     local src; src="$(mktemp -d)"
-    if run git clone --depth 1 https://github.com/EliverLara/Nordic.git "$src/Nordic"; then
-        if [[ -d "$src/Nordic/Nordic-darker" ]]; then
-            run cp -a "$src/Nordic/Nordic-darker" "$THEMES_DIR/Nordic-darker"
+    # La variante "darker" vive en su propia RAMA del repo (branch `darker`,
+    # index.theme Name=Nordic-darker), no en un subdirectorio de master: el
+    # clon de master nunca traia Nordic-darker/ y el tema no se instalaba
+    # nunca, aunque gsettings/xsettingsd/settings.ini lo seleccionaran igual.
+    if run git clone --depth 1 --branch darker https://github.com/EliverLara/Nordic.git "$src/Nordic-darker"; then
+        if [[ "$NEBULA_DRY_RUN" == "1" || -f "$src/Nordic-darker/index.theme" ]]; then
+            run rm -rf "$src/Nordic-darker/.git"
+            run cp -a "$src/Nordic-darker" "$THEMES_DIR/Nordic-darker"
             ok "tema Nordic-darker instalado en $THEMES_DIR"
         else
-            warn "el release de Nordic no trae la variante Nordic-darker; reviso manualmente $src/Nordic"
+            warn "la rama 'darker' de Nordic no trae index.theme; tema GTK queda en el que ya haya."
         fi
     else
         warn "no se pudo clonar Nordic (red). Tema GTK queda en el que ya haya."
@@ -190,9 +195,17 @@ apt_install xsettingsd
 
 if has_cmd gsettings; then
     theme_name="Nordic-darker"; [[ "$NEBULA_THEME" == "fluent" ]] && theme_name="Fluent-dark"
-    run gsettings set org.gnome.desktop.interface gtk-theme "$theme_name" || true
+    # Solo seleccionar el tema si realmente quedo instalado: apuntar a un tema
+    # inexistente deja las apps GTK en Adwaita claro.
+    if [[ -d "$THEMES_DIR/$theme_name" ]]; then
+        run gsettings set org.gnome.desktop.interface gtk-theme "$theme_name" || true
+    else
+        warn "tema GTK $theme_name no instalado: no se cambia gtk-theme en gsettings."
+    fi
     run gsettings set org.gnome.desktop.interface icon-theme "Papirus-Dark" || true
-    [[ "$NEBULA_CURSOR" == "1" ]] && { run gsettings set org.gnome.desktop.interface cursor-theme "Bibata-Modern-Ice" || true; }
+    # Mismo cursor efectivo que .Xresources/xsettingsd (BUG-17): si Bibata no
+    # se pudo instalar, CURSOR_NAME ya cayo a Adwaita.
+    run gsettings set org.gnome.desktop.interface cursor-theme "$CURSOR_NAME" || true
 fi
 
 XSETTINGSD_CFG="$HOME/.config/xsettingsd/xsettingsd.conf"

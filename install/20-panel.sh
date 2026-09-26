@@ -26,6 +26,8 @@ NERD_FONT_TAG="v3.2.1"
 NERD_FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONT_TAG}/JetBrainsMono.zip"
 
 EFFECTIVE_PANEL="$NEBULA_PANEL"
+EWW_REPO="https://github.com/elkowar/eww"
+EWW_TAG="${NEBULA_EWW_TAG:-v0.6.0}"
 
 # ---------------------------------------------------------------------------
 # Motor del panel
@@ -49,8 +51,17 @@ install_eww() {
         # shellcheck disable=SC1091
         source "$HOME/.cargo/env" 2>/dev/null || export PATH="$HOME/.cargo/bin:$PATH"
     fi
-    info "compilando eww con cargo (puede tardar varios minutos)..."
-    if ! run cargo install eww --locked; then
+    # eww NO esta publicado en crates.io con ese nombre: `cargo install eww`
+    # baja otro crate homonimo (una libreria egui sin binario) y falla SIEMPRE,
+    # asi que el panel caia a polybar en toda instalacion limpia. Se compila
+    # desde el repo oficial, fijado a un tag, solo con el backend X11 (bspwm es
+    # X11; el feature wayland arrastra gtk-layer-shell sin necesidad).
+    apt_install build-essential pkg-config \
+        libgtk-3-dev libpango1.0-dev libgdk-pixbuf-2.0-dev libcairo2-dev \
+        libglib2.0-dev libdbusmenu-gtk3-dev
+    info "compilando eww $EWW_TAG con cargo (puede tardar varios minutos)..."
+    if ! run cargo install --locked --git "$EWW_REPO" --tag "$EWW_TAG" \
+            --no-default-features --features x11 eww; then
         warn "'cargo install eww' fallo (red con SSL interceptado / crates.io inaccesible). Cae a polybar (E1)."
         return 1
     fi

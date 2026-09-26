@@ -30,6 +30,8 @@ for c in xdotool eww; do
     command -v "$c" >/dev/null 2>&1 || { echo "nebula-edge-sidebar: falta '$c'" >&2; exit 1; }
 done
 
+GAME_STATE="${XDG_CACHE_HOME:-$HOME/.cache}/nebula/gamemode"
+
 eww_cmd() { eww -c "$CFG/eww" "$@" >/dev/null 2>&1; }
 
 # Estado que creemos tener. Si el usuario abre/cierra con Super+B se puede
@@ -43,6 +45,9 @@ while :; do
     [[ "$x" =~ ^[0-9]+$ ]] || continue
 
     if (( x <= EDGE )); then
+        # Modo Juego: el panel esta apagado a proposito; un juego en ventana
+        # (no fullscreen) no debe poder abrir el sidebar rozando el borde.
+        [[ -e "$GAME_STATE" ]] && continue
         # No abrir por encima de una ventana en fullscreen (juego / video).
         if command -v bspc >/dev/null 2>&1 \
            && [[ -n "$(bspc query -N -n .fullscreen.window 2>/dev/null)" ]]; then
