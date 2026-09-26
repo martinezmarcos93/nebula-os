@@ -80,6 +80,13 @@ los escenarios (a) y (b).
 
 ## 3. Fase 2 — Fuente única y panel correcto
 
+**Estado (2026-09-26):** ✅ R-201…R-210 implementadas. Verificado con eww
+real (ventanas abiertas, strut medido con xprop) y bspwm real bajo Xvfb.
+Hallazgos al ejecutar: el eww.yuck versionado ya estaba sincronizado (BUG-001
+se había cerrado a mano; ahora lo garantiza CI), `.monocle` no existe como
+modificador en bspwm 0.9.10, y el test del HUD destapó que contar procesos
+por nombre confunde subshells con loops.
+
 | ID | Tarea | Archivos | Aceptación |
 |---|---|---|---|
 | R-201 | `tools/nebula-categories` (D2): subcomandos `json`, `tsv`, `yuck-block`, `check`. Valida nombres duplicados, `exec` vacío, iconos faltantes | nuevo; `bin/nebula-gen-panel` y `extension/build.sh` lo usan; se borra el awk de `test-session.sh` | pytest ≥ 90 % de cobertura del módulo |
