@@ -387,7 +387,7 @@ Todos los scripts de `install/` cumplen:
 
 - **Shebang y modo estricto**: `#!/usr/bin/env bash` + `set -euo pipefail` + `IFS=$'\n\t'`.
 - **Idempotencia**: cada acción comprueba estado antes de actuar (`command -v`, `dpkg -s`, existencia de archivo, `grep -q` en config). Re-ejecutar un script no rompe nada ni duplica líneas.
-- **Sin root directo**: el script se ejecuta como usuario normal y eleva con `sudo` solo los comandos que lo necesitan. Aborta si se ejecuta como `root` (`[[ $EUID -eq 0 ]] && exit 1`), salvo `--allow-root`.
+- **Sin root directo**: el script se ejecuta como usuario normal y eleva con `sudo` solo los comandos que lo necesitan. Aborta si se ejecuta como `root` (`[[ $EUID -eq 0 ]] && exit 1`), sin excepciones (`--allow-root` se elimino: escribia en `/root`, BUG-006).
 - **Log**: `exec > >(tee -a "$NEBULA_LOG") 2>&1` con `NEBULA_LOG=~/.local/share/nebula/log/install-AAAA-MM-DD.log`.
 - **`--dry-run`**: imprime lo que haría sin ejecutar (`run()` wrapper).
 - **`apt`**: `sudo apt-get install -y --no-install-recommends` con `DEBIAN_FRONTEND=noninteractive`.

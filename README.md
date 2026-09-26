@@ -107,7 +107,6 @@ NEBULA_PANEL=polybar NEBULA_LOGIN=ly ./install.sh
 | `--only NN` | Ejecuta solo el stage con prefijo `NN`. |
 | `--from NN` | Empieza desde el stage `NN`. |
 | `--skip NN[,NN]` | Omite esos stages. |
-| `--allow-root` | Permite ejecutar como root (no recomendado). |
 | `--no-color` | Sin color en la salida. |
 
 ### Variables de entorno de control

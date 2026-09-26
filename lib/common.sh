@@ -257,8 +257,13 @@ confirm() {
 # Guardas de entorno
 # ---------------------------------------------------------------------------
 require_not_root() {
-    if [[ ${EUID:-$(id -u)} -eq 0 && "${NEBULA_ALLOW_ROOT:-0}" != "1" ]]; then
-        die "No ejecutes esto como root. Usa tu usuario normal (se pide sudo cuando hace falta). Forza con NEBULA_ALLOW_ROOT=1."
+    # Sin excepcion (docs/ROADMAP-REPARACION.md D7): como root, $HOME es /root
+    # y toda la configuracion terminaria en la cuenta equivocada (BUG-006).
+    if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+        if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+            die "No uses sudo: ejecuta ./install.sh como '$SUDO_USER' (el instalador pide sudo solo cuando hace falta)."
+        fi
+        die "No ejecutes esto como root. Usa tu usuario normal (se pide sudo cuando hace falta)."
     fi
 }
 

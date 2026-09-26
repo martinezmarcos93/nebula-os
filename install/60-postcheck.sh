@@ -17,6 +17,13 @@ nebula_log_init "install"
 
 step "60-postcheck - verificacion final"
 
+# En --dry-run no se instalo nada: verificar binarios daria FAIL siempre y
+# escribir el reporte/known-good romperia la promesa de no tocar el sistema.
+if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
+    info "dry-run: postcheck omitido (no hay nada instalado que verificar)."
+    exit 0
+fi
+
 CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 PASS=0; WARN_N=0; FAIL=0
 _pass() { PASS=$((PASS + 1));    ok   "$1"; }

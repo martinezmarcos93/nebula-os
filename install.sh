@@ -31,7 +31,6 @@ Opciones:
       --only NN        Ejecuta solo el stage con prefijo NN (ej: 00, 20).
       --from NN        Empieza desde el stage NN (inclusive).
       --skip NN[,NN]   Omite esos stages (lista separada por comas).
-      --allow-root     Permite ejecutar como root (no recomendado).
       --no-color       Desactiva color en la salida.
   -h, --help           Esta ayuda.
 
@@ -66,7 +65,7 @@ while [[ $# -gt 0 ]]; do
         --from=*)      FROM="${1#*=}" ;;
         --skip)        SKIP="${2:?--skip requiere lista}"; shift ;;
         --skip=*)      SKIP="${1#*=}" ;;
-        --allow-root)  export NEBULA_ALLOW_ROOT=1 ;;
+        --allow-root)  err "--allow-root se elimino: instalar como root escribia en /root, no en tu usuario (BUG-006). Ejecuta ./install.sh como tu usuario, sin sudo."; exit 2 ;;
         --no-color)    NEBULA_NO_COLOR=1; _nebula_setup_colors ;;
         -h|--help)     usage; exit 0 ;;
         *)             err "Opcion desconocida: $1"; usage; exit 2 ;;
