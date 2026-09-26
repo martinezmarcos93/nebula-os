@@ -32,7 +32,8 @@ jobs:
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             gnome-shell gjs libglib2.0-bin dbus python3-dbusmock python3-dbus \
-            libglib2.0-dev-bin gir1.2-gtk-4.0 gnome-shell-extension-ubuntu-dock
+            libglib2.0-dev-bin gir1.2-gtk-4.0 gnome-shell-extension-ubuntu-dock \
+            xvfb xdotool xterm
 
       # GNOME Shell necesita org.freedesktop.login1 en el bus de sistema. El
       # runner trae systemd; si no estuviera, se usa el logind simulado.

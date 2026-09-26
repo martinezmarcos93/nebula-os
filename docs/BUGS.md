@@ -891,6 +891,58 @@ Diagnosticados pero pospuestos a propósito — no bloquean el uso diario.
 
 ---
 
+## 3b. Verificado en GNOME Shell 46 real (2026-09-26)
+
+La extension se ejecuto por primera vez fuera de la maquina de referencia:
+GNOME Shell 46.0-0ubuntu6 headless (Wayland) y en **modo X11 sobre Xvfb con
+clics y teclado reales** (xdotool), manejada por D-Bus con
+`tools/test-extension.sh` (41 aserciones, en CI:
+`.github/workflows/extension.yml`). Cada hallazgo se confirmo contra el codigo
+anterior (el test falla) y contra el arreglo (pasa).
+
+### BUG-27 — Lanzador "fantasma": cerrado pero visible y comiendose clics tras el Overview
+- **Componente:** `launcher.js`, `sidebar.js` (`addChrome(..., {trackFullscreen: true})`).
+- **Sintoma:** despues de usar el lanzador y pasar por el Overview (tecla
+  Super, y GNOME lo muestra al iniciar CADA sesion), el lanzador cerrado queda
+  visible y reactivo en su lugar (250,118, 380x560): **un clic ahi no llega a
+  la ventana de atras**. La sidebar colapsada tambien queda "visible" y el
+  unredirect retenido (2 holds sin nada a la vista).
+- **Causa raiz:** `trackFullscreen` hace que `LayoutManager._updateVisibility()`
+  ponga `visible = true` en cada apertura/cierre del Overview o cambio de
+  pantalla completa, sin mirar el estado logico del componente.
+- **Relacion con BUG-24:** es el mecanismo mas probable detras de los "clics
+  que no llegan" que se investigaban como BUG-24; la secuencia descrita en
+  BUG-24 (revelar + clic, varios ciclos) pasa con el codigo anterior y con el
+  nuevo.
+- **Correccion (R-301):** sin `trackFullscreen`; la pantalla completa se maneja
+  a mano (`_syncFullscreen`, diferido por idle como BUG-26) respetando
+  `_isOpen`/`_collapsed`.
+- **Estado:** ✅ Resuelto y cubierto por CI.
+
+### BUG-28 — En X11 lo que se tipea en el lanzador va a la ventana de atras
+- **Componente:** `launcher.js` (`_present()`).
+- **Sintoma:** al abrir el lanzador el foco de teclado vuelve a la ventana de
+  atras: el texto no aparece en "Buscar aplicaciones..." y Esc no lo cierra.
+- **Causa raiz:** el `hide()+show()` diferido de BUG-24 oculta el actor que
+  tiene el foco (el campo de busqueda) y mutter devuelve el foco a la ventana.
+- **Correccion:** el campo recupera el foco tras el toggle. **Estado:** ✅ Resuelto.
+
+### BUG-29 — `shell-state.json` con tipos inesperados deja la extension sin activar
+- **Sintoma/causa:** `TypeError: loadState().ocultos.includes is not a function`
+  en `enable()` -> la extension entera queda en error.
+- **Correccion (R-310):** `sanitize()` normaliza cada campo. **Estado:** ✅ Resuelto.
+
+### Actualizacion de KNOWN-04 ("clic afuera cierra")
+✅ **Reactivado (R-303)** y verificado con clics reales en X11: un clic en otra
+ventana cierra el lanzador sin consumir el clic, un clic en otra categoria
+cambia el filtro sin cerrarlo, un clic adentro no lo cierra, Esc y el Overview
+lo cierran, y los 3 ciclos de BUG-24 siguen abriendo el lanzador. Detalle: en
+X11 el stage no ve los clics sobre ventanas normales, por eso ademas del
+`captured-event` se escucha `notify::focus-window` (diferido, para no cerrarlo
+por el paso transitorio del foco al abrir).
+
+---
+
 ## 4. Sin verificar
 
 Riesgos que el propio checklist de la extensión (`extension/README.md`,

@@ -73,6 +73,10 @@ printf '[Desktop Entry]\nType=Application\nName=Nebula Test App\nExec=%s\n' "$T/
 export PATH="$T/bin:$PATH"
 
 cat > "$T/common.sh" <<'SCEN'
+# ok/bad definidos ACA (no exportados): xvfb-run es /bin/sh y descarta las
+# funciones exportadas de bash, y la fase X11 fallaba en silencio.
+ok()  { printf '  OK   %s\n' "$*"; }
+bad() { printf '  FAIL %s\n' "$*"; }
 e() {  # e JS -> imprime el valor devuelto por Eval (sin el envoltorio de gdbus)
     gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
         --method org.gnome.Shell.Eval "$1" 2>/dev/null \
@@ -197,7 +201,72 @@ check "shell-state.json corrupto: la extension igual queda ACTIVA" "Main.extensi
 check "shell-state.json corrupto: la sidebar arma sus categorias"  "S && S._model.length > 0"
 SCEN
 
-export -f ok bad
+# Fase C: X11 REAL (como la sesion de la maquina de referencia) sobre Xvfb,
+# con clics reales (xdotool) y dos ventanas xterm. Aca viven los bugs de
+# input: en X11 la region de input del chrome se calcula aparte (XFixes).
+cat > "$T/phase-c.sh" <<'SCEN'
+source "$T/common.sh"
+XT="xterm -xrm XTerm*allowTitleOps:false"
+$XT -geometry 90x45+240+100 -T izquierda >/dev/null 2>&1 &
+sleep 1.5
+$XT -geometry 60x30+760+100 -T derecha >/dev/null 2>&1 &
+sleep 2
+e "Main.overview.hide(); 1" >/dev/null; sleep 1.5
+focus() { xdotool getwindowfocus getwindowname 2>/dev/null; }
+cat_xy() { e "$X (() => { const b = S._catButtons[$1]; const [x, y] = b.get_transformed_position(); const [w, h] = b.get_transformed_size(); return Math.round(x + w/2) + ' ' + Math.round(y + h/2); })()" | tr -dc '0-9 ' | xargs; }
+reveal() { xdotool mousemove 700 400; sleep 1.2; xdotool mousemove 1 400; sleep 0.8; }
+
+# FS-20 con clics reales: tras usar el lanzador y pasar por el Overview, un
+# clic en la zona donde estaba el lanzador debe llegar a la ventana de atras.
+e "$X L.open(0); L.close('test'); 1" >/dev/null; sleep 0.8
+e "Main.overview.show(); 1" >/dev/null; sleep 1.5
+e "Main.overview.hide(); 1" >/dev/null; sleep 2
+xdotool mousemove 900 250 click 1; sleep 0.8
+xdotool mousemove 420 300 click 1; sleep 0.8
+[[ "$(focus)" == izquierda ]] && ok "X11/FS-20: el clic en la zona del lanzador cerrado llega a la ventana de atras" \
+    || bad "X11/FS-20: el clic no llego a la ventana de atras (foco: $(focus))"
+
+# BUG-24: revelar la sidebar y hacer clic en una categoria, varios ciclos.
+okc=0
+for _ in 1 2 3; do
+    reveal
+    read -r cx cy <<< "$(cat_xy 0)"
+    xdotool mousemove "$cx" "$cy"; sleep 0.3; xdotool click 1; sleep 0.6
+    [[ "$(e "$X L._isOpen ? 'SI' : 'NO'")" == *SI* ]] && okc=$((okc + 1))
+    xdotool click 1; sleep 0.5
+done
+[[ "$okc" == 3 ]] && ok "X11/BUG-24: 3 ciclos revelar + clic en categoria abren el lanzador" \
+    || bad "X11/BUG-24: solo $okc de 3 ciclos abrieron el lanzador"
+
+# R-303: clic afuera cierra (sin comerse el clic); adentro no.
+reveal; read -r cx cy <<< "$(cat_xy 0)"
+xdotool mousemove "$cx" "$cy" click 1; sleep 0.6
+xdotool mousemove 900 250 click 1; sleep 0.8
+check "X11/R-303: clic en otra ventana cierra el lanzador" "!L._isOpen"
+[[ "$(focus)" == derecha ]] && ok "X11/R-303: ese clic llega igual a la ventana (no se consume)" \
+    || bad "X11/R-303: el clic de afuera se consumio (foco: $(focus))"
+
+reveal; read -r cx cy <<< "$(cat_xy 0)"
+xdotool mousemove "$cx" "$cy" click 1; sleep 0.6
+read -r c2x c2y <<< "$(cat_xy 1)"
+xdotool mousemove "$c2x" "$c2y" click 1; sleep 0.6
+check "X11/R-303: clic en otra categoria cambia el filtro sin cerrar" "L._isOpen && L.filterIndex === 1"
+xdotool mousemove 440 650 click 1; sleep 0.6   # dentro del panel (zona de resultados)
+check "X11/R-303: clic dentro del lanzador no lo cierra" "L._isOpen"
+# Teclado: lo que se tipea tiene que ir al buscador, no a la ventana de atras
+# (el hide()+show() de BUG-24 le robaba el foco al campo).
+xdotool type --delay 60 nebu; sleep 0.6
+check "X11: lo tipeado va al buscador del lanzador" "L._isOpen && L._entry.get_text() === 'nebu'"
+check "X11/R-303: el lanzador sigue abierto antes de Esc" "L._isOpen"
+xdotool key Escape; sleep 0.6
+check "X11/R-303: Esc cierra el lanzador" "!L._isOpen"
+reveal; read -r cx cy <<< "$(cat_xy 0)"
+xdotool mousemove "$cx" "$cy" click 1; sleep 0.6
+e "Main.overview.show(); 1" >/dev/null; sleep 1.5
+check "X11/R-303: abrir el Overview cierra el lanzador" "!L._isOpen"
+e "Main.overview.hide(); 1" >/dev/null; sleep 1
+SCEN
+
 # python con dbusmock (reproductor MPRIS simulado); opcional.
 MOCKPY=""
 for py in /usr/bin/python3 /usr/bin/python3.[0-9]* python3; do
@@ -224,6 +293,22 @@ run_phase "$T/phase-a.sh"
 mkdir -p "$XDG_CONFIG_HOME/nebula"
 printf '{"favoritos": "no-es-un-array", "ocultos": 7}\n' > "$XDG_CONFIG_HOME/nebula/shell-state.json"
 run_phase "$T/phase-b.sh"
+rm -f "$XDG_CONFIG_HOME/nebula/shell-state.json"
+
+if command -v xvfb-run >/dev/null 2>&1 && command -v xdotool >/dev/null 2>&1 && command -v xterm >/dev/null 2>&1; then
+    # shellcheck disable=SC2016  # se expande dentro del bash de dbus-run-session
+    XDG_SESSION_TYPE=x11 xvfb-run -a -s "-screen 0 1280x800x24 +extension Composite" dbus-run-session -- bash -c '
+        gsettings set org.gnome.shell disable-user-extensions false
+        gsettings set org.gnome.shell enabled-extensions "[\"nebula-harness@test\", \"nebula-shell@nebula-os\"]"
+        gnome-shell --x11 --replace >> "$T/shell.log" 2>&1 &
+        GS=$!
+        source "$T/phase-c.sh" >> "$T/results.txt"
+        kill $GS 2>/dev/null; wait $GS 2>/dev/null
+    ' 2>/dev/null
+    grep -q 'X11/' "$RESULTS" || echo "  FAIL fase X11: no produjo resultados (ver $T/shell.log con --keep)" >> "$RESULTS"
+else
+    echo "  (fase X11 omitida: faltan xvfb-run, xdotool o xterm)" >> "$RESULTS"
+fi
 
 echo "== Nebula Shell en GNOME Shell $(gnome-shell --version | awk '{print $3}') headless =="
 cat "$RESULTS"
