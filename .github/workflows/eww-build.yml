@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # El runner trae su propio Rust en ~/.cargo; se quita del PATH para
       # probar el camino real de una maquina sin Rust (rustup fijo + SHA-256).

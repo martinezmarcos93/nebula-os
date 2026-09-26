@@ -119,6 +119,7 @@ NEBULA_PANEL=polybar NEBULA_LOGIN=ly ./install.sh
 | `NEBULA_THEME` | `nordic` \| `fluent` | `nordic` | Tema GTK. |
 | `NEBULA_CURSOR` | `0` \| `1` | `1` | Instalar el cursor Bibata. |
 | `NEBULA_EWW_TAG` | tag de elkowar/eww | `v0.6.0` | Version de eww que compila `20-panel.sh` (con Rust `NEBULA_RUST_TOOLCHAIN`, def. `1.76.0`: el que fija ese tag). |
+| `NEBULA_EXTENSION` | `auto` \| `1` \| `0` | `auto` | Stage 70: instala y habilita la extension Nebula Shell si hay GNOME Shell 46 (activa en el proximo inicio de sesion GNOME). |
 | `NEBULA_EXTRAS` | lista con comas | vacio | Herramientas opcionales de `extras/` (hoy: `mount-datos`, disco NTFS de datos; UUID obligatorio con `nebula-mount-datos --set-uuid`). |
 | `NEBULA_GNOME_THEME` | `0` \| `1` | `0` | Con GNOME instalado, aplicar tambien el tema/cursor a la sesion GNOME (gsettings, `~/.icons/default`). Por defecto la sesion GNOME no se toca: el entorno de la sesion bspwm vive en `~/.config/nebula-session/`. |
 
