@@ -24,7 +24,7 @@ estetica oscura *Cosmic Dark*.
 
 ## Estado
 
-**Funcional.** Los 7 stages (`00`-`60`) y los 14 scripts `nebula-*` de `bin/`
+**Funcional.** Los 7 stages (`00`-`60`), los 13 scripts `nebula-*` de `bin/` y el extra `nebula-mount-datos`
 estan implementados: instalan paquetes, despliegan dotfiles, generan el panel
 desde `categories.toml`, registran las funciones unicas (juego, foco,
 streaming, IA, HUD, rescate) y las piezas del escritorio (screenshots,
@@ -118,6 +118,7 @@ NEBULA_PANEL=polybar NEBULA_LOGIN=ly ./install.sh
 | `NEBULA_LINK` | `copy` \| `symlink` | `copy` | Como se despliegan los dotfiles. |
 | `NEBULA_THEME` | `nordic` \| `fluent` | `nordic` | Tema GTK. |
 | `NEBULA_CURSOR` | `0` \| `1` | `1` | Instalar el cursor Bibata. |
+| `NEBULA_EXTRAS` | lista con comas | vacio | Herramientas opcionales de `extras/` (hoy: `mount-datos`, disco NTFS de datos; UUID obligatorio con `nebula-mount-datos --set-uuid`). |
 | `NEBULA_GNOME_THEME` | `0` \| `1` | `0` | Con GNOME instalado, aplicar tambien el tema/cursor a la sesion GNOME (gsettings, `~/.icons/default`). Por defecto la sesion GNOME no se toca: el entorno de la sesion bspwm vive en `~/.config/nebula-session/`. |
 
 ## Estructura
@@ -149,7 +150,8 @@ nebula-os/
                             nebula-rescue, nebula-gen-panel.
                           Escritorio: nebula-screenshot, nebula-powermenu,
                             nebula-window-switcher, nebula-taskbar, nebula-edge-sidebar,
-                            nebula-sync, nebula-mount-datos.
+                            nebula-sync.
+  extras/                 Herramientas opcionales (NEBULA_EXTRAS): nebula-mount-datos.
   tools/                  test-session.sh (bateria no interactiva: estatico + sandbox
                           Xephyr), test-nested.sh (sandbox interactivo bspwm/sxhkd).
   extension/              Nebula Shell: prototipo de extension GNOME 46 (sidebar,

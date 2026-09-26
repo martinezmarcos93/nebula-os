@@ -61,10 +61,23 @@ declare -A DESC=(
     [nebula-screenshot]="Captura de pantalla"
     [nebula-powermenu]="Menu de energia (bloquear / salir / apagar)"
     [nebula-sync]="Sincronizar la sesion (dotfiles + paquetes)"
-    [nebula-mount-datos]="Montar el disco de datos"
 )
 
-for src in "$REPO_ROOT"/bin/nebula-*; do
+# Extras (extras/): herramientas opcionales, fuera del nucleo. Solo se
+# instalan si se piden: NEBULA_EXTRAS=mount-datos[,otro] (D5).
+SOURCES=("$REPO_ROOT"/bin/nebula-*)
+IFS=',' read -ra _extras <<< "${NEBULA_EXTRAS:-}"
+for x in "${_extras[@]}"; do
+    [[ -n "$x" ]] || continue
+    if [[ -f "$REPO_ROOT/extras/nebula-$x" ]]; then
+        SOURCES+=("$REPO_ROOT/extras/nebula-$x")
+        [[ "$x" == "mount-datos" ]] && DESC[nebula-mount-datos]="Montar el disco de datos"
+    else
+        warn "NEBULA_EXTRAS: no existe extras/nebula-$x (se ignora)"
+    fi
+done
+
+for src in "${SOURCES[@]}"; do
     name="$(basename "$src")"
     dst="$BIN_DST/$name"
     if [[ -f "$dst" ]] && cmp -s "$src" "$dst"; then

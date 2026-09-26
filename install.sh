@@ -41,6 +41,7 @@ Variables de entorno de control (con sus valores por defecto):
   NEBULA_THEME   nordic  | fluent     (nordic)
   NEBULA_CURSOR  0 | 1                (1)
   NEBULA_GNOME_THEME 0 | 1            (0; 1 = tematizar tambien la sesion GNOME)
+  NEBULA_EXTRAS  lista con comas      (vacio; ej. mount-datos)
 EOF
 }
 
@@ -85,6 +86,7 @@ export NEBULA_LINK="${NEBULA_LINK:-copy}"
 export NEBULA_THEME="${NEBULA_THEME:-nordic}"
 export NEBULA_CURSOR="${NEBULA_CURSOR:-1}"
 export NEBULA_GNOME_THEME="${NEBULA_GNOME_THEME:-0}"
+export NEBULA_EXTRAS="${NEBULA_EXTRAS:-}"
 # Un solo directorio de backup por corrida (BUG-008): lib/common.sh le pone
 # timestamp al cargarse, y cada stage es un proceso `bash` aparte que volveria
 # a calcular uno nuevo si no se exporta aca.

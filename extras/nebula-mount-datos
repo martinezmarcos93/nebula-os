@@ -35,30 +35,61 @@
 #                                       timer cada 5 min lo re-dispara solo si hiciera
 #                                       falta (systemctl start sobre un mount ya activo
 #                                       no hace nada).
+#   nebula-mount-datos --list           lista las particiones NTFS (para elegir UUID)
+#   nebula-mount-datos --set-uuid UUID  guarda el UUID en ~/.config/nebula-session/datos
 #   nebula-mount-datos --help
 #
-# Disco: por UUID. Default el de este equipo; override con NEBULA_DATOS_UUID.
+# Disco: por UUID, OBLIGATORIO (no hay default: antes era el disco de la
+# maquina del autor). Se toma de NEBULA_DATOS_UUID o del archivo de --set-uuid.
+#
+# Seguridad: si Windows dejo el volumen HIBERNADO (Fast Startup), montarlo en
+# escritura puede corromper datos. En ese caso se monta SOLO LECTURA y se
+# avisa; nunca se fuerza. Para escribir: apagar Windows por completo
+# (Shift + Apagar) o desactivar el inicio rapido.
+# Herramienta opcional (extras/): install/50-funciones.sh solo la instala con
+# NEBULA_EXTRAS=mount-datos.
 set -uo pipefail
 
-UUID="${NEBULA_DATOS_UUID:-A68072A880727F1D}"
+DATOS_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/nebula-session/datos"
+if [[ -z "${NEBULA_DATOS_UUID:-}" && -r "$DATOS_CONF" ]]; then
+    NEBULA_DATOS_UUID="$(sed -n 's/^NEBULA_DATOS_UUID=//p' "$DATOS_CONF" | tail -n1)"
+fi
+UUID="${NEBULA_DATOS_UUID:-}"
 # $USER no siempre esta definido (cron, systemd, `env -i`) y con `set -u` el
 # script moria antes de mirar los argumentos, incluso con --help.
 USER_NAME="$(id -un)"
 USER_UID="$(id -u)"
-MOUNTPOINT="${NEBULA_DATOS_MOUNTPOINT:-/media/$USER_NAME/$UUID}"
-DEV="/dev/disk/by-uuid/$UUID"
 
 MODE="mount"
 APPLY=0
-for a in "$@"; do
-    case "$a" in
-        -h|--help) sed -n '2,40p' "$0"; exit 0 ;;
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) sed -n '2,53p' "$0"; exit 0 ;;
         --fstab)   MODE="fstab" ;;
         --service) MODE="service" ;;
         --apply)   APPLY=1 ;;
-        *) echo "nebula-mount-datos: opcion desconocida: $a" >&2; exit 2 ;;
+        --list)    MODE="list" ;;
+        --set-uuid)
+            [[ "${2:-}" =~ ^[0-9A-Fa-f-]{8,36}$ ]] || { echo "uso: nebula-mount-datos --set-uuid UUID (ver --list)" >&2; exit 2; }
+            mkdir -p "$(dirname "$DATOS_CONF")"
+            printf 'NEBULA_DATOS_UUID=%s\n' "$2" > "$DATOS_CONF"
+            echo "UUID guardado en $DATOS_CONF"
+            exit 0 ;;
+        *) echo "nebula-mount-datos: opcion desconocida: $1" >&2; exit 2 ;;
     esac
+    shift
 done
+
+if [[ "$MODE" == "list" ]]; then
+    lsblk -o NAME,FSTYPE,UUID,LABEL,SIZE,MOUNTPOINTS 2>/dev/null | awk 'NR==1 || /ntfs/'
+    exit 0
+fi
+if [[ -z "$UUID" ]]; then
+    echo "nebula-mount-datos: falta el UUID del disco. Elegilo con --list y guardalo con --set-uuid UUID (o NEBULA_DATOS_UUID=...)." >&2
+    exit 2
+fi
+MOUNTPOINT="${NEBULA_DATOS_MOUNTPOINT:-/media/$USER_NAME/$UUID}"
+DEV="/dev/disk/by-uuid/$UUID"
 
 note() { command -v notify-send >/dev/null 2>&1 && notify-send -a "Nebula" "Disco de datos" "$1" || true; }
 
@@ -327,6 +358,29 @@ fi
 if [[ ! -e "$DEV" ]]; then
     echo "ERROR: no encuentro el disco (UUID $UUID). Verifica que este conectado."
     note "No se encontro el disco (UUID $UUID)."
+    exit 1
+fi
+
+# ntfs-3g.probe: 0 = ok, 14 = HIBERNADO (Fast Startup), 15 = apagado sucio.
+# Con 14 montar en escritura (o `ntfsfix`, o `-o force`) puede corromper el
+# volumen: se monta solo lectura y se explica como resolverlo.
+probe_rc=0
+if command -v ntfs-3g.probe >/dev/null 2>&1; then
+    priv ntfs-3g.probe --readwrite "$DEV" >/dev/null 2>&1 || probe_rc=$?
+else
+    echo "AVISO: falta ntfs-3g (ntfs-3g.probe); sin poder descartar hibernacion monto SOLO LECTURA."
+    probe_rc=14
+fi
+if [[ "$probe_rc" -eq 14 ]]; then
+    echo "El volumen esta HIBERNADO por Windows (inicio rapido): lo monto SOLO LECTURA para no corromperlo."
+    echo "Para escribir: apaga Windows por completo (Shift + Apagar) o desactiva el inicio rapido."
+    if out="$(udisksctl mount -b "$DEV" -o ro 2>&1)"; then
+        echo "$out"
+        note "Montado SOLO LECTURA: Windows esta hibernado (inicio rapido)."
+        exit 0
+    fi
+    echo "ERROR: no se pudo montar ni en solo lectura: $out"
+    note "No se pudo montar (Windows hibernado)."
     exit 1
 fi
 

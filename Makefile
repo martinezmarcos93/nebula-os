@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 STAGES := $(sort $(wildcard install/[0-9][0-9]-*.sh))
-SCRIPTS := install.sh $(wildcard lib/*.sh) $(STAGES) $(wildcard bin/nebula-*) $(wildcard tools/*.sh)
+SCRIPTS := install.sh $(wildcard lib/*.sh) $(STAGES) $(wildcard bin/nebula-*) $(wildcard extras/nebula-*) $(wildcard tools/*.sh)
 
 .PHONY: help lint fmt-check preflight dry-run install check test-nested test-session
 
