@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# nebula-gpu-stat - UNA lectura de nvidia-smi compartida por eww, polybar y el
+# HUD (cache de NEBULA_GPU_TTL segundos, def. 5). Antes la barra de eww lanzaba
+# 3 nvidia-smi por ciclo (GPU, VRAM, VRAM%) + polybar + HUD: en NVIDIA el
+# sondeo frecuente puede impedir que la placa baje de estado de energia.
+#
+#   nebula-gpu-stat [util|vram|vram_total|vram_pct|temp|all]   (def. all)
+#
+# Sin NVIDIA (o con el driver caido) imprime una linea vacia y sale 0: los
+# paneles ocultan la GPU con salida vacia (GPU opcional, D3).
+# Uso: nebula-gpu-stat [campo] [--help]
+set -uo pipefail
+
+case "${1:-all}" in
+    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+esac
+FIELD="${1:-all}"
+
+TTL="${NEBULA_GPU_TTL:-5}"
+DIR="${XDG_RUNTIME_DIR:-/tmp/nebula-$(id -u)}/nebula"
+CACHE="$DIR/gpu.cache"
+mkdir -p "$DIR" 2>/dev/null || true
+
+refresh() {
+    # Formato del cache: util<TAB>vram<TAB>vram_total<TAB>temp (o vacio).
+    local line=""
+    if command -v nvidia-smi >/dev/null 2>&1; then
+        line="$(nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu \
+                --format=csv,noheader,nounits 2>/dev/null | head -n1 | tr -d ' ' | tr ',' '\t')"
+    fi
+    printf '%s\n' "$line" > "$CACHE.tmp.$$" && mv -f "$CACHE.tmp.$$" "$CACHE"
+}
+
+fresh() {
+    [[ -f "$CACHE" ]] || return 1
+    local age=$(( $(date +%s) - $(stat -c %Y "$CACHE" 2>/dev/null || echo 0) ))
+    (( age < TTL ))
+}
+
+if ! fresh; then
+    # flock: si eww pide 3 campos a la vez, uno solo consulta la placa y los
+    # demas esperan y leen el cache recien escrito.
+    exec 9>"$DIR/gpu.lock"
+    if command -v flock >/dev/null 2>&1; then flock -w 5 9 || true; fi
+    fresh || refresh
+fi
+
+IFS=$'\t' read -r util vram total temp < "$CACHE" || true
+case "$FIELD" in
+    util)       echo "${util:-}" ;;
+    vram)       echo "${vram:-}" ;;
+    vram_total) echo "${total:-}" ;;
+    temp)       echo "${temp:-}" ;;
+    vram_pct)
+        if [[ "${vram:-}" =~ ^[0-9]+$ && "${total:-}" =~ ^[0-9]+$ ]] && (( total > 0 )); then
+            echo $(( vram * 100 / total ))
+        else
+            echo ""
+        fi ;;
+    all)        printf '%s\t%s\t%s\t%s\n' "${util:-}" "${vram:-}" "${total:-}" "${temp:-}" ;;
+    *)          echo "uso: nebula-gpu-stat [util|vram|vram_total|vram_pct|temp|all]" >&2; exit 2 ;;
+esac

@@ -48,7 +48,7 @@ for f in "$REPO"/bin/nebula-* "$REPO"/extras/nebula-* "$REPO"/install/*.sh "$REP
 done
 [[ "$synbad" -eq 0 ]] && ok "bash -n sobre todos los scripts"
 
-for b in nebula-screenshot nebula-powermenu nebula-edge-sidebar nebula-rescue \
+for b in nebula-gpu-stat nebula-screenshot nebula-powermenu nebula-edge-sidebar nebula-rescue \
          nebula-window-switcher nebula-gen-panel nebula-sync nebula-taskbar \
          ../extras/nebula-mount-datos; do
     s="$REPO/bin/$b"
@@ -90,6 +90,8 @@ grep -q '(deflisten TASKWINS' "$YUCK" && grep -q 'nebula-taskbar' "$YUCK" \
 if command -v eww >/dev/null 2>&1 && [[ -z "${DISPLAY:-}" ]]; then
     warn "eww instalado pero sin DISPLAY: no valido la carga del .yuck (correr bajo xvfb-run)"
 elif command -v eww >/dev/null 2>&1; then
+    # Los polls del .yuck llaman a nebula-* (gpu-stat, taskbar): del repo.
+    export PATH="$REPO/bin:$PATH"
     d="$REPO/dotfiles/eww"; sock=""
     eww -c "$d" daemon --no-daemonize >/tmp/nebula-eww-test.$$ 2>&1 &
     epid=$!

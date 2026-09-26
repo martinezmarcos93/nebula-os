@@ -3,17 +3,13 @@
 # Utilizacion de GPU y VRAM (NVIDIA) para el modulo custom/script de polybar.
 set -uo pipefail
 
-# Sin NVIDIA: salida vacia -> polybar oculta el modulo (GPU opcional, D3).
-if ! command -v nvidia-smi >/dev/null 2>&1; then
+# Misma lectura cacheada que eww y el HUD (bin/nebula-gpu-stat): un solo
+# nvidia-smi cada 5 s para todo el escritorio. Sin NVIDIA: salida vacia ->
+# polybar oculta el modulo (GPU opcional, D3).
+if ! command -v nebula-gpu-stat >/dev/null 2>&1; then
     echo ""
     exit 0
 fi
-
-line="$(nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total \
-        --format=csv,noheader,nounits 2>/dev/null | head -n1)"
-
-util="$(echo "$line"  | awk -F',' '{gsub(/ /,"",$1); print $1}')"
-used="$(echo "$line"  | awk -F',' '{gsub(/ /,"",$2); print $2}')"
-total="$(echo "$line" | awk -F',' '{gsub(/ /,"",$3); print $3}')"
-
-printf 'GPU %s%%  %s/%sMB\n' "${util:-?}" "${used:-?}" "${total:-?}"
+IFS=$'\t' read -r util used total _ < <(nebula-gpu-stat all)
+[[ -n "${util:-}" ]] || { echo ""; exit 0; }
+printf 'GPU %s%%  %s/%sMB\n' "$util" "${used:-?}" "${total:-?}"

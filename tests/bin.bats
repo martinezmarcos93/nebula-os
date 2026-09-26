@@ -106,3 +106,23 @@ setup() { setup_home; }
     [[ "$output" == *"duplicado"* ]]
     [ "$(sha256sum "$HOME/.config/eww/eww.yuck")" = "$before" ]
 }
+
+@test "nebula-gpu-stat: 3 consultas simultaneas -> UN solo nvidia-smi (cache + lock)" {
+    export XDG_RUNTIME_DIR="$BATS_TEST_TMPDIR/run"
+    stub nvidia-smi 'echo x >> "$HOME/nvsmi.calls"; sleep 0.3; echo "37, 512, 3072, 45"'
+    "$REPO/bin/nebula-gpu-stat" util > "$HOME/a" &
+    "$REPO/bin/nebula-gpu-stat" vram > "$HOME/b" &
+    "$REPO/bin/nebula-gpu-stat" vram_pct > "$HOME/c" &
+    wait
+    [ "$(wc -l < "$HOME/nvsmi.calls")" -eq 1 ]
+    [ "$(cat "$HOME/a")" = "37" ]
+    [ "$(cat "$HOME/b")" = "512" ]
+    [ "$(cat "$HOME/c")" = "16" ]
+}
+
+@test "nebula-gpu-stat: sin NVIDIA imprime vacio y sale 0" {
+    export XDG_RUNTIME_DIR="$BATS_TEST_TMPDIR/run"
+    run env PATH="/usr/bin:/bin" "$REPO/bin/nebula-gpu-stat" util
+    [ "$status" -eq 0 ]
+    [ -z "$output" ]
+}
