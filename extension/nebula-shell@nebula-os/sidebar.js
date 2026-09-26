@@ -64,6 +64,7 @@ export class NebulaSidebar {
         this._catButtons = [];
 
         this._collapsed = false;
+        this._inFullscreen = false;
         this._autoCollapseId = 0;
         this._hotEdge = null;
         this._togglingVisibility = false;   // BUG-25: true durante el hide()+show() diferido
@@ -96,6 +97,8 @@ export class NebulaSidebar {
         });
         this._connect(Shell.AppSystem.get_default(), 'installed-changed', () =>
             this._scheduleRepopulate());
+        this._connect(global.display, 'in-fullscreen-changed', () =>
+            this._addIdle(() => this._syncFullscreen()));
 
         // Arranca visible unos segundos y luego se retrae sola (salvo que el
         // puntero ya este encima). A partir de ahi: revelar al acercar el mouse
@@ -131,10 +134,15 @@ export class NebulaSidebar {
             this._sidebar.add_child(this._buildQuickSearch());
         this._sidebar.add_child(this._buildPowerRow());
 
+        // SIN trackFullscreen (R-301, FS-20): con esa opcion LayoutManager
+        // forzaba `visible = true` al cerrar el Overview o salir de pantalla
+        // completa aunque la sidebar estuviera COLAPSADA -> quedaba "visible"
+        // fuera de pantalla reteniendo el unredirect (medido en GNOME 46 real:
+        // 2 holds sin nada a la vista). La pantalla completa se maneja a mano
+        // en _syncFullscreen(), respetando _collapsed.
         Main.layoutManager.addChrome(this._sidebar, {
             affectsStruts: true,
             affectsInputRegion: true,
-            trackFullscreen: true,
         });
         // BUG-18/BUG-22 (docs/BUGS.md): sin esto, la sidebar tambien queda
         // tapada por el unredirect de mutter con el escritorio sin ventanas -
@@ -408,9 +416,35 @@ export class NebulaSidebar {
 
     // --- retraer / revelar --------------------------------------
 
+    // Pantalla completa en el monitor de la sidebar: se ocultan sidebar y
+    // franja de borde (un juego fullscreen no debe poder revelarla rozando el
+    // borde) y se cierra el lanzador. Al salir se restaura SEGUN el estado
+    // logico: solo se muestra la sidebar si no estaba colapsada. Llamado
+    // diferido (idle) desde in-fullscreen-changed: nunca tocar actores ni
+    // mutter dentro del emisor nativo (BUG-26).
+    _syncFullscreen() {
+        if (!this._sidebar)
+            return;
+        const fs = !!this._monitor()?.inFullscreen;
+        if (fs === this._inFullscreen)
+            return;
+        this._inFullscreen = fs;
+        if (fs) {
+            this._cancelAutoCollapse();
+            this._launcher?.close('fullscreen');
+            this._sidebar.hide();
+            this._hotEdge?.hide();
+        } else {
+            this._hotEdge?.show();
+            if (!this._collapsed)
+                this._sidebar.show();
+        }
+        Main.layoutManager._queueUpdateRegions?.();
+    }
+
     _expand() {
         this._cancelAutoCollapse();
-        if (!this._collapsed)
+        if (!this._collapsed || this._inFullscreen)
             return;
         this._collapsed = false;
         this._sidebar.show();

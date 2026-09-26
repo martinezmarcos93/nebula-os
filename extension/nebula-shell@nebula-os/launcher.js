@@ -81,14 +81,20 @@ export class NebulaLauncher {
         this._scroll.add_child(this._results);
         this._panel.add_child(this._scroll);
 
+        // SIN trackFullscreen (R-301, FS-20): LayoutManager._updateVisibility()
+        // hace `actor.visible = true` en cada apertura/cierre del Overview y en
+        // cada cambio de pantalla completa, AUNQUE el lanzador este cerrado.
+        // Medido en GNOME Shell 46 real: tras cerrar el Overview (que GNOME
+        // muestra al iniciar cada sesion) el lanzador cerrado quedaba visible,
+        // capturando clics, y reteniendo el unredirect. La pantalla completa la
+        // maneja la sidebar (ver _syncFullscreen), que cierra el lanzador.
         Main.layoutManager.addChrome(this._panel, {
             affectsStruts: false,
             affectsInputRegion: true,
-            trackFullscreen: true,
         });
         // El hold/release del unredirect de mutter queda atado a la visibilidad
-        // real del panel (ver unredirect.js): cubre open()/close() Y cualquier
-        // show()/hide() que dispare GNOME por su cuenta (p. ej. trackFullscreen).
+        // real del panel (ver unredirect.js): cubre open()/close() y cualquier
+        // show()/hide() que dispare GNOME por su cuenta.
         this._unredirectSignalId = this._unredirect.track(this._panel);
 
         const ct = this._entry.clutter_text;
@@ -204,7 +210,6 @@ export class NebulaLauncher {
             Main.layoutManager.addChrome(this._panel, {
                 affectsStruts: false,
                 affectsInputRegion: true,
-                trackFullscreen: true,
             });
         }
         this._panel.show();
