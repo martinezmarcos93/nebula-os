@@ -42,7 +42,7 @@ para que se pueda revisar después con criterio, no por gusto.
 | R-001 | CI de `main` en verde (SC2016) | ✅ `23cfa7d` |
 | R-002 | 18 bugs confirmados de la auditoría (FS-01…FS-18) | ✅ `23cfa7d` |
 | R-003 | Quitar las 4 direcciones de correo del HEAD (`EXTENSION-ROADMAP.md`) | ✅ este commit |
-| R-004 | Purga del historial (D14): `git filter-repo --replace-text` sobre `main` + force-push + pedir a GitHub que invalide caché (Support → "sensitive data removal") | ⏳ espera confirmación del autor |
+| R-004 | Purga del historial (D14): `git filter-repo --replace-text` sobre `main` + force-push + pedir a GitHub que invalide caché (Support → "sensitive data removal") | ✅ 2026-09-26: historial reescrito (`main` y `claude/nebula-os-audit-syl4fi` → `7d87904`), verificado con 0 apariciones desde un clon limpio. ⏳ Falta pedir a GitHub Support que borre de su caché los commits viejos (siguen accesibles por SHA, ej. `fd3bc8c`) |
 | R-005 | **Validación de FS-01 (eww):** compilado en limpio en un contenedor Ubuntu 24.04 con el código real de `20-panel.sh` (usuario sin Rust previo). Hallazgos de la prueba: hace falta Rust **1.76.0** (con ≥ 1.80 el crate `time` falla, E0282), `rustup-init` tiene que llamarse así (argv[0]) y el binario va a `~/.local/bin`. El tag v0.6.0 se reporta como `eww 0.5.0 d87c2fd` (rareza de upstream). Falta confirmarlo en la máquina de referencia | ✅ contenedor · ⏳ máquina real |
 
 **Criterio de salida:** CI verde, sin datos personales en el HEAD y eww confirmado compilando.
