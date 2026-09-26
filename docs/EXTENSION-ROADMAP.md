@@ -359,7 +359,7 @@ franja de ventanas en `nebula-bar`, con clic para minimizar/restaurar). La
 extensión GNOME **no tiene equivalente todavía** — `bottombar.js` (el
 incremento 5) ya existe y está integrado, pero cubre escritorios + MPRIS +
 accesos rápidos + reloj, **sin lista de ventanas**. Hoy está además
-**desactivado** (`FEATURES.bottombar: false` en `config.js`).
+**desactivado** por defecto (clave gsettings `enable-bottombar`, ver extension/README.md).
 
 **Relación con el punto 2 (tecla Super):** si se elige la Opción A (Super
 reemplaza a Activities), se pierde el acceso de una tecla a la vista general
@@ -368,7 +368,7 @@ exactamente eso — por lo que conviene resolver este punto **antes o junto
 con** el cambio de la tecla Super, no después.
 
 **Propuesta:**
-- Activar `FEATURES.bottombar` y agregar un bloque de **lista de ventanas**
+- Activar `enable-bottombar` y agregar un bloque de **lista de ventanas**
   a `bottombar.js`, análogo a `nebula-taskbar` del núcleo pero usando la API
   nativa de GNOME Shell (`global.get_window_actors()` /
   `Shell.WindowTracker`) en vez de `bspc subscribe` (que no aplica bajo

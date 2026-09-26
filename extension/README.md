@@ -85,27 +85,51 @@ que se decida un *shell theme*.
 ## Uso
 
 ```bash
-# Requisitos: python3 (trae tomllib en 3.11+), glib-compile-schemas
+# Requisitos: python3 (>= 3.11, trae tomllib), glib-compile-schemas
 #   sudo apt install libglib2.0-dev-bin   # si falta glib-compile-schemas
 
-bash extension/build.sh --install     # genera artefactos + symlink de desarrollo
-
-# Recargar GNOME Shell:
-#   X11     -> Alt+F2, escribir 'r', Enter
-#   Wayland -> cerrar sesión y volver a entrar (no hay recarga en caliente)
-
+bash extension/build.sh --install     # genera artefactos y COPIA la extension (BUG-21)
 gnome-extensions enable nebula-shell@nebula-os
 
-# Logs de la extensión:
+# Recargar GNOME Shell para que tome el codigo nuevo. En la maquina de
+# referencia Alt+F2 -> r y logout/login NO reinician el proceso (BUG-24):
+#   X11     -> gnome-shell --replace &   (o reiniciar)
+#   Wayland -> cerrar sesion y volver a entrar
+
+# Logs de la extension:
 journalctl --user -f -o cat /usr/bin/gnome-shell
 ```
 
 Quitarla:
 
 ```bash
-gnome-extensions disable nebula-shell@nebula-os
-rm ~/.local/share/gnome-shell/extensions/nebula-shell@nebula-os
+bash extension/build.sh --uninstall
 ```
+
+### Configuracion (en vivo, sin tocar codigo)
+
+Los componentes se prenden y apagan con gsettings; el cambio se aplica al
+instante (la extension se reconstruye sola):
+
+```bash
+S="gsettings --schemadir $HOME/.local/share/gnome-shell/extensions/nebula-shell@nebula-os/schemas"
+$S set org.gnome.shell.extensions.nebula-shell enable-meters false     # bloque SISTEMA (def. true)
+$S set org.gnome.shell.extensions.nebula-shell enable-launcher true    # lanzador (def. true)
+$S set org.gnome.shell.extensions.nebula-shell enable-bottombar true   # barra inferior (def. false)
+$S set org.gnome.shell.extensions.nebula-shell debug true              # logs de diagnostico (def. false)
+```
+
+Los meters se pausan solos con la sidebar colapsada o una ventana en pantalla
+completa (no lanzan `nvidia-smi` mientras no se ven).
+
+### Pruebas automaticas
+
+`tools/test-extension.sh` levanta un **GNOME Shell 46 real headless** en un
+HOME temporal, instala la extension y verifica su comportamiento por D-Bus
+(Overview, pantalla completa con una ventana GTK4 real, flags en vivo,
+disable/enable limpio, estado corrupto, cero errores JS). Corre en CI
+(`.github/workflows/extension.yml`). Localmente necesita `gnome-shell`,
+`gjs` y un bus de sistema con logind (ver la cabecera del script).
 
 ### Cursor y tema Cosmic Dark (opcional)
 

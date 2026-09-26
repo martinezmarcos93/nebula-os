@@ -1,11 +1,32 @@
-// Nebula Shell - flags para validar la migracion incremento por incremento.
+// Nebula Shell - configuracion en vivo (gsettings) y log de diagnostico.
 //
-// Todo en false = SOLO el incremento 1 (sidebar: cabecera + reloj + lista de
-// categorias + botones de energia). Se activa de a uno tras probar cada uno en
-// vivo (Alt+F2 -> r y revisar `journalctl --user -f -o cat /usr/bin/gnome-shell`).
+// Antes los componentes se prendian editando FEATURES en este archivo (y el
+// bloque SISTEMA quedo apagado sin que la documentacion lo dijera, BUG-005).
+// Ahora son claves del schema (enable-launcher, enable-meters,
+// enable-bottombar) que extension.js aplica en vivo:
+//   gsettings --schemadir ~/.local/share/gnome-shell/extensions/nebula-shell@nebula-os/schemas \
+//       set org.gnome.shell.extensions.nebula-shell enable-meters false
 
-export const FEATURES = {
-    launcher: true,      // incremento 2: panel "Buscar aplicaciones..."
-    meters: false,       // incremento 3: bloque SISTEMA en la sidebar
-    bottombar: false,    // incremento 5: barra inferior
-};
+export const FEATURE_KEYS = ['enable-launcher', 'enable-meters', 'enable-bottombar'];
+
+/** Lee los componentes habilitados desde gsettings. */
+export function readFeatures(settings) {
+    return {
+        launcher: settings.get_boolean('enable-launcher'),
+        meters: settings.get_boolean('enable-meters'),
+        bottombar: settings.get_boolean('enable-bottombar'),
+    };
+}
+
+// Log de diagnostico (clave `debug`, apagada por defecto): antes cada clic
+// del lanzador escribia en el journal de forma permanente (AUD-003).
+let _debug = false;
+
+export function setDebug(value) {
+    _debug = !!value;
+}
+
+export function dlog(msg) {
+    if (_debug)
+        console.log(`[Nebula] ${msg}`);
+}

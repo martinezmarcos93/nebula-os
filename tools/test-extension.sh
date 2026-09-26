@@ -83,6 +83,19 @@ cat > "$T/phase-a.sh" <<'SCEN'
 source "$T/common.sh"
 check "la extension quedo ACTIVA"                "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"
 
+# R-304/R-305: meters encendidos por defecto (BUG-005), en pausa si la
+# sidebar esta colapsada, y flags de gsettings aplicados en vivo.
+check "meters activos por defecto (enable-meters)"  "S._meters !== null"
+e "$X S._collapse(); 1" >/dev/null; sleep 1
+check "sidebar colapsada: meters en pausa (sin sondeo)" "S._meters._pollId === 0"
+e "$X S._expand(); 1" >/dev/null; sleep 1
+check "sidebar expandida: meters sondeando"             "S._meters._pollId !== 0"
+e "$X X._settings.set_boolean('enable-meters', false); 1" >/dev/null; sleep 1
+check "enable-meters=false se aplica en vivo"           "X._sidebar._meters === null"
+e "$X X._settings.set_boolean('enable-meters', true); 1" >/dev/null; sleep 1
+check "enable-meters=true se vuelve a aplicar en vivo"  "X._sidebar._meters !== null"
+e "$X S._collapse(); 1" >/dev/null; sleep 1
+
 # FS-20: el Overview (que GNOME abre al iniciar sesion) no debe resucitar
 # chrome cerrado ni dejar el unredirect retenido.
 e "$X L.open(0); L.close('test'); 1" >/dev/null; sleep 0.5
@@ -153,6 +166,12 @@ if [[ -n "$errs" ]]; then
     head -5 <<<"$errs" | sed 's/^/       /'
 else
     ok "sin errores JS de la extension en el log del shell"
+fi
+# Con debug apagado (default) no debe haber logs de diagnostico (AUD-003).
+if grep -q '\[Nebula\]' "$T/shell.log"; then
+    bad "logs de diagnostico con debug=false: $(grep -m1 '\[Nebula\]' "$T/shell.log")"
+else
+    ok "sin logs de diagnostico con debug=false"
 fi
 fails="$(grep -c '^  FAIL' "$RESULTS")"; FAIL=$((FAIL + fails))
 passes="$(grep -c '^  OK' "$RESULTS")"; PASS=$((PASS + passes))

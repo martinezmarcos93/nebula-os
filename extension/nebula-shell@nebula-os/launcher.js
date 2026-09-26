@@ -22,6 +22,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {dlog} from './config.js';
 import {flatApps, filterApps, launch} from './model.js';
 
 const PANEL_WIDTH = 380;
@@ -47,8 +48,7 @@ export class NebulaLauncher {
         this._stageCaptureId = 0;
         this._isOpen = false;   // estado explicito: NO depender de this._panel.visible
         this._lastMonitorLabel = 'n/a';
-        this._toggleIdleId = 0;             // BUG-25: hide()+show() diferido de _present()
-        this._togglingVisibility = false;   // true durante ese hide()+show()
+        this._toggleIdleId = 0;             // BUG-26: hide()+show() diferido de _present()
 
         this._build();
     }
@@ -156,7 +156,7 @@ export class NebulaLauncher {
         this._rebuild();
         this._present();
         // this._installStageCapture();   // PRUEBA DE AISLAMIENTO: captura global desactivada
-        console.log(`[Nebula] SWITCH category=${categoryIndex} ` +
+        dlog(`SWITCH category=${categoryIndex} ` +
             `isOpen=${this._isOpen} visible=${this._panel?.visible} mapped=${this._panel?.mapped} ` +
             `pos=${JSON.stringify(this._panel?.get_position())} size=${JSON.stringify(this._panel?.get_size())} ` +
             `mon=${this._lastMonitorLabel}`);
@@ -171,8 +171,8 @@ export class NebulaLauncher {
         this._rebuild();
         this._entry.grab_key_focus();
         // this._installStageCapture();   // PRUEBA DE AISLAMIENTO: captura global del stage desactivada
-        console.log(
-            `[Nebula] OPEN category=${categoryIndex} ` +
+        dlog(
+            `OPEN category=${categoryIndex} ` +
             `isOpen=${this._isOpen} ` +
             `visible=${this._panel?.visible} mapped=${this._panel?.mapped} ` +
             `parent=${!!this._panel?.get_parent()} ` +
@@ -183,8 +183,8 @@ export class NebulaLauncher {
     }
 
     close(reason = 'unknown') {
-        console.log(
-            `[Nebula] CLOSE reason=${reason} ` +
+        dlog(
+            `CLOSE reason=${reason} ` +
             `isOpen=${this._isOpen} ` +
             `filter=${this._filterIndex} ` +
             `visible=${this._panel?.visible}`
@@ -227,7 +227,7 @@ export class NebulaLauncher {
         // recalcular la region (no alcanza con _queueUpdateRegions sola en
         // ciclos repetidos de abrir/cerrar).
         //
-        // BUG-25 (docs/CRASH-BUG25.md): este hide()+show() causo un segfault
+        // BUG-26 (docs/BUGS.md): este hide()+show() causo un segfault
         // nativo real en mutter cuando corria sincronicamente desde un
         // contexto de evento/frame nativo (confirmado con gdb sobre el
         // coredump). Diferido a GLib.idle_add corre ya fuera de ese contexto.
@@ -237,10 +237,8 @@ export class NebulaLauncher {
             this._toggleIdleId = 0;
             if (!this._isOpen || !this._panel)
                 return GLib.SOURCE_REMOVE;
-            this._togglingVisibility = true;
             this._panel.hide();
             this._panel.show();
-            this._togglingVisibility = false;
             return GLib.SOURCE_REMOVE;
         });
     }
