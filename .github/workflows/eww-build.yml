@@ -19,6 +19,8 @@ on:
       - bin/nebula-edge-sidebar
       - dotfiles/nebula/categories.toml
       - tests/ux-eww.bats
+      - tests/helpers.bash
+      - tools/test-session.sh
       - .github/workflows/eww-build.yml
   pull_request:
     paths:
@@ -30,6 +32,8 @@ on:
       - bin/nebula-edge-sidebar
       - dotfiles/nebula/categories.toml
       - tests/ux-eww.bats
+      - tests/helpers.bash
+      - tools/test-session.sh
       - .github/workflows/eww-build.yml
 
 jobs:
