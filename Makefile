@@ -35,7 +35,7 @@ check: lint preflight
 test: lint
 	@bash tools/test-session.sh --static
 	@command -v bats >/dev/null 2>&1 || { echo "Falta bats (apt install bats)"; exit 1; }
-	bats tests/
+	@if command -v xvfb-run >/dev/null 2>&1; then xvfb-run -a bats tests/; else bats tests/; fi
 	python3 -m pytest -q tests/
 
 test-session:

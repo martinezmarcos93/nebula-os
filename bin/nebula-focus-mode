@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # nebula-focus-mode - Modo foco (toggle) para Nebula OS.
-#   Oculta el panel, pasa el escritorio a 'monocle' y pausa notificaciones.
+#   Oculta el panel y las DEMAS ventanas del escritorio, deja la ventana
+#   enfocada ocupando todo el espacio y pausa notificaciones. Al salir
+#   restaura exactamente lo que habia (ventanas, estado y layout).
 #   Opcional: temporizador Pomodoro que apaga el modo al terminar.
 # Uso: nebula-focus-mode [on|off|toggle] [--pomodoro MIN]
 set -euo pipefail
 
 STATE="${XDG_CACHE_HOME:-$HOME/.cache}/nebula/focusmode"
+TIMER="$STATE.pomodoro"
 mkdir -p "$(dirname "$STATE")"
 
 for _c in "${XDG_DATA_HOME:-$HOME/.local/share}/nebula/lib/nebula-runtime.sh" \
@@ -17,22 +20,73 @@ unset _c
 command -v nebula_panel_start >/dev/null 2>&1 || { echo "falta lib/nebula-runtime.sh (corre install/50-funciones.sh)" >&2; exit 1; }
 
 notify()      { nebula_notify "$@"; }
-panel_start() { nebula_panel_start; }
-panel_stop()  { nebula_panel_stop; }
+have_bspc()   { command -v bspc >/dev/null 2>&1; }
 
+# Estado actual (tiled|pseudo_tiled|floating|fullscreen) de un nodo.
+node_state() {
+    local s
+    for s in fullscreen floating pseudo_tiled tiled; do
+        [[ -n "$(bspc query -N -n "$1.$s" 2>/dev/null)" ]] && { echo "$s"; return; }
+    done
+    echo floating
+}
+
+# Por que no alcanzaba con `bspc desktop -l monocle`: bspwmrc hace flotante
+# TODA ventana (rule '*' state=floating) y monocle solo afecta a las tiled,
+# asi que el modo foco no cambiaba nada visible. Ahora se guarda en $STATE:
+#   layout=<tiled|monocle>  focused=<id> <estado>  hidden=<id> (una por linea)
 focus_on() {
+    local fid layout id
     : > "$STATE"
-    panel_stop
-    command -v bspc >/dev/null 2>&1 && bspc desktop -l monocle || true
+    nebula_panel_stop
+    if have_bspc; then
+        # Del JSON: el modificador de descriptor `.monocle` no existe en bspwm
+        # 0.9.10 (Ubuntu 24.04) y siempre devolvia "tiled".
+        layout="$(bspc query -T -d focused 2>/dev/null | grep -o '"layout":"[a-z]*"' | head -n1 | cut -d'"' -f4)"
+        [[ "$layout" == monocle ]] || layout=tiled
+        echo "layout=$layout" >> "$STATE"
+        fid="$(bspc query -N -n focused.window 2>/dev/null || true)"
+        if [[ -n "$fid" ]]; then
+            echo "focused=$fid $(node_state "$fid")" >> "$STATE"
+            while read -r id; do
+                [[ -n "$id" ]] || continue
+                bspc node "$id" -g hidden=on 2>/dev/null && echo "hidden=$id" >> "$STATE"
+            done < <(bspc query -N -d focused -n '.window.!hidden.!focused' 2>/dev/null || true)
+            bspc node "$fid" -t tiled 2>/dev/null || true
+        fi
+        bspc desktop -l monocle 2>/dev/null || true
+    fi
     command -v dunstctl >/dev/null 2>&1 && dunstctl set-paused true || true
     notify "Modo Foco ON"
 }
+
 focus_off() {
+    local line fid fstate layout=tiled
+    stop_timer
+    if have_bspc && [[ -f "$STATE" ]]; then
+        while IFS= read -r line; do
+            case "$line" in
+                layout=*)  layout="${line#layout=}" ;;
+                focused=*) read -r fid fstate <<< "${line#focused=}" ;;
+                hidden=*)  bspc node "${line#hidden=}" -g hidden=off 2>/dev/null || true ;;  # puede haberse cerrado
+            esac
+        done < "$STATE"
+        [[ -n "${fid:-}" ]] && bspc node "$fid" -t "${fstate:-floating}" 2>/dev/null || true
+        [[ -n "${fid:-}" ]] && bspc node "$fid" -f 2>/dev/null || true
+        bspc desktop -l "$layout" 2>/dev/null || true
+    fi
     rm -f "$STATE"
-    panel_start
-    command -v bspc >/dev/null 2>&1 && bspc desktop -l tiled || true
+    nebula_panel_start
     command -v dunstctl >/dev/null 2>&1 && dunstctl set-paused false || true
     notify "Modo Foco OFF"
+}
+
+# El temporizador guarda su PID: un toggle off->on no puede dejar vivo un
+# Pomodoro viejo que despues corte el foco nuevo antes de tiempo (BUG-010).
+stop_timer() {
+    [[ -f "$TIMER" ]] || return 0
+    kill "$(cat "$TIMER")" 2>/dev/null || true
+    rm -f "$TIMER"
 }
 
 POMODORO=0
@@ -40,7 +94,9 @@ ACTION="toggle"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         on|off|toggle) ACTION="$1" ;;
-        --pomodoro)    POMODORO="${2:-25}"; shift ;;
+        --pomodoro)
+            POMODORO="${2:-25}"; shift
+            [[ "$POMODORO" =~ ^[0-9]+$ ]] || { echo "--pomodoro espera minutos (entero)" >&2; exit 2; } ;;
         -h|--help)     sed -n '2,7p' "$0"; exit 0 ;;
         *)             echo "uso: nebula-focus-mode [on|off|toggle] [--pomodoro MIN]" >&2; exit 2 ;;
     esac
@@ -48,16 +104,21 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$ACTION" in
-    on)     focus_on ;;
-    off)    focus_off ;;
+    on)     [[ -e "$STATE" ]] || focus_on ;;
+    off)    [[ -e "$STATE" ]] && focus_off || true ;;
     toggle) if [[ -e "$STATE" ]]; then focus_off; else focus_on; fi ;;
 esac
 
 if [[ "$POMODORO" != "0" && -e "$STATE" ]]; then
-    ( sleep "$(( POMODORO * 60 ))"
-      "$0" off
-      command -v notify-send >/dev/null 2>&1 && \
-        notify-send -a "Nebula" "Pomodoro" "Fin de $POMODORO min de foco" || true
+    stop_timer
+    self="$(readlink -f "$0")"
+    (
+        sleep "$(( POMODORO * 60 ))"
+        rm -f "$TIMER"   # ya disparo: que focus_off no intente matarlo
+        "$self" off
+        command -v notify-send >/dev/null 2>&1 && \
+            notify-send -a "Nebula" "Pomodoro" "Fin de $POMODORO min de foco" || true
     ) >/dev/null 2>&1 &
+    echo "$!" > "$TIMER"
     notify "Pomodoro" "$POMODORO min"
 fi
