@@ -38,7 +38,11 @@ if [[ -d "$KG" ]]; then
 fi
 
 echo "[nebula-rescue] recargando servicios..."
-pkill -USR1 -x sxhkd >/dev/null 2>&1 || true
+if command -v nebula_reload_sxhkd >/dev/null 2>&1; then
+    nebula_reload_sxhkd
+else
+    pkill -USR1 -x sxhkd >/dev/null 2>&1 || true
+fi
 command -v bspc  >/dev/null 2>&1 && bspc wm -r >/dev/null 2>&1 || true
 
 pkill -x picom >/dev/null 2>&1 || true

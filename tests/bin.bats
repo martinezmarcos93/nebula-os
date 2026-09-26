@@ -126,3 +126,26 @@ setup() { setup_home; }
     [ "$status" -eq 0 ]
     [ -z "$output" ]
 }
+
+@test "nebula-resource-hud: toggle rapido on-off-on deja UN solo loop" {
+    command -v flock >/dev/null || skip "sin flock"
+    stub notify-send 'echo x >> "$HOME/notif.log"'
+    export NEBULA_HUD_INTERVAL=1
+    "$REPO/bin/nebula-resource-hud" toggle
+    "$REPO/bin/nebula-resource-hud" toggle
+    "$REPO/bin/nebula-resource-hud" toggle
+    sleep 1.5
+    # Procesos del HUD de ESTE test (mismo HOME); un loop es el que no tiene
+    # como padre a otro proceso del HUD (los $(...) de cada loop si lo tienen).
+    mine=()
+    for pid in $(pgrep -f 'nebula-resource-hud toggle'); do
+        { tr '\0' '\n' < "/proc/$pid/environ"; } 2>/dev/null | grep -qx "HOME=$HOME" && mine+=("$pid")
+    done
+    n=0
+    for pid in "${mine[@]}"; do
+        ppid="$(ps -o ppid= -p "$pid" | tr -d ' ')"
+        printf '%s\n' "${mine[@]}" | grep -qx "$ppid" || n=$((n + 1))
+    done
+    "$REPO/bin/nebula-resource-hud" off
+    [ "$n" -le 1 ]
+}

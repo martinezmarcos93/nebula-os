@@ -33,6 +33,14 @@ for a in "$@"; do
 done
 
 CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
+
+# Helpers de runtime compartidos (nebula_reload_sxhkd): deploy o repo.
+for _c in "${XDG_DATA_HOME:-$HOME/.local/share}/nebula/lib/nebula-runtime.sh" \
+          "$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" 2>/dev/null && pwd)/nebula-runtime.sh"; do
+    # shellcheck disable=SC1090  # ruta resuelta en runtime (deploy vs repo)
+    [[ -n "$_c" && -f "$_c" ]] && { source "$_c"; break; }
+done
+unset _c
 DATA="${XDG_DATA_HOME:-$HOME/.local/share}/nebula"
 RUNTIME="${XDG_RUNTIME_DIR:-/tmp}/nebula"
 mkdir -p "$DATA" "$RUNTIME" 2>/dev/null || true
@@ -68,7 +76,11 @@ if [[ "$DO_DOTS" -eq 1 && -n "$REPO" && $EUID -ne 0 ]]; then
         if NEBULA_LINK="${NEBULA_LINK:-copy}" NEBULA_DRY_RUN=0 bash "$REPO/install/30-dotfiles.sh" >/dev/null 2>&1; then
             # (30-dotfiles.sh ya escribe dotfiles.hash con la misma formula.)
             command -v bspc >/dev/null 2>&1 && bspc wm -r >/dev/null 2>&1 || true
-            pkill -USR1 -x sxhkd >/dev/null 2>&1 || true
+            if command -v nebula_reload_sxhkd >/dev/null 2>&1; then
+                nebula_reload_sxhkd
+            else
+                pkill -USR1 -x sxhkd >/dev/null 2>&1 || true
+            fi
             note "Dotfiles al dia" "recargado bspwm/sxhkd"
         else
             warn "nebula-sync" "fallo el redespliegue de dotfiles (30-dotfiles.sh)"

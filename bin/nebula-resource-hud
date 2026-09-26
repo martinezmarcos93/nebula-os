@@ -34,6 +34,11 @@ show_once() {
 }
 
 loop() {
+    # Un solo loop a la vez (BUG-010): con toggle rapido (on->off->on) el loop
+    # viejo seguia vivo en su `sleep` y arrancaba un segundo. Si ya hay uno,
+    # este sale y el existente continua (el archivo de estado sigue ahi).
+    exec 9>"$STATE.lock"
+    command -v flock >/dev/null 2>&1 && { flock -n 9 || return 0; }
     while [[ -e "$STATE" ]]; do
         [[ -e "$GAME" ]] || show_once
         sleep "$INTERVAL"

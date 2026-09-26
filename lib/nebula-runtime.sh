@@ -49,6 +49,8 @@ nebula_panel_stop() {
     eww -c "$NEBULA_RT_CFG/eww" close nebula-bar >/dev/null 2>&1 || true
 }
 
+# Recarga sxhkd si corre (la usan nebula-sync y nebula-rescue; el stage
+# install/50 hace lo mismo via `run` para respetar --dry-run).
 nebula_reload_sxhkd() {
     pgrep -x sxhkd >/dev/null 2>&1 && pkill -USR1 -x sxhkd >/dev/null 2>&1 || true
 }
