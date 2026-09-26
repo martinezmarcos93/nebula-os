@@ -98,6 +98,25 @@ export NEBULA_BACKUP_DIR
 mapfile -t ALL_STAGES < <(find "$STAGES_DIR" -maxdepth 1 -type f -name '[0-9][0-9]-*.sh' -printf '%f\n' | sort)
 [[ ${#ALL_STAGES[@]} -gt 0 ]] || die "No se encontraron stages en $STAGES_DIR"
 
+# --only/--from/--skip: prefijos de dos digitos que EXISTAN. Antes `--from 5`
+# comparaba strings ("50" < "5" es falso...) y un prefijo inexistente en
+# --skip se ignoraba en silencio (AUD-006).
+_valid_prefix() {
+    local p="$1" f
+    [[ "$p" =~ ^[0-9]{2}$ ]] || return 1
+    for f in "${ALL_STAGES[@]}"; do [[ "${f%%-*}" == "$p" ]] && return 0; done
+    return 1
+}
+_stage_list="$(printf '%s ' "${ALL_STAGES[@]%%-*}")"
+[[ -z "$ONLY" ]] || _valid_prefix "$ONLY" || die "--only $ONLY: stage inexistente (validos: $_stage_list)"
+[[ -z "$FROM" ]] || _valid_prefix "$FROM" || die "--from $FROM: stage inexistente (validos: $_stage_list)"
+if [[ -n "$SKIP" ]]; then
+    IFS=',' read -ra _sk <<< "$SKIP"
+    for _s in "${_sk[@]}"; do
+        _valid_prefix "$_s" || die "--skip $_s: stage inexistente (validos: $_stage_list)"
+    done
+fi
+
 if [[ "$DO_LIST" == "1" ]]; then
     step "Stages disponibles"
     printf '  %s\n' "${ALL_STAGES[@]}" >&2
@@ -110,7 +129,7 @@ for f in "${ALL_STAGES[@]}"; do
     if [[ -n "$ONLY" && "$pfx" != "$ONLY" ]]; then
         continue
     fi
-    if [[ -n "$FROM" && "$pfx" < "$FROM" ]]; then
+    if [[ -n "$FROM" ]] && (( 10#$pfx < 10#$FROM )); then
         continue
     fi
     if [[ -n "$SKIP" ]]; then

@@ -142,7 +142,9 @@ fi
 # Errores en el log de instalacion
 # ---------------------------------------------------------------------------
 if [[ -n "${NEBULA_LOG_FILE:-}" && -f "$NEBULA_LOG_FILE" ]]; then
-    err_n="$(grep -c ' ERR ' "$NEBULA_LOG_FILE" 2>/dev/null || true)"
+    # Quitar secuencias ANSI antes de contar: con color el patron ' ERR ' no
+    # coincidia ("\e[31mERR ") y el postcheck informaba "sin errores".
+    err_n="$(sed 's/\x1b\[[0-9;]*m//g' "$NEBULA_LOG_FILE" 2>/dev/null | grep -c ' ERR ' || true)"
     err_n="${err_n:-0}"
     if [[ "$err_n" -eq 0 ]]; then
         _pass "sin errores en $NEBULA_LOG_FILE"
@@ -184,7 +186,12 @@ info "reporte escrito en $REPORT"
 # ---------------------------------------------------------------------------
 # Snapshot known-good (solo si no hay FAIL)
 # ---------------------------------------------------------------------------
-if [[ "$FAIL" -eq 0 ]]; then
+# Solo DENTRO de la sesion bspwm: fuera de ella los chequeos de sesion viva
+# se omiten y "sin FAIL" no prueba nada (se guardaria un estado no verificado
+# como punto de rescate).
+if [[ "$FAIL" -eq 0 ]] && ! pgrep -x bspwm >/dev/null 2>&1; then
+    info "known-good sin actualizar: corre este postcheck dentro de la sesion 'Nebula OS (bspwm)' para guardarlo."
+elif [[ "$FAIL" -eq 0 ]]; then
     KG="$CFG/nebula/known-good"
     run mkdir -p "$KG"
     for app in bspwm sxhkd picom rofi polybar eww alacritty dunst gtk-3.0; do

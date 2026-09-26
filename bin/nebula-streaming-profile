@@ -13,17 +13,34 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
     exit 0
 fi
 
-BROWSER="${NEBULA_BROWSER:-librewolf}"
+# Navegador: NEBULA_BROWSER > navegador por defecto del sistema > firefox.
+# Soportados: familia Firefox (--profile) y familia Chromium (--user-data-dir).
+default_browser() {
+    local id
+    id="$(xdg-settings get default-web-browser 2>/dev/null || true)"
+    case "$id" in
+        *librewolf*)        echo librewolf ;;
+        *firefox*)          echo firefox ;;
+        *brave*)            echo brave-browser ;;
+        *google-chrome*)    echo google-chrome-stable ;;
+        *chromium*)         echo chromium ;;
+        *)                  echo firefox ;;
+    esac
+}
+BROWSER="${NEBULA_BROWSER:-$(default_browser)}"
 command -v "$BROWSER" >/dev/null 2>&1 || BROWSER="firefox"
-command -v "$BROWSER" >/dev/null 2>&1 || { echo "no hay navegador (librewolf/firefox)" >&2; exit 1; }
+command -v "$BROWSER" >/dev/null 2>&1 || { echo "no hay navegador compatible (firefox/librewolf/chromium/chrome/brave)" >&2; exit 1; }
+case "$BROWSER" in
+    *chrom*|*brave*) FAMILY="chromium" ;;
+    *)               FAMILY="firefox" ;;
+esac
 
 PROFILE_ROOT="$HOME/.nebula/profiles"
-# Firefox de Ubuntu 24.04 es un snap: su confinamiento NO deja leer carpetas
-# ocultas de $HOME (~/.nebula), asi que --profile fallaba. Para el snap, los
-# perfiles van dentro de su propio directorio de datos.
-# (/usr/bin/firefox es un wrapper del paquete de transicion: se pregunta a snap.)
+# Los navegadores snap (Firefox y Chromium en Ubuntu 24.04) no pueden leer
+# carpetas ocultas de $HOME (~/.nebula): los perfiles van dentro de su propio
+# directorio de datos. (/usr/bin/firefox es un wrapper: se pregunta a snap.)
 if command -v snap >/dev/null 2>&1 && snap list "$BROWSER" >/dev/null 2>&1; then
-    PROFILE_ROOT="$HOME/snap/$(basename "$BROWSER")/common/nebula-profiles"
+    PROFILE_ROOT="$HOME/snap/$BROWSER/common/nebula-profiles"
 fi
 
 declare -A URL=(
@@ -54,4 +71,7 @@ fi
 
 command -v notify-send >/dev/null 2>&1 && notify-send -a "Nebula" "Streaming" "Abriendo $svc" || true
 
+if [[ "$FAMILY" == "chromium" ]]; then
+    exec "$BROWSER" --user-data-dir="$dir" --new-window "${URL[$svc]}"
+fi
 exec "$BROWSER" --profile "$dir" --new-window "${URL[$svc]}"
