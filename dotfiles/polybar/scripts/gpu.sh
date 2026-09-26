@@ -3,8 +3,9 @@
 # Utilizacion de GPU y VRAM (NVIDIA) para el modulo custom/script de polybar.
 set -uo pipefail
 
+# Sin NVIDIA: salida vacia -> polybar oculta el modulo (GPU opcional, D3).
 if ! command -v nvidia-smi >/dev/null 2>&1; then
-    echo "GPU n/d"
+    echo ""
     exit 0
 fi
 

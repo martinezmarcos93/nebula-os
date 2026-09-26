@@ -108,30 +108,46 @@ check_apt() {
 }
 
 check_nvidia() {
+    # NVIDIA es OPCIONAL (docs/ROADMAP-REPARACION.md D3): sin GPU NVIDIA los
+    # modulos de GPU del panel se ocultan solos. Solo es FAIL un driver
+    # instalado pero roto: con Xorg sobre NVIDIA eso es pantalla negra.
     if ! has_cmd nvidia-smi; then
-        _fail "nvidia-smi no encontrado - instala el driver NVIDIA antes de esta capa"
+        _warn "sin nvidia-smi: se asume GPU no-NVIDIA (o sin driver propietario); los modulos de GPU se ocultan"
         return
     fi
     if ! nvidia-smi >/dev/null 2>&1; then
-        _fail "nvidia-smi falla - el driver no esta cargado correctamente"
+        _fail "nvidia-smi falla - el driver NVIDIA esta instalado pero no cargado (revisar DKMS del kernel $(uname -r))"
         return
     fi
-    local name
+    local name drv cc
     name="$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n1 || true)"
-    _pass "GPU NVIDIA: ${name:-detectada}"
-    case "$name" in
-        *"GTX 1060"*) : ;;
-        "")           _warn "No pude leer el modelo de GPU" ;;
-        *)            _warn "GPU '$name' != GTX 1060: revisa modelos de IA (seccion 7.3) y ajustes de juego" ;;
-    esac
+    drv="$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -n1 || true)"
+    cc="$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | head -n1 || true)"
+    _pass "GPU NVIDIA: ${name:-detectada} (driver ${drv:-?})"
 
-    # La VRAM es la restriccion real de este equipo, no la RAM ni la CPU.
-    # El diseno original asumia 6 GB; la placa tiene 3 GB (GP106-300), y con
-    # 3 GB un modelo 7B-q4 (~4,7 GB) NO entra: Ollama lo parte con la CPU y la
-    # generacion se desploma. Mejor saberlo aca que despues de bajar 5 GB.
+    # Maxwell (5.x), Pascal (6.x) y Volta (7.0) quedan fuera de los drivers
+    # posteriores a la rama 580: un `apt upgrade` a nvidia-driver-590+ deja la
+    # GPU sin aceleracion (equipo de referencia: GTX 1060 = Pascal, cc 6.1).
+    if [[ "$cc" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
+        local cc_num=$(( BASH_REMATCH[1] * 10 + BASH_REMATCH[2] ))
+        local drv_major="${drv%%.*}"
+        if (( cc_num < 75 )); then
+            if [[ "$drv_major" =~ ^[0-9]+$ ]] && (( drv_major > 580 )); then
+                _fail "driver $drv no soporta esta GPU (compute $cc, anterior a Turing): volver a nvidia-driver-580"
+            elif apt-mark showhold 2>/dev/null | grep -q '^nvidia-driver-580'; then
+                _pass "nvidia-driver-580 retenido (apt-mark hold): la GPU compute $cc no pierde soporte en un upgrade"
+            else
+                _warn "GPU compute $cc (anterior a Turing): la rama 580 es la ULTIMA con soporte para esta GPU. Retenerla con: sudo apt-mark hold nvidia-driver-580"
+            fi
+        fi
+    fi
+
+    # La VRAM es la restriccion real para IA local, no la RAM ni la CPU.
+    # Con 3 GB (GP106-300) un modelo 7B-q4 (~4,7 GB) NO entra: Ollama lo parte
+    # con la CPU y la generacion se desploma. Mejor saberlo aca.
     local vram_mib
     vram_mib="$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n1 || true)"
-    if [[ -z "$vram_mib" ]]; then
+    if [[ ! "$vram_mib" =~ ^[0-9]+$ ]]; then
         _warn "No pude leer la VRAM total"
     elif (( vram_mib >= 5500 )); then
         _pass "VRAM: ${vram_mib} MiB (entran modelos de 7B-8B cuantizados)"

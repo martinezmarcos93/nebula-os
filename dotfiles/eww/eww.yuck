@@ -20,7 +20,7 @@
   "{ head -n1 /proc/stat; sleep 0.5; head -n1 /proc/stat; } | awk '{t=0; for (i=2;i<=NF;i++) t+=$i; id=$5+$6} NR==1 {t1=t; i1=id} NR==2 {dt=t-t1; printf \"%d\", (dt>0 ? (dt-(id-i1))*100/dt : 0)}'")
 (defpoll MEM  :interval "2s"  :initial "0"
   "free | awk '/Mem:/ {printf \"%d\", $3/$2*100}'")
-(defpoll GPU  :interval "5s"  :initial "0"
+(defpoll GPU  :interval "5s"  :initial ""
   "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null | head -n1")
 (defpoll VRAM :interval "5s"  :initial "0"
   "nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -n1")
@@ -174,8 +174,10 @@
     (box :class "stats" :orientation "v" :space-evenly false :spacing 6
       (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/cpu.png" :label "CPU" :value "${CPU}%" :pct {CPU})
       (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/ram.png" :label "RAM" :value "${MEM}%" :pct {MEM})
-      (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/gpu.png" :label "GPU" :value "${GPU}%" :pct {GPU})
-      (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/gpu.png" :label "VRAM" :value "${VRAM}MB" :pct {VRAM_PCT})
+      ;; GPU/VRAM solo con NVIDIA (sin nvidia-smi el poll queda vacio).
+      (box :orientation "v" :space-evenly false :spacing 6 :visible {GPU != ""}
+        (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/gpu.png" :label "GPU" :value "${GPU}%" :pct {GPU != "" ? GPU : 0})
+        (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/gpu.png" :label "VRAM" :value "${VRAM}MB" :pct {VRAM_PCT != "" ? VRAM_PCT : 0}))
       (label :halign "start" :class "temp-label" :text {TEMP != "" ? "TEMP ${TEMP}" : ""})
       (label :halign "start" :class "clock" :text "${DATE}  ${TIME}"))))
 
