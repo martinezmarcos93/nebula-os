@@ -28,6 +28,11 @@ NERD_FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_
 EFFECTIVE_PANEL="$NEBULA_PANEL"
 EWW_REPO="https://github.com/elkowar/eww"
 EWW_TAG="${NEBULA_EWW_TAG:-v0.6.0}"
+RUSTUP_VERSION="1.29.1"
+RUSTUP_URL="https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/x86_64-unknown-linux-gnu/rustup-init"
+RUSTUP_SHA256="dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71"
+# Toolchain que fija el rust-toolchain.toml de eww v0.6.0 (ver install_eww).
+RUST_TOOLCHAIN="${NEBULA_RUST_TOOLCHAIN:-1.76.0}"
 
 # ---------------------------------------------------------------------------
 # Motor del panel
@@ -41,30 +46,60 @@ install_eww() {
         info "eww ya instalado: $(eww --version 2>/dev/null | head -n1)"
         return 0
     fi
-    if ! has_cmd cargo; then
-        info "cargo no encontrado: instalando rustup (minimal)"
-        if ! run curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-                | run bash -s -- -y --profile minimal --default-toolchain stable; then
-            warn "no se pudo instalar rustup (red / SSL). Cae a polybar (E1)."
+    # rustup SIEMPRE (aunque haya otro cargo): eww v0.6.0 solo compila con el
+    # toolchain que fija su rust-toolchain.toml (1.76.0) y `cargo install
+    # --git` lo ignora. Con Rust >= 1.80 el crate `time` de su Cargo.lock
+    # falla (E0282). Verificado compilando en limpio el 2026-09-26.
+    local rustup_bin="$HOME/.cargo/bin/rustup"
+    if [[ ! -x "$rustup_bin" ]] && ! has_cmd rustup; then
+        # Sin `curl | bash` (D11): rustup-init de version fija, verificado por
+        # SHA-256 antes de ejecutarlo.
+        info "instalando rustup $RUSTUP_VERSION (sin tocar el PATH del usuario)"
+        # El archivo TIENE que llamarse rustup-init: el binario decide que
+        # hacer segun su argv[0] (con otro nombre se cree un proxy y aborta).
+        local ri_dir ri; ri_dir="$(mktemp -d)"; ri="$ri_dir/rustup-init"
+        if ! run curl --proto '=https' --tlsv1.2 -fsSL -o "$ri" "$RUSTUP_URL"; then
+            rm -rf "$ri_dir"
+            warn "no se pudo descargar rustup-init (red / SSL). Cae a polybar (E1)."
             return 1
         fi
-        # shellcheck disable=SC1091
-        source "$HOME/.cargo/env" 2>/dev/null || export PATH="$HOME/.cargo/bin:$PATH"
+        if [[ "$NEBULA_DRY_RUN" != "1" ]] && ! printf '%s  %s\n' "$RUSTUP_SHA256" "$ri" | sha256sum -c --status; then
+            rm -rf "$ri_dir"
+            warn "rustup-init NO coincide con el SHA-256 esperado: no se ejecuta. Cae a polybar (E1)."
+            return 1
+        fi
+        run chmod +x "$ri"
+        if ! run "$ri" -y --no-modify-path --profile minimal --default-toolchain none; then
+            rm -rf "$ri_dir"
+            warn "rustup-init fallo. Cae a polybar (E1)."
+            return 1
+        fi
+        rm -rf "$ri_dir"
     fi
-    # eww NO esta publicado en crates.io con ese nombre: `cargo install eww`
-    # baja otro crate homonimo (una libreria egui sin binario) y falla SIEMPRE,
-    # asi que el panel caia a polybar en toda instalacion limpia. Se compila
-    # desde el repo oficial, fijado a un tag, solo con el backend X11 (bspwm es
-    # X11; el feature wayland arrastra gtk-layer-shell sin necesidad).
+    has_cmd rustup && rustup_bin="$(command -v rustup)"
+    local cargo_bin="$HOME/.cargo/bin/cargo"
+    [[ -x "$cargo_bin" ]] || cargo_bin="cargo"
+
+    if ! run "$rustup_bin" toolchain install "$RUST_TOOLCHAIN" --profile minimal; then
+        warn "no se pudo instalar el toolchain Rust $RUST_TOOLCHAIN. Cae a polybar (E1)."
+        return 1
+    fi
+    # eww no esta publicado en crates.io con ese nombre: `cargo install eww`
+    # bajaba otro crate homonimo (una libreria egui sin binario) y fallaba
+    # SIEMPRE. Se compila desde el repo oficial, fijado a un tag, solo con el
+    # backend X11 (bspwm es X11; wayland arrastra gtk-layer-shell sin falta).
     apt_install build-essential pkg-config \
         libgtk-3-dev libpango1.0-dev libgdk-pixbuf-2.0-dev libcairo2-dev \
         libglib2.0-dev libdbusmenu-gtk3-dev
-    info "compilando eww $EWW_TAG con cargo (puede tardar varios minutos)..."
-    if ! run cargo install --locked --git "$EWW_REPO" --tag "$EWW_TAG" \
-            --no-default-features --features x11 eww; then
-        warn "'cargo install eww' fallo (red con SSL interceptado / crates.io inaccesible). Cae a polybar (E1)."
+    info "compilando eww $EWW_TAG con Rust $RUST_TOOLCHAIN (unos minutos)..."
+    # --root ~/.local -> el binario queda en ~/.local/bin, que ya esta en el
+    # PATH de la sesion (~/.cargo/bin no, porque rustup no toca el PATH).
+    if ! run "$cargo_bin" "+$RUST_TOOLCHAIN" install --locked --root "$HOME/.local" \
+            --git "$EWW_REPO" --tag "$EWW_TAG" --no-default-features --features x11 eww; then
+        warn "la compilacion de eww fallo (red / crates.io / dependencias). Cae a polybar (E1)."
         return 1
     fi
+    export PATH="$HOME/.local/bin:$PATH"
 }
 
 case "$NEBULA_PANEL" in

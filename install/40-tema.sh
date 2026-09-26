@@ -30,14 +30,19 @@ apt_install papirus-icon-theme
 if has_cmd papirus-folders; then
     run papirus-folders -C violet --theme Papirus-Dark
 elif [[ -d /usr/share/icons/Papirus-Dark ]]; then
+    # Version fija + SHA-256 (D11): se instala en /usr/local/bin como root, no
+    # puede venir de `master` sin verificar.
+    PF_TAG="v1.9.0"
+    PF_SHA256="fe8dd8c366f65d51c30462d96cce0dee57a34803fd4e8673a73e05db2e696300"
     tmp="$(mktemp)"
     if run curl -fsSL -o "$tmp" \
-        "https://raw.githubusercontent.com/PapirusDevelopmentTeam/papirus-folders/master/papirus-folders"; then
+        "https://raw.githubusercontent.com/PapirusDevelopmentTeam/papirus-folders/${PF_TAG}/papirus-folders" \
+        && { [[ "$NEBULA_DRY_RUN" == "1" ]] || printf '%s  %s\n' "$PF_SHA256" "$tmp" | sha256sum -c --status; }; then
         run chmod +x "$tmp"
         run_root install -m 755 "$tmp" /usr/local/bin/papirus-folders
         run papirus-folders -C violet --theme Papirus-Dark
     else
-        warn "no se pudo bajar papirus-folders (no esta empaquetado en Ubuntu); las carpetas quedan con el color por defecto de Papirus-Dark."
+        warn "no se pudo bajar papirus-folders $PF_TAG o su SHA-256 no coincide; las carpetas quedan con el color por defecto de Papirus-Dark."
     fi
     rm -f "$tmp"
 fi
@@ -52,7 +57,11 @@ install_nordic() {
     # index.theme Name=Nordic-darker), no en un subdirectorio de master: el
     # clon de master nunca traia Nordic-darker/ y el tema no se instalaba
     # nunca, aunque gsettings/xsettingsd/settings.ini lo seleccionaran igual.
-    if run git clone --depth 1 --branch darker https://github.com/EliverLara/Nordic.git "$src/Nordic-darker"; then
+    # Commit fijo de la rama `darker` (D11): reproducible y sin sorpresas.
+    local nordic_rev="5122374e9112ccc803f4b8702263f7f099fe525d"
+    if run git clone --depth 1 --branch darker https://github.com/EliverLara/Nordic.git "$src/Nordic-darker" \
+        && run git -C "$src/Nordic-darker" fetch -q --depth 1 origin "$nordic_rev" \
+        && run git -C "$src/Nordic-darker" checkout -q "$nordic_rev"; then
         if [[ "$NEBULA_DRY_RUN" == "1" || -f "$src/Nordic-darker/index.theme" ]]; then
             run rm -rf "$src/Nordic-darker/.git"
             run cp -a "$src/Nordic-darker" "$THEMES_DIR/Nordic-darker"
@@ -92,22 +101,19 @@ if [[ "$NEBULA_CURSOR" == "1" ]]; then
     if [[ -d "$ICONS_DIR/Bibata-Modern-Ice" ]]; then
         info "cursor Bibata-Modern-Ice ya instalado"
     else
-        api_json="$(curl -fsSL https://api.github.com/repos/ful1e5/Bibata_Cursor/releases/latest 2>/dev/null || true)"
-        asset_url="$(printf '%s' "$api_json" \
-            | grep -o '"browser_download_url": *"[^"]*Bibata-Modern-Ice\.tar\.xz"' \
-            | head -n1 | grep -o 'https://[^"]*' || true)"
-        if [[ -n "$asset_url" ]]; then
-            tmp_tar="$(mktemp --suffix=.tar.xz)"
-            if run curl -fsSL -o "$tmp_tar" "$asset_url"; then
-                run tar -xJf "$tmp_tar" -C "$ICONS_DIR"
-                ok "cursor Bibata-Modern-Ice instalado en $ICONS_DIR"
-            else
-                warn "no se pudo descargar el cursor Bibata ($asset_url)."
-            fi
-            rm -f "$tmp_tar"
+        # Version fija + SHA-256 (D11). Antes se resolvia "latest" por la API
+        # de GitHub (rate limit anonimo de 60/h y contenido no verificado).
+        bibata_url="https://github.com/ful1e5/Bibata_Cursor/releases/download/v2.0.7/Bibata-Modern-Ice.tar.xz"
+        bibata_sha256="a68cae60c4dc706350e194ebc91c5fe48bc7bc9d59e119555834a2a7ee5078ef"
+        tmp_tar="$(mktemp --suffix=.tar.xz)"
+        if run curl -fsSL -o "$tmp_tar" "$bibata_url" \
+            && { [[ "$NEBULA_DRY_RUN" == "1" ]] || printf '%s  %s\n' "$bibata_sha256" "$tmp_tar" | sha256sum -c --status; }; then
+            run tar -xJf "$tmp_tar" -C "$ICONS_DIR"
+            ok "cursor Bibata-Modern-Ice instalado en $ICONS_DIR"
         else
-            warn "no pude resolver el asset de Bibata-Modern-Ice en GitHub (red / API rate limit). Cursor por defecto."
+            warn "no se pudo descargar el cursor Bibata o su SHA-256 no coincide ($bibata_url). Cursor por defecto."
         fi
+        rm -f "$tmp_tar"
     fi
 else
     info "NEBULA_CURSOR=0: se omite el cursor Bibata"

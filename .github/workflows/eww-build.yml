@@ -1,0 +1,51 @@
+name: eww-build
+
+# Compila eww de verdad con el MISMO codigo que usa el instalador
+# (install/20-panel.sh). El panel estuvo roto desde siempre en instalaciones
+# limpias (`cargo install eww` bajaba otro crate) sin que nada lo detectara:
+# este job existe para que una rotura de upstream (tag, Cargo.lock, toolchain
+# de Rust, dependencias de Ubuntu) se vea en menos de una semana.
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # lunes 06:17 UTC
+  workflow_dispatch:
+  push:
+    paths:
+      - install/20-panel.sh
+      - dotfiles/eww/**
+      - bin/nebula-gen-panel
+      - .github/workflows/eww-build.yml
+  pull_request:
+    paths:
+      - install/20-panel.sh
+      - dotfiles/eww/**
+      - bin/nebula-gen-panel
+      - .github/workflows/eww-build.yml
+
+jobs:
+  eww:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # El runner trae su propio Rust en ~/.cargo; se quita del PATH para
+      # probar el camino real de una maquina sin Rust (rustup fijo + SHA-256).
+      - name: Stage 20 real (eww)
+        run: |
+          export PATH="$(printf '%s' "$PATH" | tr ':' '\n' | grep -v '/.cargo/bin' | paste -sd:)"
+          export NEBULA_PANEL=eww NEBULA_DRY_RUN=0 NEBULA_ASSUME_YES=1
+          bash install/20-panel.sh
+
+      - name: eww quedo instalado en ~/.local/bin y responde
+        run: |
+          "$HOME/.local/bin/eww" --version
+          grep -qx 'export NEBULA_PANEL=eww' "$HOME/.config/nebula-session/env"
+
+      # Con eww real: cargar la config del repo, ABRIR las dos ventanas en un
+      # X virtual y exigir cero warnings/errores al evaluar los widgets.
+      - name: Validar eww.yuck con eww real (Xvfb)
+        run: |
+          sudo apt-get install -y xvfb
+          export PATH="$HOME/.local/bin:$PATH"
+          xvfb-run -a bash tools/test-session.sh --static

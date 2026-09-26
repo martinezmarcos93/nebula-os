@@ -43,7 +43,7 @@ para que se pueda revisar después con criterio, no por gusto.
 | R-002 | 18 bugs confirmados de la auditoría (FS-01…FS-18) | ✅ `23cfa7d` |
 | R-003 | Quitar las 4 direcciones de correo del HEAD (`EXTENSION-ROADMAP.md`) | ✅ este commit |
 | R-004 | Purga del historial (D14): `git filter-repo --replace-text` sobre `main` + force-push + pedir a GitHub que invalide caché (Support → "sensitive data removal") | ⏳ espera confirmación del autor |
-| R-005 | **Validación en vivo de FS-01 (eww):** en la máquina real, `./install.sh --only 20` con eww desinstalado → tiene que terminar con `eww --version` = 0.6.0 | ⏳ prueba del autor |
+| R-005 | **Validación de FS-01 (eww):** compilado en limpio en un contenedor Ubuntu 24.04 con el código real de `20-panel.sh` (usuario sin Rust previo). Hallazgos de la prueba: hace falta Rust **1.76.0** (con ≥ 1.80 el crate `time` falla, E0282), `rustup-init` tiene que llamarse así (argv[0]) y el binario va a `~/.local/bin`. El tag v0.6.0 se reporta como `eww 0.5.0 d87c2fd` (rareza de upstream). Falta confirmarlo en la máquina de referencia | ✅ contenedor · ⏳ máquina real |
 
 **Criterio de salida:** CI verde, sin datos personales en el HEAD y eww confirmado compilando.
 
@@ -51,14 +51,17 @@ para que se pueda revisar después con criterio, no por gusto.
 
 ## 2. Fase 1 — Instalador confiable en una máquina ajena
 
+**Estado (2026-09-26):** ✅ R-101…R-112 implementadas y cubiertas por
+`tests/*.bats` (en CI). Validación en la máquina de referencia pendiente.
+
 **Meta:** clonar, correr `./install.sh` y terminar sin errores en: (a) VM
 Ubuntu 24.04 Desktop sin NVIDIA, (b) Ubuntu 24.04 minimal, (c) la máquina de
 referencia.
 
 | ID | Tarea | Archivos | Aceptación |
 |---|---|---|---|
-| R-101 | NVIDIA opcional (D3): FAIL→WARN; `gpu.sh`, eww y la extensión ocultan GPU si no hay `nvidia-smi` | `install/00-preflight.sh`, `dotfiles/eww/eww.yuck`, `dotfiles/polybar/*` | Preflight OK en VM sin GPU |
-| R-102 | Frontera GNOME (D4): `session.env` en vez de `.xprofile`; sin gsettings ni `~/.icons/default` cuando hay GNOME | `install/10-base.sh`, `20-panel.sh`, `40-tema.sh`, wrapper `nebula-session` | Tras instalar, `gsettings get …gtk-theme` en GNOME **no cambia**; bspwm sigue con Cosmic Dark vía xsettingsd |
+| R-101 | NVIDIA opcional (D3). **Agregado:** GPUs anteriores a Turing (tu GTX 1060, Pascal) solo tienen soporte hasta el driver **580**: FAIL si el driver es > 580, WARN con `apt-mark hold nvidia-driver-580` si no está retenido: FAIL→WARN; `gpu.sh`, eww y la extensión ocultan GPU si no hay `nvidia-smi` | `install/00-preflight.sh`, `dotfiles/eww/eww.yuck`, `dotfiles/polybar/*` | Preflight OK en VM sin GPU |
+| R-102 | Frontera GNOME (D4): `session.env` en vez de `.xprofile`; sin gsettings ni `~/.icons/default` cuando hay GNOME. **Ajuste al implementar:** tematizar GNOME es una función buscada por la extensión (BUG-23), así que queda como opt-in `NEBULA_GNOME_THEME=1`, nunca como efecto colateral | `install/10-base.sh`, `20-panel.sh`, `40-tema.sh`, wrapper `nebula-session` | Tras instalar, `gsettings get …gtk-theme` en GNOME **no cambia**; bspwm sigue con Cosmic Dark vía xsettingsd |
 | R-103 | Eliminar `--allow-root` (D7) | `install.sh`, `lib/common.sh`, README | `sudo ./install.sh` aborta con mensaje; test bats |
 | R-104 | Preservar ediciones del usuario (D8) | `install/30-dotfiles.sh`, `lib/common.sh` (`deploy_file`) | Editar `~/.config/sxhkd/sxhkdrc` + redesplegar ⇒ queda `sxhkdrc.nebula-new` y el original intacto |
 | R-105 | `nebula-sync` opt-in (D6) | `bin/nebula-sync`, `bspwmrc` | Sin el flag: solo notificación, cero escrituras |
@@ -123,10 +126,10 @@ reposo 10 min). Sin warnings nuevos en `journalctl`.
 
 | ID | Tarea | Aceptación |
 |---|---|---|
-| R-401 | **bats-core** para `lib/common.sh` (run/dry-run, confirm sin TTY, backup_path, ensure_line) y para cada `bin/nebula-*` con stubs de `bspc`/`eww`/`notify-send`/`nvidia-smi` en `PATH` | ≥ 1 test por script; CI verde |
+| R-401 ✅ | **bats-core** para `lib/common.sh` (run/dry-run, confirm sin TTY, backup_path, ensure_line) y para cada `bin/nebula-*` con stubs de `bspc`/`eww`/`notify-send`/`nvidia-smi` en `PATH` | ≥ 1 test por script; CI verde |
 | R-402 | **ESLint** con la config oficial de GNOME Shell sobre `extension/` | CI verde |
 | R-403 | **E2E:** job en contenedor `ubuntu:24.04` con usuario no-root y sudo sin contraseña: `install.sh --yes` (`NEBULA_PANEL=polybar` para no compilar), después Xvfb + `nebula-session` y `60-postcheck.sh` **dentro** de la sesión | Postcheck FAIL=0 en CI |
-| R-404 | Job **semanal** (`schedule`) que compila eww con el mismo comando que `20-panel.sh` | Aviso automático si upstream rompe la compilación |
+| R-404 ✅ | Job **semanal** (`schedule`) que compila eww con el mismo comando que `20-panel.sh` | Aviso automático si upstream rompe la compilación |
 | R-405 | Hook `pre-commit` (opcional, documentado): shellcheck + `nebula-categories check` + diff de `eww.yuck` | `CONTRIBUTING.md` lo explica |
 | R-406 | Branch protection en `main`: CI obligatorio antes de mergear | Configuración del repo (acción del autor) |
 

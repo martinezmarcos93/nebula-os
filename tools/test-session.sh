@@ -94,6 +94,20 @@ if command -v eww >/dev/null 2>&1; then
         wins="$(eww -c "$d" list-windows 2>/dev/null)"
         grep -q nebula-bar     <<<"$wins" && ok "eww: carga la config y lista nebula-bar"     || bad "eww: no lista nebula-bar"
         grep -q nebula-sidebar <<<"$wins" && ok "eww: lista nebula-sidebar"                    || bad "eww: no lista nebula-sidebar"
+        # Abrir de verdad las dos ventanas: evalua widgets, expresiones y
+        # polls. Un atributo desconocido o una expresion rota solo aparecen
+        # aca (ej. :preserve-aspect-ratio, que eww 0.6 no conoce).
+        eww -c "$d" open nebula-bar >/dev/null 2>&1
+        eww -c "$d" open nebula-sidebar >/dev/null 2>&1
+        sleep 3
+        act="$(eww -c "$d" active-windows 2>/dev/null)"
+        [[ "$act" == *nebula-bar* && "$act" == *nebula-sidebar* ]] \
+            && ok "eww: abre nebula-bar y nebula-sidebar" \
+            || bad "eww: no pudo abrir las ventanas ('$act')"
+        probs="$(sed 's/\x1b\[[0-9;]*m//g' /tmp/nebula-eww-test.$$ | grep -iE '^(warning|error)' | sort -u | head -3)"
+        [[ -z "$probs" ]] \
+            && ok "eww: sin warnings ni errores al evaluar los widgets" \
+            || bad "eww: problemas al evaluar -> $(tr '\n' ';' <<<"$probs")"
     else
         if grep -qiE 'error|unexpected|expected' /tmp/nebula-eww-test.$$; then
             bad "eww: la config no carga -> $(grep -iE 'error|unexpected|expected' /tmp/nebula-eww-test.$$ | head -1)"

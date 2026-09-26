@@ -38,7 +38,7 @@
 
 (defwidget cat-icon [name icon]
   (box :class "cat-title-icon" :orientation "h" :space-evenly false :spacing 6
-    (image :path icon :image-width 16 :image-height 16 :preserve-aspect-ratio true)
+    (image :path icon :image-width 16 :image-height 16)
     (label :halign "start" :text name)))
 
 ;; Solo se generan `launcher` para apps instaladas (nebula-gen-panel filtra por
@@ -50,7 +50,7 @@
 (defwidget stat-row [icon label value pct]
   (box :class "stat-row" :orientation "v" :space-evenly false :spacing 2
     (box :orientation "h" :space-evenly false :spacing 6
-      (image :path icon :image-width 14 :image-height 14 :preserve-aspect-ratio true)
+      (image :path icon :image-width 14 :image-height 14)
       (label :class "stat-label" :halign "start" :hexpand true :text label)
       (label :class "stat-value" :halign "end" :text value))
     (progress :class "stat-bar" :value pct :orientation "horizontal")))
@@ -58,7 +58,7 @@
 (defwidget sidebar-content []
   (box :class "sidebar" :orientation "v" :space-evenly false :spacing 4 :hexpand true :vexpand true
     (box :class "sidebar-header" :orientation "h" :space-evenly false :spacing 8
-      (image :path "${EWW_CONFIG_DIR}/../nebula/icons/brand-mark.png" :image-width 26 :image-height 26 :preserve-aspect-ratio true)
+      (image :path "${EWW_CONFIG_DIR}/../nebula/icons/brand-mark.png" :image-width 26 :image-height 26)
       (label :class "brand" :halign "start" :hexpand true :text "NEBULA")
       (button :class "hide-btn" :onclick "eww close nebula-sidebar" (label :text "‹")))
 
@@ -216,7 +216,7 @@
   (centerbox :class "bar" :orientation "h"
     (box :class "bar-left" :halign "start" :space-evenly false :spacing 8
       (image :path "${EWW_CONFIG_DIR}/../nebula/icons/brand-mark.png"
-             :image-width 15 :image-height 15 :preserve-aspect-ratio true)
+             :image-width 15 :image-height 15)
       (label :class "bar-brand" :text "NEBULA"))
     (box :class "bar-center" :halign "center" :hexpand true
       (taskbar))
