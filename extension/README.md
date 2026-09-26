@@ -119,6 +119,11 @@ $S set org.gnome.shell.extensions.nebula-shell enable-bottombar true   # barra i
 $S set org.gnome.shell.extensions.nebula-shell debug true              # logs de diagnostico (def. false)
 ```
 
+**Ubuntu Dock:** en Ubuntu 24.04 viene anclado a la izquierda, el mismo borde
+que la sidebar. Al activar Nebula se pasa abajo y al desactivarla vuelve a la
+izquierda (no al bloquear la pantalla). Para no tocarlo:
+`$S set org.gnome.shell.extensions.nebula-shell move-ubuntu-dock false`.
+
 Los meters se pausan solos con la sidebar colapsada o una ventana en pantalla
 completa (no lanzan `nvidia-smi` mientras no se ven).
 

@@ -15,6 +15,7 @@
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {FEATURE_KEYS, readFeatures, setDebug} from './config.js';
+import {moveDockAway, restoreDock} from './dock.js';
 import {NebulaSidebar} from './sidebar.js';
 import {NebulaBottomBar} from './bottombar.js';
 import {UnredirectGuard} from './unredirect.js';
@@ -33,6 +34,7 @@ export default class NebulaShellExtension extends Extension {
                 this._buildComponents();
             })),
         ];
+        moveDockAway(this._settings);
         this._buildComponents();
     }
 
@@ -63,6 +65,7 @@ export default class NebulaShellExtension extends Extension {
             this._settings.disconnect(id);
         this._settingsIds = null;
         this._destroyComponents();
+        restoreDock(this._settings);
         this._settings = null;
         setDebug(false);
     }

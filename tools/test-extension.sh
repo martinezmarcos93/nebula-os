@@ -94,6 +94,11 @@ SCEN
 cat > "$T/phase-a.sh" <<'SCEN'
 source "$T/common.sh"
 check "la extension quedo ACTIVA"                "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"
+DOCK="new Gio.Settings({schema_id: 'org.gnome.shell.extensions.dash-to-dock'}).get_string('dock-position')"
+HAS_DOCK="$(e "Gio.SettingsSchemaSource.get_default().lookup('org.gnome.shell.extensions.dash-to-dock', true) ? 'SI' : 'NO'")"
+if [[ "$HAS_DOCK" == *SI* ]]; then
+    check "Ubuntu Dock: pasa de la izquierda (default de Ubuntu) a abajo" "$DOCK === 'BOTTOM'"
+fi
 
 # R-304/R-305: meters encendidos por defecto (BUG-005), en pausa si la
 # sidebar esta colapsada, y flags de gsettings aplicados en vivo.
@@ -161,8 +166,24 @@ e "$X X._settings.set_boolean('enable-bottombar', false); X._settings.set_boolea
 check "enable-bottombar=false la quita" "!X._bottomBar"
 [[ -n "${MOCK:-}" ]] && kill "$MOCK" 2>/dev/null
 
+# Bloquear la pantalla desactiva las extensiones: el dock NO debe volver a
+# la izquierda (saltaria de lugar en cada bloqueo).
+if [[ "$HAS_DOCK" == *SI* ]]; then
+    # Mismo mecanismo que el bloqueo real: el escudo empuja el modo de sesion
+    # 'unlock-dialog' y el ExtensionManager desactiva las extensiones (headless
+    # no hay gnome-session para screenShield.lock()).
+    e "Main.sessionMode.pushMode('unlock-dialog'); 1" >/dev/null; sleep 2
+    check "bloqueo: la extension se desactiva (modo unlock-dialog)" "Main.sessionMode.isLocked && Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
+    check "bloqueo: el dock NO salta de lugar"                       "$DOCK === 'BOTTOM'"
+    e "Main.sessionMode.popMode('unlock-dialog'); 1" >/dev/null; sleep 2
+    check "desbloqueo: la extension vuelve a estar ACTIVA" "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"
+fi
+
 # disable() limpio y re-enable.
 e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 1
+if [[ "$HAS_DOCK" == *SI* ]]; then
+    check "disable: el Ubuntu Dock vuelve a la izquierda" "$DOCK === 'LEFT'"
+fi
 check "disable: no quedan actores de Nebula en el Shell" "!Main.layoutManager.uiGroup.get_children().some(a => /nebula/.test(a.style_class ?? ''))"
 e "Main.extensionManager.enableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 2
 check "re-enable: la extension vuelve a estar ACTIVA" "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"
@@ -182,6 +203,9 @@ MOCKPY=""
 for py in /usr/bin/python3 /usr/bin/python3.[0-9]* python3; do
     "$py" -c 'import dbusmock' >/dev/null 2>&1 && { MOCKPY="$py"; break; }
 done
+# Como una sesion Ubuntu real: activa los overrides de ubuntu-dock (dock a la
+# izquierda) si el paquete esta instalado.
+export XDG_CURRENT_DESKTOP="ubuntu:GNOME"
 export FSWIN="$T/fswin.js" T MOCKPY
 RESULTS="$T/results.txt"; : > "$RESULTS"
 : > "$T/shell.log"
