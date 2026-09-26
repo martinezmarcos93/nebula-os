@@ -4,6 +4,7 @@
 load helpers
 
 setup() { setup_home; }
+teardown() { [[ -n "${first:-}" ]] && kill "$first" 2>/dev/null; true; }
 
 @test "nebula-mount-datos: sin UUID sale 2 y explica" {
     run "$REPO/extras/nebula-mount-datos"
@@ -36,6 +37,7 @@ setup() { setup_home; }
 }
 
 @test "nebula-sync: sin opt-in avisa y NO redespliega" {
+    skip_if_root   # como root nebula-sync no toca dotfiles (a proposito)
     cp -a "$REPO" "$BATS_TEST_TMPDIR/repo"
     R="$BATS_TEST_TMPDIR/repo"
     NEBULA_LINK=copy NEBULA_DRY_RUN=0 bash "$R/install/30-dotfiles.sh" >/dev/null 2>&1
@@ -148,4 +150,30 @@ setup() { setup_home; }
     done
     "$REPO/bin/nebula-resource-hud" off
     [ "$n" -le 1 ]
+}
+
+# --- nebula-edge-sidebar: unico por DISPLAY y sin huerfanos -------------------
+edge_env() {
+    export XDG_RUNTIME_DIR="$BATS_TEST_TMPDIR/run" DISPLAY=":77"
+    mkdir -p "$XDG_RUNTIME_DIR"
+    stub eww 'exit 0'
+    stub nebula-sidebar 'exit 0'
+}
+
+@test "nebula-edge-sidebar: termina solo si el servidor X desaparece" {
+    edge_env
+    stub xdotool 'exit 1'                       # X muerto: toda lectura falla
+    run env PATH="$STUBS:$PATH" NEBULA_SIDEBAR_MAX_FAILS=5 timeout 5 "$REPO/bin/nebula-edge-sidebar"
+    [ "$status" -eq 0 ]                         # 124 = seguia en loop
+}
+
+@test "nebula-edge-sidebar: una segunda instancia en el mismo DISPLAY sale al toque" {
+    edge_env
+    stub xdotool 'echo X=500; echo Y=300'       # X vivo, puntero lejos del borde
+    PATH="$STUBS:$PATH" "$REPO/bin/nebula-edge-sidebar" & first=$!
+    sleep 0.5
+    run env PATH="$STUBS:$PATH" timeout 3 "$REPO/bin/nebula-edge-sidebar"
+    [ "$status" -eq 0 ]                         # 124 = segundo loop duplicado
+    kill -0 "$first"                            # el primero sigue a cargo
+    kill "$first"; wait "$first" 2>/dev/null || true
 }

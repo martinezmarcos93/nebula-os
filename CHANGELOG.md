@@ -29,6 +29,21 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Anadido (2026-09-26, Fase UX — sesion bspwm + eww)
+- Barra lateral que se desliza (`bin/nebula-sidebar`), categorias como
+  submenus en acordeon y buscador de apps (`nebula-categories search`: sin
+  tildes ni mayusculas, Enter lanza la primera). Atajos en el README.
+- Grabacion de pantalla (`bin/nebula-screenrecord`, Ctrl+Imp Pant) con
+  indicador ● REC en la barra.
+- `tests/ux.bats` y `tests/ux-eww.bats`: Alt+Tab, capturas, grabacion,
+  deslizamiento, submenus y buscador con clics/teclas reales bajo Xvfb.
+
+### Corregido (2026-09-26)
+- BUG-30: el buscador de eww ejecutaba comandos tipeados (`{}` crudo en sh).
+- BUG-31: el buscador perdia letras y tardaba segundos por tecla.
+- BUG-32: `nebula-edge-sidebar` quedaba huerfano tras cerrar la sesion y
+  bloqueaba el gesto de borde de la siguiente.
+
 ### Anadido (2026-09-13, extension GNOME — Fases 0-2 de docs/EXTENSION-ROADMAP.md)
 - **Fase 0 - fundacion de persistencia:** `extension/nebula-shell@nebula-os/state.js`
   (nuevo) -- `~/.config/nebula/shell-state.json` para favoritos, apps

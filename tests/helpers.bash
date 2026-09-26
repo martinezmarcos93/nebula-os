@@ -23,3 +23,17 @@ stub() {
 skip_if_root() {
     [[ ${EUID:-$(id -u)} -ne 0 ]] || skip "requiere usuario no-root"
 }
+
+# Mata todo proceso lanzado con el HOME temporal de ESTE test (lo que dejan
+# bspwm/bspwmrc, que corre en otra sesion: alttab, nebula-edge-sidebar...).
+# Sin esto bats queda esperando a esos hijos y la corrida no termina.
+kill_test_procs() {
+    local d pid
+    [[ "$HOME" == "$BATS_TEST_TMPDIR"/* ]] || return 0
+    for d in /proc/[0-9]*; do
+        pid="${d#/proc/}"
+        [[ "$pid" == "$$" || "$pid" == "$BASHPID" ]] && continue
+        tr '\0' '\n' < "$d/environ" 2>/dev/null | grep -qxF "HOME=$HOME" || continue
+        kill "$pid" 2>/dev/null || true
+    done
+}

@@ -932,6 +932,40 @@ anterior (el test falla) y contra el arreglo (pasa).
   en `enable()` -> la extension entera queda en error.
 - **Correccion (R-310):** `sanitize()` normaliza cada campo. **Estado:** ✅ Resuelto.
 
+### BUG-30 — El buscador de eww ejecutaba lo que se tipeaba (inyeccion de comandos)
+- **Sintoma:** tipear `x; touch /tmp/PWN` en el buscador de la sidebar creaba
+  el archivo (verificado con eww 0.6.0 real bajo Xvfb).
+- **Causa raiz:** eww reemplaza `{}` en `:onchange`/`:onaccept` con el texto
+  CRUDO dentro de `/bin/sh -c` (sin escapar).
+- **Correccion:** el texto viaja por un heredoc con comillas
+  (`<<'NEBULA_QUERY_EOF'`), que el shell no interpreta; el campo es de una
+  linea, asi que no se puede cerrar el heredoc desde el texto.
+  `tools/test-session.sh` rechaza cualquier `{}` crudo en eww.yuck y
+  `tests/ux-eww.bats` tipea `$(...)`, `;` y comillas de verdad. **Estado:** ✅ Resuelto.
+
+### BUG-31 — Buscador de eww: letras perdidas y segundos de retraso al tipear
+- **Sintoma:** tipeando rapido el filtro quedaba con un texto viejo o vacio,
+  con `Error reading response from server (os error 11)`; la lista tardaba
+  segundos en reaccionar.
+- **Causa raiz:** (1) eww espera al comando del `onchange` (timeout 200 ms) y
+  mientras tanto no atiende el `eww update` que ese comando le manda: se
+  trababan mutuamente. (2) 83 widgets de resultado con una regex cada uno se
+  re-evaluaban por tecla.
+- **Correccion:** `nebula-sidebar query` guarda el texto y retorna al
+  instante; un proceso de fondo publica con lock siempre el ULTIMO texto.
+  El filtrado lo hace `nebula-categories search` (sin tildes/mayusculas,
+  prefijo > contiene > categoria) y eww dibuja solo las coincidencias
+  (`for` sobre `RESULTS`). Retraso medido: de "no converge" a ~15 ms.
+  **Estado:** ✅ Resuelto.
+
+### BUG-32 — `nebula-edge-sidebar` huerfano bloqueaba el gesto de borde de la sesion siguiente
+- **Sintoma:** tras cerrar la sesion X el loop seguia vivo para siempre
+  (20 lecturas/s contra un display muerto) y, como bspwmrc lo arrancaba con
+  `pgrep -f nebula-edge-sidebar || ...`, en la sesion nueva no se lanzaba:
+  el gesto del borde no abria la sidebar.
+- **Correccion:** unico por `DISPLAY` con `flock` (sin `pgrep`) y sale solo
+  tras ~2 s sin poder leer el puntero. Tests en `tests/bin.bats`. **Estado:** ✅ Resuelto.
+
 ### Actualizacion de KNOWN-04 ("clic afuera cierra")
 ✅ **Reactivado (R-303)** y verificado con clics reales en X11: un clic en otra
 ventana cierra el lanzador sin consumir el clic, un clic en otra categoria

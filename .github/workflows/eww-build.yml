@@ -14,12 +14,22 @@ on:
       - install/20-panel.sh
       - dotfiles/eww/**
       - bin/nebula-gen-panel
+      - bin/nebula-categories
+      - bin/nebula-sidebar
+      - bin/nebula-edge-sidebar
+      - dotfiles/nebula/categories.toml
+      - tests/ux-eww.bats
       - .github/workflows/eww-build.yml
   pull_request:
     paths:
       - install/20-panel.sh
       - dotfiles/eww/**
       - bin/nebula-gen-panel
+      - bin/nebula-categories
+      - bin/nebula-sidebar
+      - bin/nebula-edge-sidebar
+      - dotfiles/nebula/categories.toml
+      - tests/ux-eww.bats
       - .github/workflows/eww-build.yml
 
 jobs:
@@ -49,3 +59,12 @@ jobs:
           sudo apt-get install -y xvfb x11-utils
           export PATH="$HOME/.local/bin:$PATH"
           xvfb-run -a bash tools/test-session.sh --static
+
+      # Fase UX con eww real: clics y teclas reales sobre la barra lateral
+      # (deslizamiento, submenus, buscador, gesto de borde). Aca eww existe,
+      # asi que un "skip" por falta de eww/xdotool es un error.
+      - name: UX de la barra lateral con uso real (tests/ux-eww.bats)
+        run: |
+          sudo apt-get install -y bats xdotool maim
+          export PATH="$HOME/.local/bin:$PATH" NEBULA_REQUIRE_EWW=1
+          xvfb-run -a -s "-screen 0 1280x800x24" bats tests/ux-eww.bats

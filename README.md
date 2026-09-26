@@ -97,6 +97,23 @@ Reanudar desde un stage o saltear alguno:
 NEBULA_PANEL=polybar NEBULA_LOGIN=ly ./install.sh
 ```
 
+### Uso diario (sesion Nebula / bspwm)
+
+| Accion | Como |
+|---|---|
+| Barra lateral (menus, submenus, buscador) | llevar el puntero al **borde izquierdo**, o `Super+B` |
+| Buscar una app | tipear en el buscador de la barra lateral; `Enter` lanza la primera |
+| Lanzador rofi | `Super+Espacio` |
+| Cambiar de ventana | `Alt+Tab` (soltar Alt elige; `Alt+Shift+Tab` hacia atras) |
+| Captura: pantalla / region / ventana / al portapapeles | `Imp Pant` / `Shift+Imp Pant` / `Super+Imp Pant` / `Super+Shift+S` |
+| Grabar la pantalla (empieza/detiene) / grabar una region | `Ctrl+Imp Pant` / `Ctrl+Shift+Imp Pant` (indicador **● REC** arriba; clic para detener) |
+| Terminal / cerrar ventana | `Super+Enter` / `Super+W` |
+| Portapapeles / modo foco / HUD de recursos | `Super+V` / `Super+F` / `Super+H` |
+| Menu de energia | `Super+Shift+E` |
+
+Las capturas van a `~/Imagenes/Capturas` (o la carpeta de imagenes de XDG) y
+las grabaciones a `~/Videos/Grabaciones` (MP4; NVENC si la NVIDIA responde).
+
 ### Opciones
 
 | Opcion | Efecto |

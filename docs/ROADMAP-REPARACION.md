@@ -162,15 +162,20 @@ reposo 10 min). Sin warnings nuevos en `journalctl`.
 teclas y ventanas reales bajo Xvfb / GNOME Shell headless) en CI. Una función
 sin test que la use no cuenta como hecha.
 
-| ID | Función | bspwm + eww (estado inicial) | GNOME + extensión (estado inicial) |
+| ID | Función | bspwm + eww | GNOME + extensión |
 |---|---|---|---|
-| U-01 | Barra lateral que **se desliza** al revelarse/ocultarse | ❌ aparece de golpe | ✅ (animación de translation) |
-| U-02 | **Menús y submenús** (categorías que despliegan sus apps) | ❌ lista plana | ✅ categoría → lanzador filtrado |
-| U-03 | **Barra de búsqueda** de apps (tipear filtra, Enter lanza) | ❌ solo rofi (Super+Espacio) | ✅ |
-| U-04 | **Alt+Tab** entre ventanas | ⚠️ `alttab` sin probar | GNOME nativo, sin verificar junto a la extensión |
-| U-05 | **Capturas** (pantalla, región, ventana, portapapeles) | ⚠️ `nebula-screenshot` sin probar | GNOME nativo (Imp Pant), sin verificar |
-| U-06 | **Grabar la pantalla** (con indicador y detener) | ❌ no existe | GNOME nativo, sin verificar |
+| U-01 | Barra lateral que **se desliza** al revelarse/ocultarse | ✅ `revealer` slideright + `bin/nebula-sidebar`; gesto de borde (`tests/ux-eww.bats`) | ✅ (animación de translation), falta test de UX |
+| U-02 | **Menús y submenús** (categorías que despliegan sus apps) | ✅ acordeón `catgroup`, clic en app la lanza (`tests/ux-eww.bats`) | ✅ categoría → lanzador filtrado |
+| U-03 | **Barra de búsqueda** de apps (tipear filtra, Enter lanza) | ✅ `nebula-categories search` + lista `for`; texto literal, sin inyección; tipeo rápido sin pérdidas (`tests/ux-eww.bats`) | ✅ |
+| U-04 | **Alt+Tab** entre ventanas | ✅ `alttab` con teclas reales (`tests/ux.bats`) | GNOME nativo, sin verificar junto a la extensión |
+| U-05 | **Capturas** (pantalla, región, ventana, portapapeles) | ✅ `nebula-screenshot` (`tests/ux.bats`) | GNOME nativo (Imp Pant), sin verificar |
+| U-06 | **Grabar la pantalla** (con indicador y detener) | ✅ `nebula-screenrecord` (Ctrl+Imp Pant), indicador ● REC, MP4 reproducible aun tras kill -9 (`tests/ux.bats`) | GNOME nativo, sin verificar |
 | U-07 | Menú de energía, portapapeles, notificaciones | ⚠️ sin probar | GNOME nativo |
+
+Estado inicial (antes de la Fase UX): en bspwm la sidebar aparecía de golpe,
+era una lista plana, no había buscador ni grabación, y alttab/capturas no
+tenían ninguna prueba. El buscador de eww tenía además una **inyección de
+comandos** (BUG-30) y se trababa al tipear (BUG-31).
 
 Criterio de salida: cada fila en ✅ con su test en CI (`tests/*.bats` bajo
 `xvfb-run` con bspwm/eww reales, y `tools/test-extension.sh` en GNOME Shell).

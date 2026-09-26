@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# nebula-sidebar - Controla la barra lateral de eww de la sesion Nebula (U-01..U-03).
+#
+#   nebula-sidebar open|close|toggle   revela / oculta con deslizamiento
+#   nebula-sidebar toggle-cat SLUG     abre/cierra el submenu de una categoria
+#                                      (acordeon: una abierta a la vez)
+#   nebula-sidebar query [TEXTO]       actualiza el buscador (lo llama eww)
+#   nebula-sidebar launch-first [TEXTO] lanza la primera app que coincide
+#                                      (Enter en el buscador) y cierra
+#   Sin TEXTO, se lee de stdin: eww lo pasa por un heredoc (ver eww.yuck:
+#   su {} se pega crudo en /bin/sh -c y permitia inyectar comandos).
+#
+# El deslizamiento es un `revealer` de eww: la ventana se abre con el
+# contenido replegado y recien despues se revela (y al reves al cerrar), asi
+# la transicion se ve.
+# Uso: nebula-sidebar <accion> [args] [--help]
+set -uo pipefail
+
+CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
+WIN="nebula-sidebar"
+SLIDE_S="${NEBULA_SIDEBAR_SLIDE:-0.22}"   # debe cubrir el :duration del revealer (200ms)
+
+ew() { eww -c "$CFG/eww" "$@"; }
+cats() {
+    local c
+    c="$(dirname "$(readlink -f "$0")")/nebula-categories"
+    [[ -x "$c" ]] || c="nebula-categories"
+    "$c" "$@"
+}
+
+# Texto del buscador: argumentos, o stdin (heredoc desde eww) si no hay.
+text_arg() {
+    if [[ $# -gt 0 ]]; then printf '%s' "$*"; else tr -d '\n' ; fi
+}
+is_open() { ew active-windows 2>/dev/null | grep -q "^$WIN:"; }
+
+# Cada tecla lanza un `query`. eww ESPERA a que el comando del onchange
+# termine (timeout 200 ms) y mientras tanto no atiende nuestro `eww update`:
+# publicar en primer plano se trababa (EAGAIN), perdia letras o dejaba un
+# texto viejo. Por eso: se guarda el texto (atomico), se retorna al instante
+# y un proceso de fondo publica, con lock, SIEMPRE el ultimo texto guardado.
+QDIR="${XDG_RUNTIME_DIR:-/tmp/nebula-$(id -u)}/nebula"
+publish_query() {
+    local latest results i
+    exec 9> "$QDIR/sidebar-query.lock"
+    flock -w 5 9 || return 1
+    latest="$(cat "$QDIR/sidebar-query" 2>/dev/null)"
+    results='[]'
+    [[ -n "${latest// }" ]] && results="$(cats search "$latest" 2>/dev/null)"
+    [[ "$results" == \[* ]] || results='[]'
+    for i in 1 2 3 4 5; do
+        ew update QUERY="$latest" RESULTS="$results" >/dev/null 2>&1 && return 0
+        sleep "0.0$i"
+    done
+    return 1
+}
+set_query() {
+    mkdir -p "$QDIR" || return 1
+    printf '%s' "$1" > "$QDIR/sidebar-query.$$" && mv -f "$QDIR/sidebar-query.$$" "$QDIR/sidebar-query"
+    publish_query </dev/null >/dev/null 2>&1 &
+    disown
+}
+
+open() {
+    is_open && { ew update SIDEBAR_REVEAL=true; return 0; }
+    ew update SIDEBAR_REVEAL=false QUERY="" RESULTS="[]" CAT_OPEN="" >/dev/null 2>&1
+    ew open "$WIN" >/dev/null 2>&1 || return 1
+    sleep 0.05                       # que GTK mapee la ventana antes de animar
+    ew update SIDEBAR_REVEAL=true
+}
+
+close() {
+    is_open || return 0
+    ew update SIDEBAR_REVEAL=false
+    sleep "$SLIDE_S"                  # dejar terminar el deslizamiento
+    ew close "$WIN" >/dev/null 2>&1
+    # Vaciar tambien el texto guardado, bajo el mismo lock: un publish_query
+    # atrasado no debe re-llenar el buscador despues de cerrar.
+    if mkdir -p "$QDIR" 2>/dev/null && exec 9> "$QDIR/sidebar-query.lock"; then
+        flock -w 2 9 || true
+        : > "$QDIR/sidebar-query"
+    fi
+    ew update QUERY="" RESULTS="[]" CAT_OPEN="" >/dev/null 2>&1 || true
+}
+
+case "${1:-}" in
+    open)   open ;;
+    close)  close ;;
+    toggle) if is_open; then close; else open; fi ;;
+    toggle-cat)
+        slug="${2:-}"
+        [[ "$(ew get CAT_OPEN 2>/dev/null)" == "$slug" ]] && slug=""
+        ew update CAT_OPEN="$slug" ;;
+    query)
+        shift; set_query "$(text_arg "$@")" ;;
+    launch-first)
+        shift
+        q="$(text_arg "$@")"
+        [[ -n "${q// }" ]] || exit 0
+        # La misma busqueda (y orden) que muestra la lista: Enter = la primera.
+        ex="$(cats search "$q" --format exec 2>/dev/null)"
+        [[ -n "$ex" ]] || exit 0
+        setsid -f sh -c "$ex" >/dev/null 2>&1
+        close ;;
+    -h|--help) sed -n '2,17p' "$0" ;;
+    *) echo "uso: nebula-sidebar open|close|toggle|toggle-cat SLUG|query TEXTO|launch-first TEXTO" >&2; exit 2 ;;
+esac

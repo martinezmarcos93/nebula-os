@@ -23,6 +23,7 @@ teardown() {
         bspc quit >/dev/null 2>&1 || kill "$WM_PID" 2>/dev/null || true
         wait "$WM_PID" 2>/dev/null || true
     fi
+    kill_test_procs
     [[ -n "${XDG_RUNTIME_DIR:-}" && -f "$XDG_RUNTIME_DIR/nebula/rec.pid" ]] \
         && kill "$(cat "$XDG_RUNTIME_DIR/nebula/rec.pid")" 2>/dev/null
     true
@@ -130,7 +131,7 @@ exec \"$real_maim\" -g 100x80+10+10 \"\${a[@]}\""
 @test "atajos: Imp Pant, Ctrl+Imp Pant, Super+Espacio, Super+B llaman a lo correcto" {
     need sxhkd xdotool
     log="$HOME/calls.log"
-    for c in nebula-screenshot nebula-screenrecord rofi eww alacritty; do
+    for c in nebula-screenshot nebula-screenrecord nebula-sidebar rofi alacritty; do
         stub "$c" "echo \"$c \$*\" >> '$log'"
     done
     sxhkd -c "$REPO/dotfiles/sxhkd/sxhkdrc" >/dev/null 2>&1 & PIDS+=($!)
@@ -145,6 +146,6 @@ exec \"$real_maim\" -g 100x80+10+10 \"\${a[@]}\""
     grep -qx 'nebula-screenrecord toggle' "$log"
     grep -qx 'nebula-screenrecord region' "$log"
     grep -q '^rofi -show drun' "$log"
-    grep -q 'eww .*nebula-sidebar' "$log"
+    grep -qx 'nebula-sidebar toggle' "$log"
     grep -qx 'alacritty ' "$log"
 }

@@ -17,3 +17,7 @@ Thumbs.db
 *~
 .idea/
 .vscode/
+
+# Bytecode de Python (pytest importa bin/nebula-categories)
+__pycache__/
+*.pyc

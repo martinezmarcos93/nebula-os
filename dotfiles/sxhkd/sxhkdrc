@@ -16,7 +16,7 @@ super + shift + c
 # ("nebula-sidebar"), sin hover ni ventana-sensor. El daemon lo arranca
 # bspwmrc al iniciar sesion, asi este toggle responde al instante.
 super + b
-    eww -c "$HOME/.config/eww" open --toggle nebula-sidebar
+    nebula-sidebar toggle
 
 # Historial del portapapeles (copyq). El server lo arranca bspwmrc al iniciar
 # sesion; esto abre/cierra la ventana con buscador. Pegar = Enter sobre un item.

@@ -10,11 +10,15 @@ Uso:
   nebula-categories check        [--toml F] [--icons-dir D]
   nebula-categories tsv          [--toml F] [--installed]
   nebula-categories json         [--toml F]
+  nebula-categories search TEXTO [--toml F] [--limit N] [--format json|exec]
   nebula-categories render-yuck  YUCK [--toml F] [--all] [--icons-dir D] [--check]
 
   check        valida el archivo (sale 1 si hay errores).
   tsv          CATEGORIA<TAB>APP<TAB>EXEC por linea (para rofi).
   json         el TOML como JSON (lo usa extension/build.sh).
+  search       apps INSTALADAS que coinciden con TEXTO (buscador de la
+               sidebar, U-03): JSON [{"label","cmd"}] o solo el exec de la
+               primera (--format exec, lo usa Enter).
   render-yuck  reescribe el bloque entre los marcadores autogen de YUCK.
                --all   todas las apps (el eww.yuck versionado del repo).
                --check no escribe: sale 1 si YUCK no coincide (para CI).
@@ -126,6 +130,50 @@ def slug(nombre: str) -> str:
     return "".join(ch for ch in s if ch.isascii() and (ch.isalnum() or ch == "-"))
 
 
+def fold(s: str) -> str:
+    """Forma de comparacion: sin tildes, minusculas, espacios colapsados."""
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
+    return " ".join(s.casefold().split())
+
+
+def search(cats: list[Categoria], query: str, limit: int,
+           is_installed=None) -> list[App]:
+    """Apps instaladas que coinciden con QUERY, mejor coincidencia primero.
+
+    Orden: el nombre empieza con el texto > el nombre lo contiene > la
+    categoria lo contiene ("navegador" encuentra los navegadores). Dentro de
+    cada grupo se respeta el orden de categories.toml. Sin duplicados por exec.
+    El texto es solo un dato: nunca se interpreta (ni regex ni shell).
+    """
+    q = fold(query)
+    if not q:
+        return []
+    check = is_installed or installed
+    ranked: list[tuple[int, int, App]] = []
+    seen: set[str] = set()
+    order = 0
+    for cat in cats:
+        fcat = fold(cat.nombre)
+        for a in cat.apps:
+            name = fold(a.nombre)
+            if name.startswith(q):
+                rank = 0
+            elif q in name:
+                rank = 1
+            elif q in fcat:
+                rank = 2
+            else:
+                continue
+            if a.exec in seen or not check(a.exec):
+                continue
+            seen.add(a.exec)
+            ranked.append((rank, order, a))
+            order += 1
+    ranked.sort(key=lambda t: (t[0], t[1]))
+    return [a for _, _, a in ranked[:max(limit, 0)]]
+
+
 # ---------------------------------------------------------------------------
 # "Instalada": UNA sola regla para eww, rofi y la extension (R-202, BUG-003)
 # ---------------------------------------------------------------------------
@@ -181,23 +229,34 @@ def _yuck_str(s: str) -> str:
 def yuck_block(cats: list[Categoria], icons_dir: Path | None, all_apps: bool) -> str:
     """Lineas del bloque autogen de eww.yuck (sin los marcadores).
 
-    Una categoria sin apps visibles no se dibuja (ni su titulo). El icono se
-    referencia con ${EWW_CONFIG_DIR}: una ruta absoluta de ESTA maquina
-    romperia el archivo versionado para cualquier otro usuario (BUG-14).
+    Dos vistas (Fase UX, U-02/U-03):
+      - sin busqueda: un `catgroup` por categoria = submenu desplegable
+        (acordeon) con sus `launcher`.
+      - con busqueda: NO se genera nada aca. Una lista con un widget por app
+        filtrado por regex en eww tardaba segundos por tecla; ahora
+        `nebula-categories search` calcula las coincidencias y eww solo
+        dibuja esas (variable RESULTS, ver eww.yuck).
+    Una categoria sin apps visibles no se dibuja. El icono se referencia con
+    ${EWW_CONFIG_DIR}: una ruta absoluta de ESTA maquina romperia el archivo
+    versionado para cualquier otro usuario (BUG-14). Sin PNG propio se usa la
+    marca de Nebula.
     """
-    out: list[str] = []
+    i1, i2 = INDENT, INDENT + "  "
+    groups: list[str] = []
     for cat in cats:
         apps = [a for a in cat.apps if all_apps or installed(a.exec)]
         if not apps:
             continue
         s = slug(cat.nombre)
-        if icons_dir is not None and (icons_dir / f"{s}.png").is_file():
-            icon = "${EWW_CONFIG_DIR}/../nebula/icons/" + s + ".png"
-            out.append(f"{INDENT}(cat-icon :name {_yuck_str(cat.nombre)} :icon \"{icon}\")")
-        else:
-            out.append(f"{INDENT}(cat :name {_yuck_str(cat.nombre)})")
+        png = s if icons_dir is not None and (icons_dir / f"{s}.png").is_file() else "brand-mark"
+        icon = "${EWW_CONFIG_DIR}/../nebula/icons/" + png + ".png"
+        groups.append(f"{i2}(catgroup :name {_yuck_str(cat.nombre)} :slug \"{s}\" :icon \"{icon}\"")
         for a in apps:
-            out.append(f"{INDENT}(launcher :label {_yuck_str(a.nombre)} :cmd {_yuck_str(a.exec + ' &')})")
+            groups.append(f"{i2}  (launcher :label {_yuck_str(a.nombre)} :cmd {_yuck_str(a.exec + ' &')})")
+        groups[-1] += ")"
+    out = [f'{i1}(box :orientation "v" :space-evenly false :spacing 2 :visible {{QUERY == ""}}',
+           *groups,
+           f"{i1})"]
     return "".join(line + "\n" for line in out)
 
 
@@ -258,6 +317,21 @@ def cmd_json(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_search(args: argparse.Namespace) -> int:
+    apps = search(load(args.toml), args.texto, args.limit)
+    if args.format == "exec":
+        if not apps:
+            return 1
+        print(apps[0].exec)
+        return 0
+    # El `cmd` termina en " &" como en los launcher: eww lo antepone a
+    # "nebula-sidebar close" en el onclick.
+    json.dump([{"label": a.nombre, "cmd": a.exec + " &"} for a in apps],
+              sys.stdout, ensure_ascii=False, separators=(",", ":"))
+    sys.stdout.write("\n")
+    return 0
+
+
 def cmd_render_yuck(args: argparse.Namespace) -> int:
     cats = load(args.toml)
     icons = args.icons_dir or _default_icons_dir(args.toml)
@@ -301,6 +375,13 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("json", help="el TOML como JSON")
     common(sp)
     sp.set_defaults(func=cmd_json)
+
+    sp = sub.add_parser("search", help="apps instaladas que coinciden (buscador)")
+    sp.add_argument("texto")
+    common(sp)
+    sp.add_argument("--limit", type=int, default=12)
+    sp.add_argument("--format", choices=("json", "exec"), default="json")
+    sp.set_defaults(func=cmd_search)
 
     sp = sub.add_parser("render-yuck", help="reescribe el bloque autogen de eww.yuck")
     sp.add_argument("yuck")

@@ -18,6 +18,7 @@ teardown() {
         bspc quit >/dev/null 2>&1 || kill "$WM_PID" 2>/dev/null || true
         wait "$WM_PID" 2>/dev/null || true
     fi
+    kill_test_procs
     for p in "${XT_PIDS[@]:-}"; do kill "$p" 2>/dev/null || true; done
 }
 

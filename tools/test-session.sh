@@ -138,6 +138,12 @@ else
     warn "eww no instalado: no valido la carga del .yuck"
 fi
 
+# Seguridad: eww reemplaza {} CRUDO dentro de /bin/sh -c (sin escapar). En
+# un .yuck solo se permite {} solo en su linea (dentro de un heredoc).
+raw_ph="$(grep -n '{}' "$YUCK" | grep -vE '^[0-9]+:\{\}$|^[0-9]+: *;;' || true)"
+[[ -z "$raw_ph" ]] && ok "eww.yuck: sin {} crudo en comandos (inyeccion de shell)" \
+    || bad "eww.yuck: {} crudo en un comando (usar heredoc) -> $raw_ph"
+
 # categories.toml -> el lector UNICO (bin/nebula-categories): valida el
 # archivo y exige que el bloque autogen del eww.yuck versionado sea
 # exactamente lo que genera (D9): desincronizarlos hace fallar CI (BUG-001).

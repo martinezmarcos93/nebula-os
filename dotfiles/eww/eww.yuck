@@ -38,18 +38,39 @@
 ;; de nebula-bar. bin/nebula-taskbar re-emite el JSON ante cada cambio de bspwm.
 (deflisten TASKWINS :initial "[]" "nebula-taskbar")
 
-(defwidget cat [name]
-  (label :class "cat-title" :halign "start" :text name))
+;; --- Estado de la barra lateral (lo maneja bin/nebula-sidebar) ----------
+;; SIDEBAR_REVEAL: deslizamiento (U-01). CAT_OPEN: submenu abierto (U-02).
+;; QUERY: texto del buscador (U-03). RESULTS: sus coincidencias, JSON
+;; [{"label","cmd"}] calculado por `nebula-categories search`.
+(defvar SIDEBAR_REVEAL false)
+(defvar CAT_OPEN "")
+(defvar QUERY "")
+(defvar RESULTS "[]")
 
-(defwidget cat-icon [name icon]
-  (box :class "cat-title-icon" :orientation "h" :space-evenly false :spacing 6
-    (image :path icon :image-width 16 :image-height 16)
-    (label :halign "start" :text name)))
+;; Categoria = submenu desplegable (acordeon: una abierta a la vez). El
+;; bloque autogen (bin/nebula-categories) pasa sus apps como hijos.
+(defwidget catgroup [name slug icon]
+  (box :class "catgroup" :orientation "v" :space-evenly false
+    (button :class "cat-head ${CAT_OPEN == slug ? 'cat-open' : ''}" :onclick "nebula-sidebar toggle-cat ${slug}"
+      (box :orientation "h" :space-evenly false :spacing 6
+        (image :path icon :image-width 16 :image-height 16)
+        (label :halign "start" :hexpand true :text name)
+        (label :class "cat-arrow" :text {CAT_OPEN == slug ? "▾" : "▸"})))
+    (revealer :transition "slidedown" :reveal {CAT_OPEN == slug} :duration "180ms"
+      (box :class "cat-apps" :orientation "v" :space-evenly false :spacing 2
+        (children)))))
 
-;; Solo se generan `launcher` para apps instaladas (nebula-gen-panel filtra por
-;; `command -v`); las ausentes no se listan y una categoria sin apps no se dibuja.
+;; Solo se generan apps instaladas (bin/nebula-categories); una categoria sin
+;; apps no se dibuja. Lanzar una app cierra la barra lateral.
 (defwidget launcher [label cmd]
-  (button :class "app" :halign "fill" :onclick cmd
+  (button :class "app" :halign "fill" :onclick "${cmd} nebula-sidebar close"
+    (label :halign "start" :text label)))
+
+;; Resultado del buscador. Solo se dibujan las coincidencias (RESULTS): un
+;; widget por app filtrado con regex en eww tardaba segundos por tecla.
+(defwidget result [label cmd]
+  (button :class "app result" :halign "fill"
+          :onclick "${cmd} nebula-sidebar close"
     (label :halign "start" :text label)))
 
 (defwidget stat-row [icon label value pct]
@@ -61,119 +82,144 @@
     (progress :class "stat-bar" :value pct :orientation "horizontal")))
 
 (defwidget sidebar-content []
-  (box :class "sidebar" :orientation "v" :space-evenly false :spacing 4 :hexpand true :vexpand true
+  ;; U-01: el contenido entra y sale deslizandose (bin/nebula-sidebar abre la
+  ;; ventana replegada y recien despues la revela).
+  (revealer :transition "slideright" :reveal SIDEBAR_REVEAL :duration "200ms"
+  (box :class "sidebar" :orientation "v" :space-evenly false :spacing 4 :hexpand true :vexpand true :width 260
     (box :class "sidebar-header" :orientation "h" :space-evenly false :spacing 8
       (image :path "${EWW_CONFIG_DIR}/../nebula/icons/brand-mark.png" :image-width 26 :image-height 26)
-      (label :class "brand" :halign "start" :hexpand true :text "NEBULA")
-      (button :class "hide-btn" :onclick "eww close nebula-sidebar" (label :text "‹")))
+      (label :class "brand" :halign "start" :hexpand true :show-truncated false :text "NEBULA")
+      (button :class "hide-btn" :onclick "nebula-sidebar close" (label :text "‹")))
+
+    ;; U-03: buscador. Tipear filtra en vivo; Enter lanza la primera
+    ;; coincidencia. Sin :value (atarlo a QUERY re-renderiza el campo con
+    ;; cada tecla y se pierde lo tipeado).
+    ;; SEGURIDAD: eww pega {} CRUDO dentro de `/bin/sh -c` (replace_placeholders,
+    ;; sin escapar): tipear `x; comando` lo ejecutaba (verificado). El texto va
+    ;; por un heredoc con comillas, que el shell no interpreta; el campo es de
+    ;; una linea, asi que no se puede "cerrar" el heredoc desde el texto.
+    (input :class "search"
+           :onchange "nebula-sidebar query <<'NEBULA_QUERY_EOF'
+{}
+NEBULA_QUERY_EOF"
+           :onaccept "nebula-sidebar launch-first <<'NEBULA_QUERY_EOF'
+{}
+NEBULA_QUERY_EOF")
 
     (scroll :vscroll true :hscroll false :vexpand true
       (box :orientation "v" :space-evenly false :spacing 2
         ;; --- nebula:autogen BEGIN (no editar) ---
-        (cat-icon :name "Favoritos" :icon "${EWW_CONFIG_DIR}/../nebula/icons/favoritos.png")
-        (launcher :label "Terminal" :cmd "alacritty &")
-        (launcher :label "Navegador web" :cmd "librewolf &")
-        (launcher :label "Firefox" :cmd "firefox &")
-        (launcher :label "Archivos" :cmd "nautilus --new-window &")
-        (launcher :label "Configuracion del sistema" :cmd "gnome-control-center &")
-        (cat-icon :name "Terminales" :icon "${EWW_CONFIG_DIR}/../nebula/icons/terminales.png")
-        (launcher :label "Alacritty" :cmd "alacritty &")
-        (launcher :label "Kitty" :cmd "kitty &")
-        (launcher :label "WezTerm" :cmd "wezterm &")
-        (launcher :label "GNOME Terminal" :cmd "gnome-terminal &")
-        (launcher :label "Tilix" :cmd "tilix &")
-        (launcher :label "Konsole" :cmd "konsole &")
-        (launcher :label "xterm" :cmd "xterm &")
-        (cat-icon :name "Navegadores" :icon "${EWW_CONFIG_DIR}/../nebula/icons/navegadores.png")
-        (launcher :label "Firefox" :cmd "firefox &")
-        (launcher :label "LibreWolf" :cmd "librewolf &")
-        (launcher :label "Google Chrome" :cmd "google-chrome-stable &")
-        (launcher :label "Chromium" :cmd "chromium &")
-        (launcher :label "Brave" :cmd "brave-browser &")
-        (launcher :label "Vivaldi" :cmd "vivaldi-stable &")
-        (cat-icon :name "Comunicacion" :icon "${EWW_CONFIG_DIR}/../nebula/icons/comunicacion.png")
-        (launcher :label "Discord" :cmd "flatpak run com.discordapp.Discord &")
-        (launcher :label "Thunderbird" :cmd "thunderbird &")
-        (cat-icon :name "Desarrollo" :icon "${EWW_CONFIG_DIR}/../nebula/icons/desarrollo.png")
-        (launcher :label "Terminal" :cmd "alacritty &")
-        (launcher :label "VS Code" :cmd "code &")
-        (launcher :label "Editor (nvim)" :cmd "alacritty -e nvim &")
-        (launcher :label "Editor de texto (GNOME)" :cmd "gnome-text-editor &")
-        (launcher :label "Git TUI" :cmd "alacritty -e lazygit &")
-        (launcher :label "Docker TUI" :cmd "alacritty -e lazydocker &")
-        (launcher :label "Base de datos" :cmd "dbeaver &")
-        (cat-icon :name "Multimedia" :icon "${EWW_CONFIG_DIR}/../nebula/icons/multimedia.png")
-        (launcher :label "Video (mpv)" :cmd "mpv --player-operation-mode=pseudo-gui &")
-        (launcher :label "VLC" :cmd "vlc &")
-        (launcher :label "Videos (Totem)" :cmd "totem &")
-        (launcher :label "Musica (cmus)" :cmd "alacritty -e cmus &")
-        (launcher :label "Rhythmbox" :cmd "rhythmbox &")
-        (launcher :label "Spotify" :cmd "spotify &")
-        (launcher :label "OBS Studio" :cmd "obs &")
-        (launcher :label "Control de audio" :cmd "pavucontrol &")
-        (launcher :label "Perfiles de streaming" :cmd "nebula-streaming-profile &")
-        (cat-icon :name "Graficos" :icon "${EWW_CONFIG_DIR}/../nebula/icons/graficos.png")
-        (launcher :label "GIMP" :cmd "gimp &")
-        (launcher :label "Krita" :cmd "krita &")
-        (launcher :label "Inkscape" :cmd "inkscape &")
-        (launcher :label "Darktable" :cmd "darktable &")
-        (launcher :label "Blender" :cmd "blender &")
-        (launcher :label "Visor de imagenes" :cmd "nsxiv -t . &")
-        (launcher :label "Shotwell" :cmd "shotwell &")
-        (cat-icon :name "Ofimatica" :icon "${EWW_CONFIG_DIR}/../nebula/icons/ofimatica.png")
-        (launcher :label "LibreOffice" :cmd "libreoffice &")
-        (launcher :label "Writer" :cmd "libreoffice --writer &")
-        (launcher :label "Calc" :cmd "libreoffice --calc &")
-        (launcher :label "Impress" :cmd "libreoffice --impress &")
-        (launcher :label "Visor de PDF" :cmd "evince &")
-        (launcher :label "Notas (Obsidian)" :cmd "obsidian &")
-        (launcher :label "ONLYOFFICE" :cmd "flatpak run org.onlyoffice.desktopeditors &")
-        (cat-icon :name "IA Local" :icon "${EWW_CONFIG_DIR}/../nebula/icons/ia-local.png")
-        (launcher :label "Iniciar Ollama" :cmd "nebula-ai-chat --serve &")
-        (launcher :label "Chat con modelo" :cmd "nebula-ai-chat &")
-        (launcher :label "Descargar modelo" :cmd "nebula-ai-chat --pull &")
-        (launcher :label "Estado GPU" :cmd "alacritty -e watch -n2 nvidia-smi &")
-        (cat-icon :name "Gaming" :icon "${EWW_CONFIG_DIR}/../nebula/icons/gaming.png")
-        (launcher :label "Steam" :cmd "steam &")
-        (launcher :label "Lutris" :cmd "flatpak run net.lutris.Lutris &")
-        (launcher :label "Heroic" :cmd "flatpak run com.heroicgameslauncher.hgl &")
-        (launcher :label "RetroArch" :cmd "retroarch &")
-        (launcher :label "PrismLauncher" :cmd "prismlauncher &")
-        (launcher :label "Modo Juego" :cmd "nebula-game-mode &")
-        (cat-icon :name "Sistema" :icon "${EWW_CONFIG_DIR}/../nebula/icons/sistema.png")
-        (launcher :label "Archivos" :cmd "nautilus --new-window &")
-        (launcher :label "Archivos (Thunar)" :cmd "thunar &")
-        (launcher :label "Monitor de recursos" :cmd "alacritty -e btop &")
-        (launcher :label "Monitor del sistema" :cmd "gnome-system-monitor &")
-        (launcher :label "Discos" :cmd "gnome-disks &")
-        (launcher :label "Red" :cmd "alacritty -e nmtui &")
-        (launcher :label "Captura de pantalla" :cmd "nebula-screenshot region &")
-        (launcher :label "Portapapeles" :cmd "copyq toggle &")
-        (launcher :label "Configuracion de GPU (NVIDIA)" :cmd "nvidia-settings &")
-        (launcher :label "Copias de seguridad (Deja Dup)" :cmd "deja-dup &")
-        (launcher :label "Rescatar entorno" :cmd "nebula-rescue &")
-        (launcher :label "Energia (bloquear / salir)" :cmd "nebula-powermenu &")
-        (cat-icon :name "Herramientas" :icon "${EWW_CONFIG_DIR}/../nebula/icons/herramientas.png")
-        (launcher :label "Calculadora" :cmd "gnome-calculator &")
-        (launcher :label "Calendario" :cmd "gnome-calendar &")
-        (launcher :label "Registros del sistema" :cmd "gnome-logs &")
-        (launcher :label "Escaner de documentos" :cmd "simple-scan &")
-        (launcher :label "Escritorio remoto (Remmina)" :cmd "remmina &")
-        (launcher :label "Transmission (BitTorrent)" :cmd "transmission-gtk &")
-        (launcher :label "Gestor de archivos comprimidos" :cmd "file-roller &")
-        (launcher :label "Editor de particiones" :cmd "gparted &")
-        (launcher :label "Uso de disco" :cmd "baobab &")
-        (launcher :label "Ajustes avanzados" :cmd "gnome-tweaks &")
-        (launcher :label "Editor de dconf" :cmd "dconf-editor &")
-        (launcher :label "Contrasenas y claves" :cmd "seahorse &")
-        (launcher :label "Copias de seguridad" :cmd "timeshift-gtk &")
-        (launcher :label "Tienda de software" :cmd "gnome-software &")
-        (launcher :label "Synaptic" :cmd "synaptic-pkexec &")
-        (cat-icon :name "Configuracion" :icon "${EWW_CONFIG_DIR}/../nebula/icons/configuracion.png")
-        (launcher :label "Configuracion del sistema" :cmd "gnome-control-center &")
-        (launcher :label "Ajustes avanzados" :cmd "gnome-tweaks &")
-        (launcher :label "Impresoras" :cmd "system-config-printer &")
+        (box :orientation "v" :space-evenly false :spacing 2 :visible {QUERY == ""}
+          (catgroup :name "Favoritos" :slug "favoritos" :icon "${EWW_CONFIG_DIR}/../nebula/icons/favoritos.png"
+            (launcher :label "Terminal" :cmd "alacritty &")
+            (launcher :label "Navegador web" :cmd "librewolf &")
+            (launcher :label "Firefox" :cmd "firefox &")
+            (launcher :label "Archivos" :cmd "nautilus --new-window &")
+            (launcher :label "Configuracion del sistema" :cmd "gnome-control-center &"))
+          (catgroup :name "Terminales" :slug "terminales" :icon "${EWW_CONFIG_DIR}/../nebula/icons/terminales.png"
+            (launcher :label "Alacritty" :cmd "alacritty &")
+            (launcher :label "Kitty" :cmd "kitty &")
+            (launcher :label "WezTerm" :cmd "wezterm &")
+            (launcher :label "GNOME Terminal" :cmd "gnome-terminal &")
+            (launcher :label "Tilix" :cmd "tilix &")
+            (launcher :label "Konsole" :cmd "konsole &")
+            (launcher :label "xterm" :cmd "xterm &"))
+          (catgroup :name "Navegadores" :slug "navegadores" :icon "${EWW_CONFIG_DIR}/../nebula/icons/navegadores.png"
+            (launcher :label "Firefox" :cmd "firefox &")
+            (launcher :label "LibreWolf" :cmd "librewolf &")
+            (launcher :label "Google Chrome" :cmd "google-chrome-stable &")
+            (launcher :label "Chromium" :cmd "chromium &")
+            (launcher :label "Brave" :cmd "brave-browser &")
+            (launcher :label "Vivaldi" :cmd "vivaldi-stable &"))
+          (catgroup :name "Comunicacion" :slug "comunicacion" :icon "${EWW_CONFIG_DIR}/../nebula/icons/comunicacion.png"
+            (launcher :label "Discord" :cmd "flatpak run com.discordapp.Discord &")
+            (launcher :label "Thunderbird" :cmd "thunderbird &"))
+          (catgroup :name "Desarrollo" :slug "desarrollo" :icon "${EWW_CONFIG_DIR}/../nebula/icons/desarrollo.png"
+            (launcher :label "Terminal" :cmd "alacritty &")
+            (launcher :label "VS Code" :cmd "code &")
+            (launcher :label "Editor (nvim)" :cmd "alacritty -e nvim &")
+            (launcher :label "Editor de texto (GNOME)" :cmd "gnome-text-editor &")
+            (launcher :label "Git TUI" :cmd "alacritty -e lazygit &")
+            (launcher :label "Docker TUI" :cmd "alacritty -e lazydocker &")
+            (launcher :label "Base de datos" :cmd "dbeaver &"))
+          (catgroup :name "Multimedia" :slug "multimedia" :icon "${EWW_CONFIG_DIR}/../nebula/icons/multimedia.png"
+            (launcher :label "Video (mpv)" :cmd "mpv --player-operation-mode=pseudo-gui &")
+            (launcher :label "VLC" :cmd "vlc &")
+            (launcher :label "Videos (Totem)" :cmd "totem &")
+            (launcher :label "Musica (cmus)" :cmd "alacritty -e cmus &")
+            (launcher :label "Rhythmbox" :cmd "rhythmbox &")
+            (launcher :label "Spotify" :cmd "spotify &")
+            (launcher :label "OBS Studio" :cmd "obs &")
+            (launcher :label "Control de audio" :cmd "pavucontrol &")
+            (launcher :label "Perfiles de streaming" :cmd "nebula-streaming-profile &"))
+          (catgroup :name "Graficos" :slug "graficos" :icon "${EWW_CONFIG_DIR}/../nebula/icons/graficos.png"
+            (launcher :label "GIMP" :cmd "gimp &")
+            (launcher :label "Krita" :cmd "krita &")
+            (launcher :label "Inkscape" :cmd "inkscape &")
+            (launcher :label "Darktable" :cmd "darktable &")
+            (launcher :label "Blender" :cmd "blender &")
+            (launcher :label "Visor de imagenes" :cmd "nsxiv -t . &")
+            (launcher :label "Shotwell" :cmd "shotwell &"))
+          (catgroup :name "Ofimatica" :slug "ofimatica" :icon "${EWW_CONFIG_DIR}/../nebula/icons/ofimatica.png"
+            (launcher :label "LibreOffice" :cmd "libreoffice &")
+            (launcher :label "Writer" :cmd "libreoffice --writer &")
+            (launcher :label "Calc" :cmd "libreoffice --calc &")
+            (launcher :label "Impress" :cmd "libreoffice --impress &")
+            (launcher :label "Visor de PDF" :cmd "evince &")
+            (launcher :label "Notas (Obsidian)" :cmd "obsidian &")
+            (launcher :label "ONLYOFFICE" :cmd "flatpak run org.onlyoffice.desktopeditors &"))
+          (catgroup :name "IA Local" :slug "ia-local" :icon "${EWW_CONFIG_DIR}/../nebula/icons/ia-local.png"
+            (launcher :label "Iniciar Ollama" :cmd "nebula-ai-chat --serve &")
+            (launcher :label "Chat con modelo" :cmd "nebula-ai-chat &")
+            (launcher :label "Descargar modelo" :cmd "nebula-ai-chat --pull &")
+            (launcher :label "Estado GPU" :cmd "alacritty -e watch -n2 nvidia-smi &"))
+          (catgroup :name "Gaming" :slug "gaming" :icon "${EWW_CONFIG_DIR}/../nebula/icons/gaming.png"
+            (launcher :label "Steam" :cmd "steam &")
+            (launcher :label "Lutris" :cmd "flatpak run net.lutris.Lutris &")
+            (launcher :label "Heroic" :cmd "flatpak run com.heroicgameslauncher.hgl &")
+            (launcher :label "RetroArch" :cmd "retroarch &")
+            (launcher :label "PrismLauncher" :cmd "prismlauncher &")
+            (launcher :label "Modo Juego" :cmd "nebula-game-mode &"))
+          (catgroup :name "Sistema" :slug "sistema" :icon "${EWW_CONFIG_DIR}/../nebula/icons/sistema.png"
+            (launcher :label "Archivos" :cmd "nautilus --new-window &")
+            (launcher :label "Archivos (Thunar)" :cmd "thunar &")
+            (launcher :label "Monitor de recursos" :cmd "alacritty -e btop &")
+            (launcher :label "Monitor del sistema" :cmd "gnome-system-monitor &")
+            (launcher :label "Discos" :cmd "gnome-disks &")
+            (launcher :label "Red" :cmd "alacritty -e nmtui &")
+            (launcher :label "Captura de pantalla" :cmd "nebula-screenshot region &")
+            (launcher :label "Portapapeles" :cmd "copyq toggle &")
+            (launcher :label "Configuracion de GPU (NVIDIA)" :cmd "nvidia-settings &")
+            (launcher :label "Copias de seguridad (Deja Dup)" :cmd "deja-dup &")
+            (launcher :label "Rescatar entorno" :cmd "nebula-rescue &")
+            (launcher :label "Energia (bloquear / salir)" :cmd "nebula-powermenu &"))
+          (catgroup :name "Herramientas" :slug "herramientas" :icon "${EWW_CONFIG_DIR}/../nebula/icons/herramientas.png"
+            (launcher :label "Calculadora" :cmd "gnome-calculator &")
+            (launcher :label "Calendario" :cmd "gnome-calendar &")
+            (launcher :label "Registros del sistema" :cmd "gnome-logs &")
+            (launcher :label "Escaner de documentos" :cmd "simple-scan &")
+            (launcher :label "Escritorio remoto (Remmina)" :cmd "remmina &")
+            (launcher :label "Transmission (BitTorrent)" :cmd "transmission-gtk &")
+            (launcher :label "Gestor de archivos comprimidos" :cmd "file-roller &")
+            (launcher :label "Editor de particiones" :cmd "gparted &")
+            (launcher :label "Uso de disco" :cmd "baobab &")
+            (launcher :label "Ajustes avanzados" :cmd "gnome-tweaks &")
+            (launcher :label "Editor de dconf" :cmd "dconf-editor &")
+            (launcher :label "Contrasenas y claves" :cmd "seahorse &")
+            (launcher :label "Copias de seguridad" :cmd "timeshift-gtk &")
+            (launcher :label "Tienda de software" :cmd "gnome-software &")
+            (launcher :label "Synaptic" :cmd "synaptic-pkexec &"))
+          (catgroup :name "Configuracion" :slug "configuracion" :icon "${EWW_CONFIG_DIR}/../nebula/icons/configuracion.png"
+            (launcher :label "Configuracion del sistema" :cmd "gnome-control-center &")
+            (launcher :label "Ajustes avanzados" :cmd "gnome-tweaks &")
+            (launcher :label "Impresoras" :cmd "system-config-printer &"))
+        )
         ;; --- nebula:autogen END ---
+        (box :class "results" :orientation "v" :space-evenly false :spacing 2 :visible {QUERY != ""}
+          (for r in RESULTS
+            (result :label {r.label} :cmd {r.cmd}))
+          (label :class "no-results" :halign "start" :visible {RESULTS == "[]"}
+                 :text "Sin resultados"))
         ))
 
     (box :class "stats" :orientation "v" :space-evenly false :spacing 6
@@ -184,7 +230,7 @@
         (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/gpu.png" :label "GPU" :value "${GPU}%" :pct {GPU != "" ? GPU : 0})
         (stat-row :icon "${EWW_CONFIG_DIR}/../nebula/icons/gpu.png" :label "VRAM" :value "${VRAM}MB" :pct {VRAM_PCT != "" ? VRAM_PCT : 0}))
       (label :halign "start" :class "temp-label" :text {TEMP != "" ? "TEMP ${TEMP}" : ""})
-      (label :halign "start" :class "clock" :text "${DATE}  ${TIME}"))))
+      (label :halign "start" :class "clock" :text "${DATE}  ${TIME}")))))
 
 ;; UNA sola ventana, sin strut (no empuja las ventanas) y con :wm-ignore
 ;; (bspwm no la gestiona).

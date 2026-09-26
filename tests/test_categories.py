@@ -17,6 +17,8 @@ SCRIPT = REPO / "bin" / "nebula-categories"
 
 
 def _load_module():
+    # Sin .pyc dentro de bin/ (se instala tal cual a ~/.local/bin).
+    sys.dont_write_bytecode = True
     loader = importlib.machinery.SourceFileLoader("nebula_categories", str(SCRIPT))
     spec = importlib.util.spec_from_loader("nebula_categories", loader)
     mod = importlib.util.module_from_spec(spec)
@@ -150,7 +152,7 @@ def test_assume_all(monkeypatch):
 def test_bloque_escapa_comillas_y_barras():
     cats = [nc.Categoria('Dev "X"', [nc.App('Editor "Z"', 'sh -c "echo \\\\hola"')])]
     block = nc.yuck_block(cats, None, all_apps=True)
-    assert '(cat :name "Dev \\"X\\"")' in block
+    assert '(catgroup :name "Dev \\"X\\"" :slug "dev-x"' in block
     assert ':label "Editor \\"Z\\""' in block
     assert block.count("(launcher") == 1
 
@@ -168,8 +170,8 @@ def test_icono_si_existe_el_png(tmp_path):
     icons.mkdir()
     (icons / "ia-local.png").write_bytes(b"")
     block = nc.yuck_block(nc.load(write_toml(tmp_path, VALIDO)), icons, all_apps=True)
-    assert '(cat-icon :name "IA Local" :icon "${EWW_CONFIG_DIR}/../nebula/icons/ia-local.png")' in block
-    assert '(cat :name "Terminales")' in block
+    assert '(catgroup :name "IA Local" :slug "ia-local" :icon "${EWW_CONFIG_DIR}/../nebula/icons/ia-local.png"' in block
+    assert '(catgroup :name "Terminales" :slug "terminales" :icon "${EWW_CONFIG_DIR}/../nebula/icons/brand-mark.png"' in block
 
 
 def test_render_reemplaza_solo_entre_marcadores_y_es_idempotente():
@@ -205,3 +207,74 @@ def test_cli_check_detecta_eww_yuck_desincronizado(tmp_path):
     yuck.write_text(yuck.read_text().replace('(launcher :label "Kitty"', '(launcher :label "Kity"'))
     r = subprocess.run(base, env=env, capture_output=True, text=True)
     assert r.returncode == 1 and "NO coincide" in r.stderr
+
+
+# --- search (buscador de la sidebar, U-03) --------------------------------
+BUSCAR = """
+[[categoria]]
+nombre = "Navegadores"
+[[categoria.app]]
+nombre = "Firefox"
+exec = "firefox"
+[[categoria.app]]
+nombre = "Navegador web"
+exec = "librewolf"
+[[categoria.app]]
+nombre = "Chrome"
+exec = "google-chrome-stable"
+
+[[categoria]]
+nombre = "Favoritos"
+[[categoria.app]]
+nombre = "Navegador"
+exec = "librewolf"
+[[categoria.app]]
+nombre = "Música"
+exec = "spotify"
+"""
+
+
+def _buscar(tmp_path, q, limit=12, instalados=("firefox", "librewolf", "spotify")):
+    cats = nc.load(write_toml(tmp_path, BUSCAR))
+    res = nc.search(cats, q, limit, is_installed=lambda e: e in instalados)
+    return [a.nombre for a in res]
+
+
+def test_search_orden_prefijo_contiene_categoria(tmp_path):
+    # "nav": empieza con (Navegador web) > categoria (Firefox); sin duplicar
+    # librewolf de Favoritos; Chrome no esta instalado.
+    assert _buscar(tmp_path, "nav") == ["Navegador web", "Firefox"]
+
+
+def test_search_ignora_tildes_y_mayusculas(tmp_path):
+    assert _buscar(tmp_path, "MUSICA") == ["Música"]
+    assert _buscar(tmp_path, "músi") == ["Música"]
+
+
+def test_search_vacio_o_sin_coincidencias(tmp_path):
+    assert _buscar(tmp_path, "   ") == []
+    assert _buscar(tmp_path, "zzqq") == []
+
+
+def test_search_limite(tmp_path):
+    assert _buscar(tmp_path, "e", limit=1) == ["Firefox"]
+
+
+def test_search_texto_es_literal(tmp_path):
+    # Simbolos de regex/shell no rompen ni se interpretan.
+    assert _buscar(tmp_path, "fire(fox") == []
+    assert _buscar(tmp_path, "$(touch x); .*") == []
+
+
+def test_search_cli_json_y_exec(tmp_path):
+    toml = write_toml(tmp_path, BUSCAR)
+    env = {**os.environ, "NEBULA_GEN_ASSUME_ALL": "1"}
+    out = subprocess.run([sys.executable, str(SCRIPT), "search", "fire", "--toml", str(toml)],
+                         capture_output=True, text=True, env=env, check=True).stdout
+    assert out.strip() == '[{"label":"Firefox","cmd":"firefox &"}]'
+    r = subprocess.run([sys.executable, str(SCRIPT), "search", "fire", "--format", "exec", "--toml", str(toml)],
+                       capture_output=True, text=True, env=env)
+    assert (r.returncode, r.stdout.strip()) == (0, "firefox")
+    r = subprocess.run([sys.executable, str(SCRIPT), "search", "zzqq", "--format", "exec", "--toml", str(toml)],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 1 and r.stdout == ""

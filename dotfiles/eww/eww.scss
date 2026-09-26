@@ -174,3 +174,30 @@ $cian:    #22d3ee;
   padding: 0 6px;
 }
 .bar-rec:hover { color: #fca5a5; }
+
+/* --- Barra lateral: submenus, buscador, resultados (Fase UX) ---------- */
+window { background-color: transparent; }
+
+.search {
+  margin: 4px 8px 6px 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background-color: #111827;
+  border: 1px solid #1f2937;
+  color: #e5e7eb;
+}
+.search:focus { border-color: #7c3aed; }
+
+.cat-head {
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: #cbd5e1;
+  font-weight: bold;
+}
+.cat-head:hover { background-color: #1f2937; }
+.cat-open { color: #22d3ee; }
+.cat-arrow { color: #7c3aed; }
+.cat-apps { padding-left: 18px; }
+
+.results .app { padding-left: 10px; }
+.no-results { color: rgba(203, 213, 245, 0.55); padding: 4px 10px; font-style: italic; }
