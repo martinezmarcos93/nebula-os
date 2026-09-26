@@ -33,7 +33,8 @@ kill_test_procs() {
     for d in /proc/[0-9]*; do
         pid="${d#/proc/}"
         [[ "$pid" == "$$" || "$pid" == "$BASHPID" ]] && continue
-        tr '\0' '\n' < "$d/environ" 2>/dev/null | grep -qxF "HOME=$HOME" || continue
+        [[ -r "$d/environ" ]] || continue          # procesos de otros usuarios
+        { tr '\0' '\n' < "$d/environ"; } 2>/dev/null | grep -qxF "HOME=$HOME" || continue
         kill "$pid" 2>/dev/null || true
     done
 }

@@ -67,10 +67,15 @@ PY
 @test "U-01: la sidebar arranca replegada y se revela deslizandose" {
     command -v maim >/dev/null || skip "falta maim"
     ew update SIDEBAR_REVEAL=false
-    ew open nebula-sidebar; sleep 0.4
+    ew open nebula-sidebar
+    for _ in $(seq 1 30); do is_open && break; sleep 0.1; done
+    is_open                               # medir "replegada" con la ventana YA abierta
+    sleep 0.4
     hidden="$(coverage 80)"
-    ew update SIDEBAR_REVEAL=true; sleep 0.5
-    shown="$(coverage 80)"
+    ew update SIDEBAR_REVEAL=true
+    # Esperar a que termine de revelarse (sin sleep fijo: el primer arranque
+    # de GTK en un X recien creado puede tardar mas que la animacion).
+    for _ in $(seq 1 30); do shown="$(coverage 80)"; (( shown > 100 )) && break; sleep 0.1; done
     echo "columnas visibles: replegada=$hidden revelada=$shown"
     [ "$hidden" -lt 20 ]
     [ "$shown" -gt 100 ]
@@ -125,11 +130,26 @@ PY
 }
 
 @test "U-03: la lista muestra solo las coincidencias y un clic lanza la elegida" {
+    # categories.toml propio: el resultado no debe depender de que navegadores
+    # tenga instalados la maquina (el runner de CI trae Chrome y Firefox).
+    cat > "$XDG_CONFIG_HOME/nebula/categories.toml" <<'TOML'
+[[categoria]]
+nombre = "Navegadores"
+[[categoria.app]]
+nombre = "Firefox"
+exec = "firefox"
+[[categoria.app]]
+nombre = "Navegador web"
+exec = "librewolf"
+[[categoria.app]]
+nombre = "Navegador fantasma"
+exec = "app-inexistente-xyz"
+TOML
     nebula-sidebar open; sleep 0.5
     xdotool mousemove 128 80 click 1; sleep 0.3
     xdotool type --delay 60 nav; sleep 0.8
     # 'Navegador web' (librewolf, empieza con "nav") y Firefox (categoria
-    # Navegadores); nada que no este instalado (google-chrome, etc.).
+    # Navegadores); 'Navegador fantasma' no esta instalado: no aparece.
     [ "$(ew get RESULTS)" = '[{"label":"Navegador web","cmd":"librewolf &"},{"label":"Firefox","cmd":"firefox &"}]' ]
     xdotool mousemove 70 151 click 1; sleep 1           # 2do resultado
     grep -q '^firefox' "$LOG"

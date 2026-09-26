@@ -58,6 +58,7 @@ png_size() { python3 -c 'import struct,sys; d=open(sys.argv[1],"rb").read(24); p
     [ "$(nebula-screenrecord status)" = rec ]
     sleep 2.5
     run nebula-screenrecord stop
+    echo "stop -> [$output]"; cat "$XDG_RUNTIME_DIR/nebula/rec.log" 2>/dev/null
     [ "$status" -eq 0 ]
     f="$output"
     [ -s "$f" ]
