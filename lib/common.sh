@@ -140,6 +140,12 @@ backup_path() {
     local rel dst
     rel="${src#"$HOME"/}"
     dst="$NEBULA_BACKUP_DIR/$rel"
+    # Una sola copia por archivo y por corrida: la PRIMERA, que es el estado
+    # original. Un segundo backup en la misma corrida copiaria el archivo ya
+    # modificado encima y se perderia el original.
+    if [[ -e "$dst" || -L "$dst" ]]; then
+        return 0
+    fi
     run mkdir -p "$(dirname "$dst")"
     run cp -a "$src" "$dst"
     info "backup: $src -> $dst"
@@ -159,6 +165,69 @@ ensure_line() {
     fi
     printf '%s\n' "$line" >> "$file"
     info "linea agregada a $file"
+}
+
+# ---------------------------------------------------------------------------
+# Entorno de la sesion Nebula (bspwm) - aislado de GNOME
+#
+# ~/.xprofile y ~/.Xresources los cargan TODAS las sesiones X11 de GDM
+# (incluida "Ubuntu en Xorg"): lo que Nebula escribia ahi cambiaba tambien
+# la sesion GNOME. Todo lo que es solo de la sesion bspwm va a un directorio
+# propio que carga unicamente el wrapper nebula-session / ~/.xinitrc / bspwmrc.
+# Va fuera de ~/.config/nebula a proposito: con NEBULA_LINK=symlink ese
+# directorio apunta al repo y se escribiria dentro del arbol de git.
+# ---------------------------------------------------------------------------
+NEBULA_SESSION_DIR="${NEBULA_SESSION_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/nebula-session}"
+NEBULA_SESSION_ENV="$NEBULA_SESSION_DIR/env"
+# shellcheck disable=SC2034  # la usan install/40-tema.sh y 60-postcheck.sh
+NEBULA_SESSION_XRES="$NEBULA_SESSION_DIR/Xresources"
+
+# session_env_set CLAVE VALOR  -> deja exactamente una linea `export CLAVE=VALOR`
+#                                 en $NEBULA_SESSION_ENV. VALOR se escribe literal
+#                                 (puede contener ${...} que expande al cargarse).
+session_env_set() {
+    local key="$1" value="$2" line tmp
+    line="export ${key}=${value}"
+    if [[ -f "$NEBULA_SESSION_ENV" ]] && grep -qxF -- "$line" "$NEBULA_SESSION_ENV"; then
+        return 0
+    fi
+    if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
+        printf '%s  [dry-run] %s : %s%s\n' "$_c_dim" "$NEBULA_SESSION_ENV" "$line" "$_c_reset" >&2
+        return 0
+    fi
+    mkdir -p "$NEBULA_SESSION_DIR"
+    tmp="$(mktemp)"
+    if [[ -f "$NEBULA_SESSION_ENV" ]]; then
+        grep -v -- "^export ${key}=" "$NEBULA_SESSION_ENV" > "$tmp" || true
+    else
+        printf '# Generado por Nebula OS: entorno SOLO de la sesion bspwm.\n' > "$tmp"
+    fi
+    printf '%s\n' "$line" >> "$tmp"
+    mv "$tmp" "$NEBULA_SESSION_ENV"
+    info "sesion: $line"
+}
+
+# drop_nebula_lines ARCHIVO REGEX  -> borra de ARCHIVO las lineas (ERE) que
+#                                     Nebula escribia ahi en versiones previas.
+#                                     Backup antes de tocar. No-op si no hay.
+drop_nebula_lines() {
+    local file="$1" re="$2" tmp
+    [[ -f "$file" ]] && grep -qE -- "$re" "$file" || return 0
+    backup_path "$file"
+    if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
+        printf '%s  [dry-run] quitar de %s: /%s/%s\n' "$_c_dim" "$file" "$re" "$_c_reset" >&2
+        return 0
+    fi
+    tmp="$(mktemp)"
+    grep -vE -- "$re" "$file" > "$tmp" || true
+    cat "$tmp" > "$file"
+    rm -f "$tmp"
+    info "migrado: lineas de Nebula quitadas de $file"
+}
+
+# gnome_present  -> 0 si hay una sesion GNOME instalada en el sistema.
+gnome_present() {
+    has_cmd gnome-shell || pkg_installed gnome-shell
 }
 
 # ---------------------------------------------------------------------------

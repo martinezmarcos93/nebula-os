@@ -85,15 +85,11 @@ case "$NEBULA_PANEL" in
 esac
 
 # Persistir el panel efectivo para que dotfiles/bspwm/bspwmrc lo lea en
-# cada arranque de sesion (fuente unica en runtime: $NEBULA_PANEL).
-XPROFILE="$HOME/.xprofile"
-[[ -f "$XPROFILE" ]] || backup_path "$XPROFILE"
-if [[ "$NEBULA_DRY_RUN" != "1" && -f "$XPROFILE" ]] \
-        && grep -q '^export NEBULA_PANEL=' "$XPROFILE" 2>/dev/null; then
-    sed -i '/^export NEBULA_PANEL=/d' "$XPROFILE"
-fi
-ensure_line "export NEBULA_PANEL=$EFFECTIVE_PANEL" "$XPROFILE"
-info "panel efectivo: $EFFECTIVE_PANEL (guardado en $XPROFILE)"
+# cada arranque de sesion (fuente unica en runtime: $NEBULA_PANEL). Va al
+# entorno propio de la sesion Nebula, no a ~/.xprofile (lo carga GNOME).
+session_env_set NEBULA_PANEL "$EFFECTIVE_PANEL"
+drop_nebula_lines "$HOME/.xprofile" '^export NEBULA_PANEL='
+info "panel efectivo: $EFFECTIVE_PANEL (guardado en $NEBULA_SESSION_ENV)"
 
 # ---------------------------------------------------------------------------
 # Nerd Font (glyphs del panel). Idempotente: se salta si ya esta instalada.

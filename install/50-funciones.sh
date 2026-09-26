@@ -85,7 +85,7 @@ if [[ -f "$PROFILE" ]] && grep -q '\.local/bin' "$PROFILE"; then
     # shellcheck disable=SC2088  # "~/.local/bin" es texto literal del mensaje, no una ruta a expandir
     info "~/.local/bin ya esta contemplado en $PROFILE"
 else
-    [[ -f "$PROFILE" ]] || backup_path "$PROFILE"
+    backup_path "$PROFILE"
     # shellcheck disable=SC2016  # se escribe literal: expande recien al loguearse
     ensure_line 'export PATH="$HOME/.local/bin:$PATH"' "$PROFILE"
 fi

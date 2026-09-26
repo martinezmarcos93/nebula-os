@@ -119,10 +119,11 @@ fi
 # Sin esto, el puntero del root queda invisible al iniciar bspwm y rofi /
 # ventanas X puras usan el cursor core feo. Tres mecanismos, del mas general
 # al mas especifico:
-#   1. ~/.icons/default/index.theme  -> lo lee libXcursor/Xorg/Qt por defecto.
-#   2. ~/.Xresources (Xcursor.*)     -> lo carga bspwmrc con `xrdb -merge` y lo
+#   1. ~/.icons/default/index.theme  -> lo lee libXcursor/Xorg/Qt por defecto
+#                                       (solo si THEME_GNOME, ver abajo).
+#   2. nebula-session/Xresources     -> lo carga bspwmrc con `xrdb -merge` y lo
 #                                       usa `xsetroot -cursor_name left_ptr`.
-#   3. XCURSOR_THEME/SIZE en ~/.xprofile -> lo heredan los hijos de la sesion.
+#   3. XCURSOR_THEME/SIZE en nebula-session/env -> lo heredan los hijos.
 # Si Bibata no quedo instalado (NEBULA_CURSOR=0 o fallo de red) se cae a
 # "Adwaita", que siempre esta presente en Ubuntu: el puntero se ve igual.
 # ---------------------------------------------------------------------------
@@ -131,33 +132,52 @@ CURSOR_NAME="Adwaita"
 CURSOR_SIZE=24
 info "cursor efectivo de la sesion: $CURSOR_NAME (${CURSOR_SIZE}px)"
 
-DEFAULT_ICON_THEME="$ICONS_DIR/default/index.theme"
-XRESOURCES="$HOME/.Xresources"
+# Frontera con GNOME (docs/ROADMAP-REPARACION.md D4): ~/.Xresources,
+# ~/.xprofile y ~/.icons/default los leen TAMBIEN las sesiones GNOME. Lo de la
+# sesion bspwm va a ~/.config/nebula-session/ (lo cargan bspwmrc y el wrapper).
+# GNOME solo se tematiza si se pide explicitamente con NEBULA_GNOME_THEME=1
+# (ej. para acompañar la extension Nebula Shell, ver extension/README.md).
+THEME_GNOME=0
+if [[ "${NEBULA_GNOME_THEME:-0}" == "1" ]] || ! gnome_present; then
+    THEME_GNOME=1
+fi
+
+session_env_set XCURSOR_THEME "$CURSOR_NAME"
+session_env_set XCURSOR_SIZE "$CURSOR_SIZE"
 if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
-    info "[dry-run] escribiria $DEFAULT_ICON_THEME y $XRESOURCES (cursor $CURSOR_NAME)"
+    info "[dry-run] escribiria $NEBULA_SESSION_XRES (cursor $CURSOR_NAME)"
 else
-    run mkdir -p "$ICONS_DIR/default"
-    cat > "$DEFAULT_ICON_THEME" <<EOF
+    mkdir -p "$NEBULA_SESSION_DIR"
+    printf '! Generado por Nebula OS (install/40-tema.sh): solo sesion bspwm.\nXcursor.theme: %s\nXcursor.size: %s\n' \
+        "$CURSOR_NAME" "$CURSOR_SIZE" > "$NEBULA_SESSION_XRES"
+    info "escrito: $NEBULA_SESSION_XRES (Xcursor.theme=$CURSOR_NAME)"
+fi
+
+# Migracion: quitar lo que versiones previas escribian en archivos globales.
+drop_nebula_lines "$HOME/.xprofile" '^export XCURSOR_(THEME=(Bibata-Modern-Ice|Adwaita)|SIZE=24)$'
+drop_nebula_lines "$HOME/.Xresources" '^Xcursor\.(theme: (Bibata-Modern-Ice|Adwaita)|size: 24)$'
+
+# ~/.icons/default/index.theme: el cursor por defecto de libXcursor para
+# TODAS las sesiones. Solo si se puede tematizar GNOME (o no hay GNOME).
+DEFAULT_ICON_THEME="$ICONS_DIR/default/index.theme"
+if [[ "$THEME_GNOME" == "1" ]]; then
+    if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
+        info "[dry-run] escribiria $DEFAULT_ICON_THEME (Inherits=$CURSOR_NAME)"
+    else
+        mkdir -p "$ICONS_DIR/default"
+        cat > "$DEFAULT_ICON_THEME" <<EOF
 [Icon Theme]
 Name=Default
 Comment=Nebula OS - cursor por defecto de la sesion
 Inherits=$CURSOR_NAME
 EOF
-    info "escrito: $DEFAULT_ICON_THEME (Inherits=$CURSOR_NAME)"
-
-    [[ -f "$XRESOURCES" ]] || backup_path "$XRESOURCES"
-    # Reescribe solo las lineas Xcursor.*, deja intacto el resto del archivo.
-    tmp_xr="$(mktemp)"
-    grep -vE '^\s*Xcursor\.(theme|size)\s*:' "$XRESOURCES" 2>/dev/null > "$tmp_xr" || true
-    printf 'Xcursor.theme: %s\nXcursor.size: %s\n' "$CURSOR_NAME" "$CURSOR_SIZE" >> "$tmp_xr"
-    mv "$tmp_xr" "$XRESOURCES"
-    info "actualizado: $XRESOURCES (Xcursor.theme=$CURSOR_NAME)"
+        info "escrito: $DEFAULT_ICON_THEME (Inherits=$CURSOR_NAME)"
+    fi
+elif grep -qs '^Comment=Nebula OS' "$DEFAULT_ICON_THEME"; then
+    backup_path "$DEFAULT_ICON_THEME"
+    run rm -f "$DEFAULT_ICON_THEME"
+    info "migrado: quitado $DEFAULT_ICON_THEME (afectaba el cursor de GNOME)"
 fi
-
-XPROFILE="$HOME/.xprofile"
-[[ -f "$XPROFILE" ]] || backup_path "$XPROFILE"
-ensure_line "export XCURSOR_THEME=$CURSOR_NAME" "$XPROFILE"
-ensure_line "export XCURSOR_SIZE=$CURSOR_SIZE" "$XPROFILE"
 
 # ---------------------------------------------------------------------------
 # Tipografias manuales: Space Grotesk + Nerd Font (idempotente via fc-list;
@@ -193,7 +213,9 @@ fi
 # ---------------------------------------------------------------------------
 apt_install xsettingsd
 
-if has_cmd gsettings; then
+if [[ "$THEME_GNOME" != "1" ]]; then
+    info "GNOME presente: no se cambia su tema (gsettings). Para tematizarlo tambien: NEBULA_GNOME_THEME=1 ./install.sh --only 40"
+elif has_cmd gsettings; then
     theme_name="Nordic-darker"; [[ "$NEBULA_THEME" == "fluent" ]] && theme_name="Fluent-dark"
     # Solo seleccionar el tema si realmente quedo instalado: apuntar a un tema
     # inexistente deja las apps GTK en Adwaita claro.
@@ -209,20 +231,20 @@ if has_cmd gsettings; then
 fi
 
 XSETTINGSD_CFG="$HOME/.config/xsettingsd/xsettingsd.conf"
-if [[ ! -f "$XSETTINGSD_CFG" ]]; then
-    run mkdir -p "$(dirname "$XSETTINGSD_CFG")"
-    theme_name="Nordic-darker"; [[ "$NEBULA_THEME" == "fluent" ]] && theme_name="Fluent-dark"
-    if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
-        info "[dry-run] escribiria $XSETTINGSD_CFG"
-    else
-        cat > "$XSETTINGSD_CFG" <<EOF
-Net/ThemeName "$theme_name"
-Net/IconThemeName "Papirus-Dark"
-Gtk/CursorThemeName "$CURSOR_NAME"
-Gtk/FontName "Inter 10"
-EOF
-        info "escrito: $XSETTINGSD_CFG"
-    fi
+theme_name="Nordic-darker"; [[ "$NEBULA_THEME" == "fluent" ]] && theme_name="Fluent-dark"
+# Se regenera si cambio algo (tema, cursor), no solo la primera vez: antes un
+# cambio de NEBULA_THEME o del cursor no llegaba nunca a la sesion bspwm.
+xsettingsd_content="$(printf 'Net/ThemeName "%s"\nNet/IconThemeName "Papirus-Dark"\nGtk/CursorThemeName "%s"\nGtk/CursorThemeSize %s\nGtk/FontName "Inter 10"\n' \
+    "$theme_name" "$CURSOR_NAME" "$CURSOR_SIZE")"
+if [[ -f "$XSETTINGSD_CFG" ]] && [[ "$(cat "$XSETTINGSD_CFG")" == "$xsettingsd_content" ]]; then
+    info "xsettingsd.conf sin cambios"
+elif [[ "$NEBULA_DRY_RUN" == "1" ]]; then
+    info "[dry-run] escribiria $XSETTINGSD_CFG"
+else
+    backup_path "$XSETTINGSD_CFG"
+    mkdir -p "$(dirname "$XSETTINGSD_CFG")"
+    printf '%s\n' "$xsettingsd_content" > "$XSETTINGSD_CFG"
+    info "escrito: $XSETTINGSD_CFG"
 fi
 # El autostart de xsettingsd va en dotfiles/bspwm/bspwmrc (fuente de verdad,
 # desplegado por 30-dotfiles.sh), no se parchea la copia en ~/.config aca.

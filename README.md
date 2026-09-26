@@ -119,6 +119,7 @@ NEBULA_PANEL=polybar NEBULA_LOGIN=ly ./install.sh
 | `NEBULA_LINK` | `copy` \| `symlink` | `copy` | Como se despliegan los dotfiles. |
 | `NEBULA_THEME` | `nordic` \| `fluent` | `nordic` | Tema GTK. |
 | `NEBULA_CURSOR` | `0` \| `1` | `1` | Instalar el cursor Bibata. |
+| `NEBULA_GNOME_THEME` | `0` \| `1` | `0` | Con GNOME instalado, aplicar tambien el tema/cursor a la sesion GNOME (gsettings, `~/.icons/default`). Por defecto la sesion GNOME no se toca: el entorno de la sesion bspwm vive en `~/.config/nebula-session/`. |
 
 ## Estructura
 

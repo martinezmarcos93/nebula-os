@@ -16,8 +16,11 @@ _run() {
 # Xcursor.size que escribe install/40-tema.sh) y despues fijamos la flecha
 # estandar, ya resuelta contra ese tema para clientes no-GTK (rofi, root,
 # ventanas X puras). Las apps GTK toman el cursor de xsettingsd aparte.
-if command -v xrdb >/dev/null 2>&1 && [[ -f "$HOME/.Xresources" ]]; then
-    xrdb -merge "$HOME/.Xresources"
+# Despues ~/.config/nebula-session/Xresources (el cursor de Nebula vive ahi y
+# no en ~/.Xresources, que GDM tambien carga en la sesion GNOME).
+if command -v xrdb >/dev/null 2>&1; then
+    [[ -f "$HOME/.Xresources" ]] && xrdb -merge "$HOME/.Xresources"
+    [[ -f "$HOME/.config/nebula-session/Xresources" ]] && xrdb -merge "$HOME/.config/nebula-session/Xresources"
 fi
 command -v xsetroot >/dev/null 2>&1 && xsetroot -cursor_name left_ptr
 

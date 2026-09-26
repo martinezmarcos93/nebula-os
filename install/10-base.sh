@@ -68,7 +68,10 @@ apt_install "${PKGS_BASE[@]}"
 # ~/.xinitrc - permite `startx` manual desde una tty (debug/uso sin DM).
 # ---------------------------------------------------------------------------
 XINITRC="$HOME/.xinitrc"
-if [[ ! -f "$XINITRC" ]] || ! grep -qxF 'exec bspwm' "$XINITRC"; then
+# shellcheck disable=SC2016  # literal: expande al ejecutarse .xinitrc
+XINIT_ENV_LINE='[ -f "$HOME/.config/nebula-session/env" ] && . "$HOME/.config/nebula-session/env"'
+if [[ ! -f "$XINITRC" ]] || ! grep -qxF 'exec bspwm' "$XINITRC" \
+        || ! grep -qxF -- "$XINIT_ENV_LINE" "$XINITRC"; then
     backup_path "$XINITRC"
     if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
         info "[dry-run] escribiria $XINITRC (exec bspwm)"
@@ -77,6 +80,7 @@ if [[ ! -f "$XINITRC" ]] || ! grep -qxF 'exec bspwm' "$XINITRC"; then
 #!/bin/sh
 # Generado por Nebula OS (install/10-base.sh). exec final obligatorio.
 [ -f "$HOME/.xprofile" ] && . "$HOME/.xprofile"
+[ -f "$HOME/.config/nebula-session/env" ] && . "$HOME/.config/nebula-session/env"
 exec bspwm
 EOF
         chmod +x "$XINITRC"
@@ -87,17 +91,16 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# ~/.xprofile - variables de sesion (rofi/drun necesita XDG_DATA_DIRS, E5).
+# Entorno de la sesion (rofi/drun necesita XDG_DATA_DIRS, E5). Va a
+# ~/.config/nebula-session/env, NO a ~/.xprofile: GDM carga ~/.xprofile en
+# todas las sesiones X11, incluida GNOME (ver lib/common.sh).
 # nm-applet, xss-lock, dunst y lxpolkit ya los arranca dotfiles/bspwm/bspwmrc.
 # ---------------------------------------------------------------------------
-XPROFILE="$HOME/.xprofile"
-# shellcheck disable=SC2016  # se escribe literal: expande recien al sourcear .xprofile
-XPROFILE_LINE='export XDG_DATA_DIRS="${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:$HOME/.local/share"'
-[[ -f "$XPROFILE" ]] || backup_path "$XPROFILE"
-ensure_line "$XPROFILE_LINE" "$XPROFILE"
-if [[ -f "$XPROFILE" && "$NEBULA_DRY_RUN" != "1" ]]; then
-    chmod +x "$XPROFILE" 2>/dev/null || true
-fi
+# shellcheck disable=SC2016  # literal: expande recien al cargar el env
+session_env_set XDG_DATA_DIRS '"${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:$HOME/.local/share"'
+# Migracion desde versiones que escribian en ~/.xprofile.
+# shellcheck disable=SC2016  # regex literal
+drop_nebula_lines "$HOME/.xprofile" '^export XDG_DATA_DIRS="\$\{XDG_DATA_DIRS:-/usr/local/share:/usr/share\}:\$HOME/\.local/share"$'
 
 # ---------------------------------------------------------------------------
 # Arranque de sesion
@@ -121,7 +124,8 @@ setup_xsession_entry() {
 #!/usr/bin/env bash
 # Generado por Nebula OS (install/10-base.sh).
 # Wrapper de sesion X11 para bspwm, invocado por el gestor de display.
-[ -f "$HOME/.xprofile" ] && source "$HOME/.xprofile"
+# (~/.xprofile ya lo cargo el Xsession de GDM antes de llegar aca.)
+[ -f "$HOME/.config/nebula-session/env" ] && source "$HOME/.config/nebula-session/env"
 export XDG_CURRENT_DESKTOP=bspwm
 export XDG_SESSION_TYPE=x11
 if command -v dbus-launch >/dev/null 2>&1 && [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
@@ -183,7 +187,7 @@ EOF
     # lo que Ubuntu pone en ~/.profile. Tiene que ir ANTES del `exec startx`.
     # shellcheck disable=SC2016  # literal: expande al loguearse
     local src_profile='[ -f "$HOME/.profile" ] && . "$HOME/.profile"'
-    [[ -f "$profile" ]] && backup_path "$profile"
+    backup_path "$profile"
     if [[ -f "$profile" ]] && ! grep -qxF -- "$src_profile" "$profile"; then
         if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
             info "[dry-run] antepondria a $profile: $src_profile"

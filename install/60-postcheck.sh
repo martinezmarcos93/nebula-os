@@ -24,10 +24,11 @@ _warn() { WARN_N=$((WARN_N + 1)); warn "$1"; }
 _fail() { FAIL=$((FAIL + 1));    err  "$1"; }
 
 # El default del instalador es eww (install.sh); polybar es solo el fallback
-# degradado (E1). ~/.xprofile guarda el panel efectivo de ESTA maquina.
+# degradado (E1). El entorno de la sesion guarda el panel efectivo de ESTA
+# maquina (lo escribe install/20-panel.sh).
 EFFECTIVE_PANEL="eww"
-if grep -qs '^export NEBULA_PANEL=' "$HOME/.xprofile" 2>/dev/null; then
-    EFFECTIVE_PANEL="$(grep '^export NEBULA_PANEL=' "$HOME/.xprofile" | tail -n1 | cut -d= -f2)"
+if grep -qs '^export NEBULA_PANEL=' "$NEBULA_SESSION_ENV" 2>/dev/null; then
+    EFFECTIVE_PANEL="$(grep '^export NEBULA_PANEL=' "$NEBULA_SESSION_ENV" | tail -n1 | cut -d= -f2)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -100,7 +101,7 @@ if pgrep -x bspwm >/dev/null 2>&1; then
     if [[ -n "$xcur" ]]; then
         _pass "cursor X configurado: $xcur"
     else
-        _warn "no veo Xcursor.theme en la base de recursos X (revisa install/40-tema.sh / ~/.Xresources)"
+        _warn "no veo Xcursor.theme en la base de recursos X (revisa install/40-tema.sh / ~/.config/nebula-session/Xresources)"
     fi
 
     if command -v setxkbmap >/dev/null 2>&1; then

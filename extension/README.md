@@ -124,7 +124,9 @@ el resto de la instalación:
 ```bash
 # Desde la raíz del repo. --only 40 corre SOLO el stage de tema (no toca
 # Xorg/bspwm/eww); --yes evita la confirmación interactiva.
-./install.sh --only 40 --yes
+# NEBULA_GNOME_THEME=1 es obligatorio: sin él, con GNOME instalado, el stage
+# 40 deja el tema de GNOME intacto a propósito (ver docs/ROADMAP-REPARACION.md, D4).
+NEBULA_GNOME_THEME=1 ./install.sh --only 40 --yes
 ```
 
 Después de correrlo: `gsettings get org.gnome.desktop.interface cursor-theme`
