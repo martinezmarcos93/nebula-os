@@ -24,10 +24,69 @@ step "30-dotfiles - despliegue de configuracion (NEBULA_LINK=$NEBULA_LINK)"
 CFG="${XDG_CONFIG_HOME:-$HOME/.config}"
 APPS=(bspwm sxhkd picom rofi polybar eww alacritty dunst gtk-3.0 nebula)
 
+# ---------------------------------------------------------------------------
+# Modo copy SIN pisar ediciones del usuario (docs/ROADMAP-REPARACION.md D8).
+#
+# MANIFEST guarda "sha256<TAB>ruta-relativa-a-$CFG" de cada archivo TAL COMO
+# lo dejo Nebula la ultima vez. Por archivo:
+#   - destino inexistente o identico al del repo  -> copiar / nada
+#   - destino == lo que desplego Nebula (manifest) -> el usuario no lo toco:
+#                                                     se actualiza
+#   - destino distinto y SIN entrada en manifest   -> primera instalacion sobre
+#                                                     una config previa: backup
+#                                                     (ya hecho) y se reemplaza
+#   - destino distinto del manifest               -> EDITADO por el usuario: se
+#                                                     deja intacto y la version
+#                                                     nueva va a <archivo>.nebula-new
+# ---------------------------------------------------------------------------
+MANIFEST="$NEBULA_STATE_DIR/dotfiles.manifest"
+declare -A DEPLOYED=()
+if [[ -f "$MANIFEST" ]]; then
+    while IFS=$'\t' read -r h rel; do
+        [[ -n "$rel" ]] && DEPLOYED["$rel"]="$h"
+    done < "$MANIFEST"
+fi
+declare -A NEW_MANIFEST=()
+PENDING_NEW=()
+
+sha_of() { sha256sum -- "$1" | cut -d' ' -f1; }
+
 deploy_copy() {
-    local app="$1" src="$2" dst="$3"
+    local app="$1" src="$2" dst="$3" f rel dst_f src_h dst_h
     run mkdir -p "$dst"
-    run cp -a "$src/." "$dst/"
+    while IFS= read -r -d '' f; do
+        rel="$app/${f#"$src"/}"
+        dst_f="$CFG/$rel"
+        src_h="$(sha_of "$f")"
+        if [[ ! -e "$dst_f" ]]; then
+            run mkdir -p "$(dirname "$dst_f")"
+            run cp -p -- "$f" "$dst_f"
+            NEW_MANIFEST["$rel"]="$src_h"
+            continue
+        fi
+        dst_h="$(sha_of "$dst_f")"
+        if [[ "$dst_h" == "$src_h" ]]; then
+            NEW_MANIFEST["$rel"]="$src_h"
+        elif [[ -z "${DEPLOYED[$rel]:-}" || "${DEPLOYED[$rel]}" == "$dst_h" ]]; then
+            run cp -p -- "$f" "$dst_f"
+            NEW_MANIFEST["$rel"]="$src_h"
+        else
+            run cp -p -- "$f" "$dst_f.nebula-new"
+            NEW_MANIFEST["$rel"]="${DEPLOYED[$rel]}"
+            PENDING_NEW+=("$dst_f")
+        fi
+    done < <(find "$src" -type f ! -name '.gitkeep' -print0)
+}
+
+write_manifest() {
+    [[ "$NEBULA_DRY_RUN" == "1" ]] && return 0
+    local rel tmp
+    mkdir -p "$(dirname "$MANIFEST")"
+    tmp="$(mktemp)"
+    for rel in "${!NEW_MANIFEST[@]}"; do
+        printf '%s\t%s\n' "${NEW_MANIFEST[$rel]}" "$rel"
+    done | sort -k2 > "$tmp"
+    mv "$tmp" "$MANIFEST"
 }
 
 deploy_symlink() {
@@ -98,6 +157,22 @@ fi
 # ---------------------------------------------------------------------------
 if [[ "$NEBULA_DRY_RUN" != "1" ]]; then
     NEBULA_CATEGORIES="$CFG/nebula/categories.toml" "$REPO_ROOT/bin/nebula-gen-panel" || true
+    # El generador reescribe el bloque autogen de eww.yuck: lo que queda es
+    # "lo que desplego Nebula" (si no, la proxima corrida lo tomaria como
+    # editado por el usuario). Solo si el archivo era nuestro, no si el
+    # usuario lo habia editado y quedo un .nebula-new pendiente.
+    yuck_rel="eww/eww.yuck"
+    if [[ "$NEBULA_LINK" == "copy" && -f "$CFG/$yuck_rel" && ! -e "$CFG/$yuck_rel.nebula-new" ]]; then
+        NEW_MANIFEST["$yuck_rel"]="$(sha_of "$CFG/$yuck_rel")"
+    fi
+fi
+[[ "$NEBULA_LINK" == "copy" ]] && write_manifest
+
+if [[ ${#PENDING_NEW[@]} -gt 0 ]]; then
+    warn "Archivos que editaste NO se pisaron; la version nueva quedo al lado como .nebula-new:"
+    for f in "${PENDING_NEW[@]}"; do
+        warn "  $f  (comparar: diff -u '$f' '$f.nebula-new')"
+    done
 fi
 
 ok "30-dotfiles completado."
