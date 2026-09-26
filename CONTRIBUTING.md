@@ -22,12 +22,19 @@
 ## Antes de enviar cambios
 
 ```bash
-make lint        # shellcheck -x sobre todos los scripts
+make test        # shellcheck + bateria estatica + tests bats (= CI)
 make preflight   # 00-preflight en este equipo (opcional)
 make dry-run     # recorrido completo sin tocar el sistema
 ```
 
-El CI corre `shellcheck` y verifica finales de linea en cada push/PR.
+El CI corre exactamente `make test` (shellcheck, `tools/test-session.sh
+--static`, `bats tests/`) y verifica finales de linea en cada push/PR. Todo
+arreglo de bug trae su test en `tests/*.bats`: cada test corre con un `$HOME`
+temporal (ver `tests/helpers.bash`) y los comandos externos se simulan con
+`stub` en `$STUBS`. Los tests de `install.sh` se saltan como root.
+
+Nota: en un `.bats` que haga `source lib/common.sh`, la funcion `run()` de
+la libreria tapa al `run` de bats: llamar a las funciones directo.
 
 ## Agregar un stage
 

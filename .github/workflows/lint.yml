@@ -10,8 +10,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Instalar shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Instalar shellcheck y bats
+        run: sudo apt-get update && sudo apt-get install -y shellcheck bats
 
       - name: shellcheck
         run: make lint
@@ -28,3 +28,8 @@ jobs:
       # duplicados, deps declaradas). Antes CI solo corria shellcheck.
       - name: Tests estaticos (tools/test-session.sh --static)
         run: bash tools/test-session.sh --static
+
+      # Tests unitarios/integracion (bats) en HOME temporal por test. El
+      # runner de GitHub es no-root, igual que un usuario real.
+      - name: Tests bats (tests/*.bats)
+        run: bats tests/

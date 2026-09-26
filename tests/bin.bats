@@ -1,0 +1,83 @@
+#!/usr/bin/env bats
+# bin/ y extras/: comportamiento de los scripts de runtime con stubs.
+
+load helpers
+
+setup() { setup_home; }
+
+@test "nebula-mount-datos: sin UUID sale 2 y explica" {
+    run "$REPO/extras/nebula-mount-datos"
+    [ "$status" -eq 2 ]
+    [[ "$output" == *"--set-uuid"* ]]
+}
+
+@test "nebula-mount-datos: --set-uuid lo guarda y --fstab lo usa" {
+    run "$REPO/extras/nebula-mount-datos" --set-uuid 0123456789ABCDEF
+    [ "$status" -eq 0 ]
+    run "$REPO/extras/nebula-mount-datos" --fstab
+    [[ "$output" == UUID=0123456789ABCDEF*ntfs-3g* ]]
+}
+
+@test "nebula-mount-datos: el aviso systemd usa el usuario real, no uno fijo" {
+    run env -u USER NEBULA_DATOS_UUID=0123456789ABCDEF "$REPO/extras/nebula-mount-datos" --help
+    [ "$status" -eq 0 ]
+    ! grep -q 'runuser -u marcos' "$REPO/extras/nebula-mount-datos"
+}
+
+@test "nebula-gen-panel --help funciona sin categories.toml" {
+    run "$REPO/bin/nebula-gen-panel" --help
+    [ "$status" -eq 0 ]
+}
+
+@test "nebula-resource-hud once: CPU real sin lm-sensors ni nvidia-smi" {
+    run env PATH="/usr/bin:/bin" "$REPO/bin/nebula-resource-hud" once
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ CPU\ [0-9]+% ]]
+}
+
+@test "nebula-sync: sin opt-in avisa y NO redespliega" {
+    cp -a "$REPO" "$BATS_TEST_TMPDIR/repo"
+    R="$BATS_TEST_TMPDIR/repo"
+    NEBULA_LINK=copy NEBULA_DRY_RUN=0 bash "$R/install/30-dotfiles.sh" >/dev/null 2>&1
+    echo "$R" > "$HOME/.local/share/nebula/repo-path"
+    echo "# nuevo" >> "$R/dotfiles/dunst/dunstrc"
+    run "$R/bin/nebula-sync" --dotfiles-only --quiet
+    [[ "$output" == *"nebula-sync --apply"* ]]
+    [ "$(tail -n1 "$HOME/.config/dunst/dunstrc")" != "# nuevo" ]
+    run "$R/bin/nebula-sync" --dotfiles-only --apply --quiet
+    [ "$(tail -n1 "$HOME/.config/dunst/dunstrc")" = "# nuevo" ]
+}
+
+@test "nebula-game-mode: restaura el governor previo, no 'schedutil'" {
+    stub cpupower 'echo "$@" >> "$HOME/cpupower.log"'
+    stub sudo 'shift; "$@"'   # sudo -n cmd -> cmd
+    stub eww 'exit 0'; stub picom 'exit 0'; stub bspc 'exit 0'; stub xset 'exit 0'
+    mkdir -p "$HOME/.cache/nebula"
+    echo powersave > "$HOME/.cache/nebula/gamemode"
+    run "$REPO/bin/nebula-game-mode" off
+    [ "$status" -eq 0 ]
+    grep -q -- '-g powersave' "$HOME/cpupower.log"
+    ! grep -q schedutil "$HOME/cpupower.log"
+}
+
+@test "nebula_panel_stop cierra sidebar Y barra; start abre solo la barra" {
+    stub eww 'echo "$*" >> "$HOME/eww.log"'
+    run bash -c "source '$REPO/lib/nebula-runtime.sh'; nebula_panel_stop; nebula_panel_start"
+    grep -q 'close nebula-sidebar' "$HOME/eww.log"
+    grep -q 'close nebula-bar' "$HOME/eww.log"
+    grep -q 'open nebula-bar' "$HOME/eww.log"
+    ! grep -q 'open nebula-sidebar' "$HOME/eww.log"
+}
+
+@test "nebula-taskbar: JSON valido con titulos con comillas y barras" {
+    command -v python3 >/dev/null || skip "sin python3"
+    stub bspc 'case "$*" in
+        "query -N -n focused") echo 0x1;;
+        "query -N -d focused -n .window") echo 0x1;;
+        "query -N -n 0x1.hidden") ;;
+        subscribe*) exit 0;;
+    esac'
+    stub xdotool 'case "$1" in getwindowname) printf "%s" "a \"b\" \\ c";; getwindowclassname) echo Foo;; esac'
+    run bash -c "timeout 3 '$REPO/bin/nebula-taskbar' | head -n1"
+    echo "$output" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d[0]["label"]=="a \"b\" \\ c", d'
+}
