@@ -168,6 +168,14 @@ if [[ "$NEBULA_DRY_RUN" != "1" ]]; then
 fi
 [[ "$NEBULA_LINK" == "copy" ]] && write_manifest
 
+# Hash del arbol dotfiles/ recien desplegado: bin/nebula-sync lo compara (con
+# la MISMA formula) para saber si el repo cambio desde este despliegue.
+if [[ "$NEBULA_DRY_RUN" != "1" ]]; then
+    mkdir -p "$NEBULA_STATE_DIR"
+    find "$REPO_ROOT/dotfiles" -type f -exec sha256sum {} + 2>/dev/null | sort | sha256sum | cut -d' ' -f1 \
+        > "$NEBULA_STATE_DIR/dotfiles.hash"
+fi
+
 if [[ ${#PENDING_NEW[@]} -gt 0 ]]; then
     warn "Archivos que editaste NO se pisaron; la version nueva quedo al lado como .nebula-new:"
     for f in "${PENDING_NEW[@]}"; do
