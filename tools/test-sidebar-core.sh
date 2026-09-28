@@ -37,7 +37,7 @@ X="const X=Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj; cons
 check(){ local r; r="$(e "$X ($2) ? 'SI' : 'NO'")"; [[ "$r" == *SI* ]] && ok "$1" || bad "$1 (obtuve: $r)"; }
 for _ in $(seq 1 80); do [[ "$(e '1+1')" == 2 ]] && break; sleep .5; done
 [[ "$(e '1+1')" == 2 ]] || { bad 'GNOME Shell no responde por D-Bus'; exit 1; }
-sleep 2
+sleep .2
 check 'extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"
 check 'sidebar creada' "!!S && !!S._sidebar && S._model.length > 0"
 check 'launcher creado' "!!L && !!L._panel"
