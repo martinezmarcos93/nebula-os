@@ -46,5 +46,5 @@ jobs:
             sleep 2
           fi
 
-      - name: tools/test-extension.sh
-        run: bash tools/test-extension.sh
+      - name: tools/test-sidebar-core.sh (Producto 1)
+        run: bash tools/test-sidebar-core.sh
