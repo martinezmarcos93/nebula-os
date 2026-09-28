@@ -8,6 +8,7 @@ on:
     paths:
       - extension/**
       - tools/test-extension.sh
+      - tools/test-sidebar-core.sh
       - dotfiles/nebula/**
       - bin/nebula-categories
       - .github/workflows/extension.yml
