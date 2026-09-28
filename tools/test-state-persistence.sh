@@ -2,7 +2,8 @@
 # Gate de persistencia del estado de usuario de Nebula Shell.
 set -euo pipefail
 
-export HOME="$(mktemp -d)"
+HOME_DIR="$(mktemp -d)"
+export HOME="$HOME_DIR"
 export XDG_CONFIG_HOME="$HOME/.config"
 trap 'rm -rf "$HOME"' EXIT
 
