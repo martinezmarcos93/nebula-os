@@ -70,6 +70,8 @@ mkdir -p "$XDG_CONFIG_HOME/nebula"
 printf '%s\n' '{"favoritos":"invalid","ocultos":7,"categoria_override":null}' > "$XDG_CONFIG_HOME/nebula/shell-state.json"
 
 run_shell(){
+  # gnome-shell se lanza en un subshell deliberadamente; $T debe expandirse ahi.
+  # shellcheck disable=SC2016
   local phase="$1"
   dbus-run-session -- bash -c '
     gsettings set org.gnome.shell disable-user-extensions false
@@ -104,6 +106,7 @@ done
 [[ "$okc" == 3 ]] && ok 'X11: 3 ciclos revelar + categoria abren launcher' || bad "X11: solo $okc/3 ciclos abrieron launcher"
 check 'X11: sidebar sigue viva despues de los ciclos' "!!S && S._model.length > 0"
 EOF
+  # shellcheck disable=SC2016
   XDG_SESSION_TYPE=x11 xvfb-run -a -s '-screen 0 1280x800x24 +extension Composite' dbus-run-session -- bash -c '
     gsettings set org.gnome.shell disable-user-extensions false
     gsettings set org.gnome.shell enabled-extensions "[\"nebula-harness@test\",\"nebula-shell@nebula-os\"]"
