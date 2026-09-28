@@ -47,11 +47,18 @@ const mixed = sanitize({
     ocultos: ['hidden', false],
     categoria_override: {editor: 'Desarrollo', bad: 42},
 });
-if (JSON.stringify(mixed) !== JSON.stringify({
-    favoritos: ['ok'],
-    ocultos: ['hidden'],
-    categoria_override: {editor: 'Desarrollo'},
-}))
-    throw new Error('sanitize() no filtro tipos inesperados');
+
+if (!Array.isArray(mixed.favoritos) || mixed.favoritos.length !== 1 ||
+    mixed.favoritos[0] !== 'ok')
+    throw new Error(`sanitize favoritos inesperado: ${JSON.stringify(mixed.favoritos)}`);
+
+if (!Array.isArray(mixed.ocultos) || mixed.ocultos.length !== 1 ||
+    mixed.ocultos[0] !== 'hidden')
+    throw new Error(`sanitize ocultos inesperado: ${JSON.stringify(mixed.ocultos)}`);
+
+if (Object.keys(mixed.categoria_override).length !== 1 ||
+    mixed.categoria_override.editor !== 'Desarrollo' ||
+    Object.prototype.hasOwnProperty.call(mixed.categoria_override, 'bad'))
+    throw new Error(`sanitize categoria_override inesperado: ${JSON.stringify(mixed.categoria_override)}`);
 
 print('STATE_PERSISTENCE_OK');
