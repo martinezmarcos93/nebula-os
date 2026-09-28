@@ -44,7 +44,7 @@ check 'launcher creado' "!!L && !!L._panel"
 check 'sidebar visible al iniciar' "S._sidebar.visible"
 e "$X S._collapse(); 1" >/dev/null; sleep .5
 check 'collapse oculta sidebar' "S._collapsed && !S._sidebar.visible"
-e "$X S._expand(); 1" >/dev/null; sleep 1
+e "$X S._expand(); 1" >/dev/null; sleep .1
 check 'expand vuelve a mostrar sidebar' "!S._collapsed && S._sidebar.visible"
 e "$X L.open(0); 1" >/dev/null; sleep .5
 check 'categoria abre launcher' "L._isOpen && L._filterIndex === 0 && L._panel.visible"
@@ -71,8 +71,8 @@ printf '%s\n' '{"favoritos":"invalid","ocultos":7,"categoria_override":null}' > 
 
 run_shell(){
   # gnome-shell se lanza en un subshell deliberadamente; $T debe expandirse ahi.
-  # shellcheck disable=SC2016
   local phase="$1"
+  # shellcheck disable=SC2016
   dbus-run-session -- bash -c '
     gsettings set org.gnome.shell disable-user-extensions false
     gsettings set org.gnome.shell enabled-extensions "[\"nebula-harness@test\",\"nebula-shell@nebula-os\"]"
