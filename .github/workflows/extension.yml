@@ -10,6 +10,7 @@ on:
       - tools/test-extension.sh
       - tools/test-sidebar-core.sh
       - tools/test-state-persistence.sh
+      - tools/test-state-persistence.mjs
       - dotfiles/nebula/**
       - bin/nebula-categories
       - .github/workflows/extension.yml
@@ -19,6 +20,7 @@ on:
       - tools/test-extension.sh
       - tools/test-sidebar-core.sh
       - tools/test-state-persistence.sh
+      - tools/test-state-persistence.mjs
       - dotfiles/nebula/**
       - bin/nebula-categories
       - .github/workflows/extension.yml
