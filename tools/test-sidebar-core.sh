@@ -8,6 +8,7 @@ set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 T="$(mktemp -d)"
 PASS=0; FAIL=0
+export T
 ok(){ PASS=$((PASS+1)); printf '  OK   %s\n' "$*"; }
 bad(){ FAIL=$((FAIL+1)); printf '  FAIL %s\n' "$*"; }
 trap 'rm -rf "$T"' EXIT
