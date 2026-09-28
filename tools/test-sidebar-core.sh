@@ -44,7 +44,11 @@ check 'launcher creado' "!!L && !!L._panel"
 check 'sidebar visible al iniciar' "S._sidebar.visible"
 e "$X S._collapse(); 1" >/dev/null; sleep .5
 check 'collapse oculta sidebar' "S._collapsed && !S._sidebar.visible"
-e "$X S._expand(); 1" >/dev/null; sleep .1
+e "$X S._expand(); 1" >/dev/null
+for i in $(seq 1 10); do
+  [[ "$(e "$X (!S._collapsed && S._sidebar.visible) ? 'SI' : 'NO'")" == *SI* ]] && break
+  sleep .1
+done
 check 'expand vuelve a mostrar sidebar' "!S._collapsed && S._sidebar.visible"
 e "$X L.open(0); 1" >/dev/null; sleep .5
 check 'categoria abre launcher' "L._isOpen && L._filterIndex === 0 && L._panel.visible"
