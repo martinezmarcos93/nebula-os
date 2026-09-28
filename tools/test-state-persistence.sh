@@ -6,4 +6,4 @@ export HOME="$(mktemp -d)"
 export XDG_CONFIG_HOME="$HOME/.config"
 trap 'rm -rf "$HOME"' EXIT
 
-gjs tools/test-state-persistence.mjs
+gjs -m tools/test-state-persistence.mjs
