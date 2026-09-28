@@ -18,7 +18,6 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import Shell from 'gi://Shell';
 
 import {isHidden, categoryOverride} from './state.js';
 
@@ -94,55 +93,14 @@ export function isInstalled(exec) {
     return GLib.find_program_in_path(bin) !== null;
 }
 
-/**
- * Lanza el `exec` (R-309). Antes era siempre spawn_command_line_async: la app
- * quedaba como hija del propio GNOME Shell, sin notificacion de arranque y sin
- * figurar como "en ejecucion" en el dock. Ahora, en orden:
- *   1. Flatpak o comando SIN argumentos con un .desktop que lo ejecuta
- *      -> Shell.App (el Shell la registra como cualquier app del dock).
- *   2. Comando CON argumentos ("alacritty -e nvim"): el .desktop perderia los
- *      argumentos -> AppInfo desde la linea de comandos, lanzado con el
- *      contexto del Shell (notificacion de arranque, espacio de trabajo).
- *   3. Si todo falla, spawn_command_line_async como antes.
- * Devuelve el camino usado ('app' | 'appinfo' | 'spawn') o null si fallo.
- */
+/** Lanza el `exec` tal cual (fire-and-forget). */
 export function launch(exec) {
-    const appSystem = Shell.AppSystem.get_default();
-    let argv = [];
-    try {
-        [, argv] = GLib.shell_parse_argv(exec);
-    } catch (_e) {
-        argv = String(exec).trim().split(/\s+/);
-    }
-
-    const flatId = flatpakAppId(exec);
-    const desktopId = flatId
-        ? `${flatId}.desktop`
-        : (argv.length === 1 ? execInfoMap().get(firstToken(exec))?.id : null);
-    const app = desktopId ? appSystem.lookup_app(desktopId) : null;
-    if (app) {
-        try {
-            app.open_new_window(-1);
-            return 'app';
-        } catch (e) {
-            console.error(`Nebula Shell: Shell.App fallo para "${exec}": ${e}`);
-        }
-    }
-
-    try {
-        const info = Gio.AppInfo.create_from_commandline(exec, null, Gio.AppInfoCreateFlags.NONE);
-        info.launch([], global.create_app_launch_context(0, -1));
-        return 'appinfo';
-    } catch (e) {
-        console.error(`Nebula Shell: AppInfo fallo para "${exec}": ${e}`);
-    }
-
     try {
         GLib.spawn_command_line_async(exec);
-        return 'spawn';
+        return true;
     } catch (e) {
         console.error(`Nebula Shell: fallo al lanzar "${exec}": ${e}`);
-        return null;
+        return false;
     }
 }
 
@@ -167,7 +125,6 @@ function execInfoMap() {
         if (!base || _execInfoCache.has(base))
             continue;
         _execInfoCache.set(base, {
-            id: info.get_id?.() ?? null,
             icon: info.get_icon?.() ?? null,
             desc: info.get_description?.() || info.get_generic_name?.() || '',
         });

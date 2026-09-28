@@ -93,29 +93,12 @@ export class NebulaMeters {
         return this._widget;
     }
 
-    /** Empieza (o reanuda) el sondeo. Idempotente. */
     start() {
-        if (this._pollId)
-            return;
-        this._prevT = 0;   // la primera muestra tras una pausa no promedia la pausa
         this._poll();
         this._pollId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, POLL_S, () => {
             this._poll();
             return GLib.SOURCE_CONTINUE;
         });
-    }
-
-    /** Pausa el sondeo (sidebar colapsada / pantalla completa, R-305):
-     * sin timer y sin nvidia-smi en curso. Idempotente. */
-    stop() {
-        if (this._pollId) {
-            GLib.source_remove(this._pollId);
-            this._pollId = 0;
-        }
-        if (this._gpuCancel) {
-            this._gpuCancel.cancel();
-            this._gpuCancel = null;
-        }
     }
 
     // --- filas -----------------------------------------------------
@@ -246,21 +229,15 @@ export class NebulaMeters {
         } catch (_e) {
             return;   // nvidia-smi no esta -> fila GPU oculta
         }
-        const cancel = new Gio.Cancellable();
-        this._gpuCancel = cancel;
-        sub.communicate_utf8_async(null, cancel, (proc, res) => {
-            // Solo si sigue siendo la consulta vigente: tras stop()+start() hay
-            // otra en curso y no hay que pisar su cancellable.
-            if (this._gpuCancel === cancel)
-                this._gpuCancel = null;
+        this._gpuCancel = new Gio.Cancellable();
+        sub.communicate_utf8_async(null, this._gpuCancel, (proc, res) => {
+            this._gpuCancel = null;
             let out = '';
             try {
                 [, out] = proc.communicate_utf8_finish(res);
             } catch (_e) {
-                return;   // cancelado (stop/destroy) o nvidia-smi fallo
-            }
-            if (!this._widget)
                 return;
+            }
             const parts = out.trim().split(',').map(s => s.trim());
             if (parts.length < 4)
                 return;
@@ -303,7 +280,14 @@ export class NebulaMeters {
     }
 
     destroy() {
-        this.stop();
+        if (this._pollId) {
+            GLib.source_remove(this._pollId);
+            this._pollId = 0;
+        }
+        if (this._gpuCancel) {
+            this._gpuCancel.cancel();
+            this._gpuCancel = null;
+        }
         if (this._sparkRepaintId) {
             this._sparkArea.disconnect(this._sparkRepaintId);
             this._sparkRepaintId = 0;

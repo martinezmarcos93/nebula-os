@@ -26,26 +26,6 @@ function emptyState() {
 
 let _cache = null;
 
-/** Normaliza lo leido del disco: un campo con tipo inesperado (archivo
- * editado a mano, version vieja) se reemplaza por su valor vacio en vez de
- * romper toda la sidebar (ej. `.includes` sobre algo que no es array). */
-export function sanitize(data) {
-    const base = emptyState();
-    if (!data || typeof data !== 'object' || Array.isArray(data))
-        return base;
-    const strings = v => Array.isArray(v) ? v.filter(x => typeof x === 'string') : [];
-    base.favoritos = strings(data.favoritos);
-    base.ocultos = strings(data.ocultos);
-    const co = data.categoria_override;
-    if (co && typeof co === 'object' && !Array.isArray(co)) {
-        for (const [k, v] of Object.entries(co)) {
-            if (typeof v === 'string')
-                base.categoria_override[k] = v;
-        }
-    }
-    return base;
-}
-
 /** Lee shell-state.json (cacheado en memoria). Nunca lanza: si falta o esta
  * corrupto, arranca de un estado vacio. */
 export function loadState() {
@@ -55,8 +35,10 @@ export function loadState() {
     const file = Gio.File.new_for_path(STATE_PATH);
     try {
         const [ok, bytes] = file.load_contents(null);
-        if (ok)
-            _cache = sanitize(JSON.parse(new TextDecoder('utf-8').decode(bytes)));
+        if (ok) {
+            const data = JSON.parse(new TextDecoder('utf-8').decode(bytes));
+            _cache = {..._cache, ...data};
+        }
     } catch (e) {
         if (!(e instanceof Gio.IOErrorEnum) || e.code !== Gio.IOErrorEnum.NOT_FOUND)
             console.error(`Nebula Shell: shell-state.json invalido, se ignora: ${e}`);
