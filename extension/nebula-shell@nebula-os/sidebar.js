@@ -64,8 +64,10 @@ export class NebulaSidebar {
         this._catButtons = [];
 
         this._collapsed = false;
+        this._inFullscreen = false;
         this._autoCollapseId = 0;
         this._hotEdge = null;
+        this._togglingVisibility = false;   // BUG-25: true durante el hide()+show() diferido
 
         this._launcher = FEATURES.launcher
             ? new NebulaLauncher(
@@ -95,6 +97,8 @@ export class NebulaSidebar {
         });
         this._connect(Shell.AppSystem.get_default(), 'installed-changed', () =>
             this._scheduleRepopulate());
+        this._connect(global.display, 'in-fullscreen-changed', () =>
+            this._addIdle(() => this._syncFullscreen()));
 
         // Arranca visible unos segundos y luego se retrae sola (salvo que el
         // puntero ya este encima). A partir de ahi: revelar al acercar el mouse
@@ -130,10 +134,15 @@ export class NebulaSidebar {
             this._sidebar.add_child(this._buildQuickSearch());
         this._sidebar.add_child(this._buildPowerRow());
 
+        // SIN trackFullscreen (R-301, FS-20): con esa opcion LayoutManager
+        // forzaba `visible = true` al cerrar el Overview o salir de pantalla
+        // completa aunque la sidebar estuviera COLAPSADA -> quedaba "visible"
+        // fuera de pantalla reteniendo el unredirect (medido en GNOME 46 real:
+        // 2 holds sin nada a la vista). La pantalla completa se maneja a mano
+        // en _syncFullscreen(), respetando _collapsed.
         Main.layoutManager.addChrome(this._sidebar, {
             affectsStruts: true,
             affectsInputRegion: true,
-            trackFullscreen: true,
         });
         // BUG-18/BUG-22 (docs/BUGS.md): sin esto, la sidebar tambien queda
         // tapada por el unredirect de mutter con el escritorio sin ventanas -
@@ -223,7 +232,13 @@ export class NebulaSidebar {
                 style_class: 'nebula-cat-label',
             }));
             btn.set_child(row);
-            this._connect(btn, 'clicked', () => this._onCategory(i));
+            // Conexion atada al ciclo de vida del boton (igual que las filas
+            // del lanzador, BUG-19): _populate() se re-ejecuta en cada
+            // 'installed-changed' y destroy_all_children() destruye estos
+            // botones. Registrarla en _signalIds acumulaba ids de objetos ya
+            // destruidos (crece con cada instalacion/desinstalacion de apps) y
+            // destroy() intentaba desconectarlos -> warnings de GObject.
+            btn.connect('clicked', () => this._onCategory(i));
             this._catList.add_child(btn);
             this._catButtons.push(btn);
         });
@@ -401,9 +416,35 @@ export class NebulaSidebar {
 
     // --- retraer / revelar --------------------------------------
 
+    // Pantalla completa en el monitor de la sidebar: se ocultan sidebar y
+    // franja de borde (un juego fullscreen no debe poder revelarla rozando el
+    // borde) y se cierra el lanzador. Al salir se restaura SEGUN el estado
+    // logico: solo se muestra la sidebar si no estaba colapsada. Llamado
+    // diferido (idle) desde in-fullscreen-changed: nunca tocar actores ni
+    // mutter dentro del emisor nativo (BUG-26).
+    _syncFullscreen() {
+        if (!this._sidebar)
+            return;
+        const fs = !!this._monitor()?.inFullscreen;
+        if (fs === this._inFullscreen)
+            return;
+        this._inFullscreen = fs;
+        if (fs) {
+            this._cancelAutoCollapse();
+            this._launcher?.close('fullscreen');
+            this._sidebar.hide();
+            this._hotEdge?.hide();
+        } else {
+            this._hotEdge?.show();
+            if (!this._collapsed)
+                this._sidebar.show();
+        }
+        Main.layoutManager._queueUpdateRegions?.();
+    }
+
     _expand() {
         this._cancelAutoCollapse();
-        if (!this._collapsed)
+        if (!this._collapsed || this._inFullscreen)
             return;
         this._collapsed = false;
         this._sidebar.show();
@@ -424,14 +465,24 @@ export class NebulaSidebar {
                 // la propiedad `visible`), y LayoutManager recalcula la
                 // region de input especificamente en las señales show/hide,
                 // no en cualquier notify. `_queueUpdateRegions()` arriba no
-                // alcanza por si solo. Forzar un toggle hide()+show()
-                // sincronico (sin frame de por medio -> sin parpadeo visual)
-                // dispara esas señales reales. Mismo workaround que usa el
-                // propio GNOME Shell para este problema tras animaciones de
-                // slide.
+                // alcanza por si solo. Forzar un toggle hide()+show() dispara
+                // esas señales reales (mismo workaround que usa el propio
+                // GNOME Shell para este problema tras animaciones de slide).
+                //
+                // BUG-25 (docs/CRASH-BUG25.md): el toggle NO puede ser
+                // sincronico aca: onComplete corre dentro del frame callback
+                // de Clutter, y hide()/show() ahi adentro provoco un segfault
+                // nativo real en mutter. Diferido a GLib.idle_add corre
+                // despues de que el frame termino.
                 if (!this._collapsed) {
-                    this._sidebar.hide();
-                    this._sidebar.show();
+                    this._addIdle(() => {
+                        if (this._collapsed || !this._sidebar)
+                            return;
+                        this._togglingVisibility = true;
+                        this._sidebar.hide();
+                        this._sidebar.show();
+                        this._togglingVisibility = false;
+                    });
                 }
             },
         });
@@ -449,9 +500,20 @@ export class NebulaSidebar {
             duration: REVEAL_MS,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
             onComplete: () => {
+                // BUG-25 (docs/CRASH-BUG25.md): mismo motivo que en _expand()
+                // -- hide() y _queueUpdateRegions() no pueden correr dentro
+                // del frame callback de la animacion. Van juntos al mismo
+                // idle para que la region se recalcule ya con el hide()
+                // aplicado, no antes.
                 if (this._collapsed) {
-                    this._sidebar.hide();   // suelta los struts: las ventanas recuperan el ancho
-                    Main.layoutManager._queueUpdateRegions?.();
+                    this._addIdle(() => {
+                        if (!this._collapsed || !this._sidebar)
+                            return;
+                        this._togglingVisibility = true;
+                        this._sidebar.hide();   // suelta los struts: las ventanas recuperan el ancho
+                        this._togglingVisibility = false;
+                        Main.layoutManager._queueUpdateRegions?.();
+                    });
                 }
             },
         });
@@ -531,6 +593,19 @@ export class NebulaSidebar {
 
     _addTimeout(ms, cb) {
         const id = GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
+            this._timeoutIds.delete(id);
+            cb();
+            return GLib.SOURCE_REMOVE;
+        });
+        this._timeoutIds.add(id);
+        return id;
+    }
+
+    // Igual que _addTimeout pero para GLib.idle_add (BUG-25): se cancela con
+    // el mismo mecanismo en destroy(), _timeoutIds solo guarda ids de fuentes
+    // GLib cancelables, no importa si son timeout o idle.
+    _addIdle(cb) {
+        const id = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             this._timeoutIds.delete(id);
             cb();
             return GLib.SOURCE_REMOVE;

@@ -7,11 +7,17 @@
 //   - escribir en el campo                  -> filtra sobre TODAS las apps
 //   - Enter                                 -> lanza la primera de la lista
 //   - clic en una fila                      -> lanza esa
-//   - Esc / clic afuera / Super+B           -> cierra
+//   - Esc (con foco en el panel) / Super+B  -> cierra
+//
+// "clic afuera cierra" NO esta activo hoy: _installStageCapture() implementa
+// esto pero open()/toggle() no lo invocan (deshabilitado a mitad de la
+// investigacion de BUG-24, docs/BUGS.md; reactivar requiere confirmar en una
+// sesion GNOME real que no reintroduce ese bug). Ver docs/BUGS.md.
 //
 // No reserva espacio (sin struts): las ventanas no se reacomodan.
 
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -41,6 +47,8 @@ export class NebulaLauncher {
         this._stageCaptureId = 0;
         this._isOpen = false;   // estado explicito: NO depender de this._panel.visible
         this._lastMonitorLabel = 'n/a';
+        this._toggleIdleId = 0;             // BUG-25: hide()+show() diferido de _present()
+        this._togglingVisibility = false;   // true durante ese hide()+show()
 
         this._build();
     }
@@ -73,14 +81,20 @@ export class NebulaLauncher {
         this._scroll.add_child(this._results);
         this._panel.add_child(this._scroll);
 
+        // SIN trackFullscreen (R-301, FS-20): LayoutManager._updateVisibility()
+        // hace `actor.visible = true` en cada apertura/cierre del Overview y en
+        // cada cambio de pantalla completa, AUNQUE el lanzador este cerrado.
+        // Medido en GNOME Shell 46 real: tras cerrar el Overview (que GNOME
+        // muestra al iniciar cada sesion) el lanzador cerrado quedaba visible,
+        // capturando clics, y reteniendo el unredirect. La pantalla completa la
+        // maneja la sidebar (ver _syncFullscreen), que cierra el lanzador.
         Main.layoutManager.addChrome(this._panel, {
             affectsStruts: false,
             affectsInputRegion: true,
-            trackFullscreen: true,
         });
         // El hold/release del unredirect de mutter queda atado a la visibilidad
-        // real del panel (ver unredirect.js): cubre open()/close() Y cualquier
-        // show()/hide() que dispare GNOME por su cuenta (p. ej. trackFullscreen).
+        // real del panel (ver unredirect.js): cubre open()/close() y cualquier
+        // show()/hide() que dispare GNOME por su cuenta.
         this._unredirectSignalId = this._unredirect.track(this._panel);
 
         const ct = this._entry.clutter_text;
@@ -196,7 +210,6 @@ export class NebulaLauncher {
             Main.layoutManager.addChrome(this._panel, {
                 affectsStruts: false,
                 affectsInputRegion: true,
-                trackFullscreen: true,
             });
         }
         this._panel.show();
@@ -212,10 +225,24 @@ export class NebulaLauncher {
         Main.layoutManager._queueUpdateRegions?.();
         // Toggle de visibilidad: la señal real que espera LayoutManager para
         // recalcular la region (no alcanza con _queueUpdateRegions sola en
-        // ciclos repetidos de abrir/cerrar). hide()+show() es sincronico
-        // (sin frame de por medio), no se nota como parpadeo.
-        this._panel.hide();
-        this._panel.show();
+        // ciclos repetidos de abrir/cerrar).
+        //
+        // BUG-25 (docs/CRASH-BUG25.md): este hide()+show() causo un segfault
+        // nativo real en mutter cuando corria sincronicamente desde un
+        // contexto de evento/frame nativo (confirmado con gdb sobre el
+        // coredump). Diferido a GLib.idle_add corre ya fuera de ese contexto.
+        if (this._toggleIdleId)
+            GLib.source_remove(this._toggleIdleId);
+        this._toggleIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._toggleIdleId = 0;
+            if (!this._isOpen || !this._panel)
+                return GLib.SOURCE_REMOVE;
+            this._togglingVisibility = true;
+            this._panel.hide();
+            this._panel.show();
+            this._togglingVisibility = false;
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     // Cierra al hacer clic fuera del panel (y fuera de la sidebar) o con Esc,
@@ -364,6 +391,10 @@ export class NebulaLauncher {
 
     destroy() {
         this._isOpen = false;
+        if (this._toggleIdleId) {
+            GLib.source_remove(this._toggleIdleId);
+            this._toggleIdleId = 0;
+        }
         this._removeStageCapture();
         for (const [target, id] of this._signalIds)
             target.disconnect(id);
