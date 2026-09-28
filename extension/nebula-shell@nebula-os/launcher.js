@@ -9,12 +9,10 @@
 //   - clic en una fila                      -> lanza esa
 //   - Esc (con foco en el panel) / Super+B  -> cierra
 //
-//   - clic afuera (ventana, escritorio, chrome del Shell) / Overview -> cierra
-//
-// "Clic afuera" estuvo apagado desde BUG-24 (click-through). La causa real de
-// los clics que no llegaban resulto ser el lanzador "fantasma" de FS-20
-// (cerrado pero visible tras el Overview), confirmada con clics reales en
-// GNOME Shell 46 X11 y corregida en R-301. Reactivado en R-303.
+// "clic afuera cierra" NO esta activo hoy: _installStageCapture() implementa
+// esto pero open()/toggle() no lo invocan (deshabilitado a mitad de la
+// investigacion de BUG-24, docs/BUGS.md; reactivar requiere confirmar en una
+// sesion GNOME real que no reintroduce ese bug). Ver docs/BUGS.md.
 //
 // No reserva espacio (sin struts): las ventanas no se reacomodan.
 
@@ -24,7 +22,6 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {dlog} from './config.js';
 import {flatApps, filterApps, launch} from './model.js';
 
 const PANEL_WIDTH = 380;
@@ -48,12 +45,10 @@ export class NebulaLauncher {
         this._firstApp = null;
         this._filterIndex = -1;
         this._stageCaptureId = 0;
-        this._focusWindowId = 0;
-        this._focusCheckId = 0;
-        this._overviewId = 0;
         this._isOpen = false;   // estado explicito: NO depender de this._panel.visible
         this._lastMonitorLabel = 'n/a';
-        this._toggleIdleId = 0;             // BUG-26: hide()+show() diferido de _present()
+        this._toggleIdleId = 0;             // BUG-25: hide()+show() diferido de _present()
+        this._togglingVisibility = false;   // true durante ese hide()+show()
 
         this._build();
     }
@@ -160,8 +155,8 @@ export class NebulaLauncher {
         this._relayout();
         this._rebuild();
         this._present();
-        this._installOutsideClose();
-        dlog(`SWITCH category=${categoryIndex} ` +
+        // this._installStageCapture();   // PRUEBA DE AISLAMIENTO: captura global desactivada
+        console.log(`[Nebula] SWITCH category=${categoryIndex} ` +
             `isOpen=${this._isOpen} visible=${this._panel?.visible} mapped=${this._panel?.mapped} ` +
             `pos=${JSON.stringify(this._panel?.get_position())} size=${JSON.stringify(this._panel?.get_size())} ` +
             `mon=${this._lastMonitorLabel}`);
@@ -175,9 +170,9 @@ export class NebulaLauncher {
         this._present();
         this._rebuild();
         this._entry.grab_key_focus();
-        this._installOutsideClose();
-        dlog(
-            `OPEN category=${categoryIndex} ` +
+        // this._installStageCapture();   // PRUEBA DE AISLAMIENTO: captura global del stage desactivada
+        console.log(
+            `[Nebula] OPEN category=${categoryIndex} ` +
             `isOpen=${this._isOpen} ` +
             `visible=${this._panel?.visible} mapped=${this._panel?.mapped} ` +
             `parent=${!!this._panel?.get_parent()} ` +
@@ -188,8 +183,8 @@ export class NebulaLauncher {
     }
 
     close(reason = 'unknown') {
-        dlog(
-            `CLOSE reason=${reason} ` +
+        console.log(
+            `[Nebula] CLOSE reason=${reason} ` +
             `isOpen=${this._isOpen} ` +
             `filter=${this._filterIndex} ` +
             `visible=${this._panel?.visible}`
@@ -232,7 +227,7 @@ export class NebulaLauncher {
         // recalcular la region (no alcanza con _queueUpdateRegions sola en
         // ciclos repetidos de abrir/cerrar).
         //
-        // BUG-26 (docs/BUGS.md): este hide()+show() causo un segfault
+        // BUG-25 (docs/CRASH-BUG25.md): este hide()+show() causo un segfault
         // nativo real en mutter cuando corria sincronicamente desde un
         // contexto de evento/frame nativo (confirmado con gdb sobre el
         // coredump). Diferido a GLib.idle_add corre ya fuera de ese contexto.
@@ -242,31 +237,20 @@ export class NebulaLauncher {
             this._toggleIdleId = 0;
             if (!this._isOpen || !this._panel)
                 return GLib.SOURCE_REMOVE;
+            this._togglingVisibility = true;
             this._panel.hide();
             this._panel.show();
-            // Ocultar el actor que tiene el foco de teclado (el campo de
-            // busqueda) se lo devuelve a la ventana de atras: en X11 lo que se
-            // tipeaba iba a esa ventana y no al buscador. Se recupera aca.
-            this._entry.grab_key_focus();
+            this._togglingVisibility = false;
             return GLib.SOURCE_REMOVE;
         });
     }
 
-    /** ¿El foco de teclado del stage esta dentro del lanzador? */
-    _hasKeyFocus() {
-        return this._isDescendant(this._panel, global.stage.get_key_focus());
-    }
-
-    // Cierra con un clic fuera del panel y de la sidebar, con Esc o al abrir
-    // el Overview, sin depender del foco de teclado. Tres fuentes, porque en
-    // X11 el stage de Clutter solo ve los clics sobre el chrome del Shell:
-    //   - captured-event del stage: clics sobre el chrome (barra, escritorio
-    //     del Shell) y Esc.
-    //   - notify::focus-window: el usuario hizo clic en una ventana normal
-    //     (en X11 ese clic va directo al cliente y el stage no lo ve).
-    //   - Overview 'showing'.
-    // El clic de afuera NO se consume (EVENT_PROPAGATE): llega a su destino.
-    _installOutsideClose() {
+    // Cierra al hacer clic fuera del panel (y fuera de la sidebar) o con Esc,
+    // sin depender del foco de teclado.
+    // PRUEBA DE AISLAMIENTO EN CURSO: open()/toggle() NO llaman a este metodo,
+    // asi que la captura global del stage no se instala. Codigo intacto para
+    // reactivarlo descomentando las dos lineas `_installStageCapture()`.
+    _installStageCapture() {
         if (this._stageCaptureId)
             return;
         this._stageCaptureId = global.stage.connect('captured-event', (_a, ev) => {
@@ -290,38 +274,12 @@ export class NebulaLauncher {
             this.close('outside-click');
             return Clutter.EVENT_PROPAGATE;   // no nos comemos el clic de afuera
         });
-        // Diferido: al abrir, el foco pasa un instante por la ventana de atras
-        // (ver _present) antes de volver al buscador. Solo se cierra si, ya
-        // asentado, el teclado quedo en una ventana y no en el lanzador.
-        this._focusWindowId = global.display.connect('notify::focus-window', () => {
-            if (this._focusCheckId)
-                GLib.source_remove(this._focusCheckId);
-            this._focusCheckId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 120, () => {
-                this._focusCheckId = 0;
-                if (this._isOpen && global.display.focus_window && !this._hasKeyFocus())
-                    this.close('focus-window');
-                return GLib.SOURCE_REMOVE;
-            });
-        });
-        this._overviewId = Main.overview.connect('showing', () => this.close('overview'));
     }
 
     _removeStageCapture() {
         if (this._stageCaptureId) {
             global.stage.disconnect(this._stageCaptureId);
             this._stageCaptureId = 0;
-        }
-        if (this._focusWindowId) {
-            global.display.disconnect(this._focusWindowId);
-            this._focusWindowId = 0;
-        }
-        if (this._focusCheckId) {
-            GLib.source_remove(this._focusCheckId);
-            this._focusCheckId = 0;
-        }
-        if (this._overviewId) {
-            Main.overview.disconnect(this._overviewId);
-            this._overviewId = 0;
         }
     }
 

@@ -7,35 +7,5 @@
       <summary>Mostrar u ocultar el drawer del sidebar de Nebula</summary>
       <description>Atajo global. Formato de gsettings (lista de strings).</description>
     </key>
-    <key name="enable-launcher" type="b">
-      <default>true</default>
-      <summary>Lanzador con busqueda</summary>
-      <description>Panel "Buscar aplicaciones..." al lado de la sidebar. Se aplica en vivo.</description>
-    </key>
-    <key name="enable-meters" type="b">
-      <default>true</default>
-      <summary>Bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red)</summary>
-      <description>Meters en vivo en la sidebar. Se pausan con la sidebar colapsada. Se aplica en vivo.</description>
-    </key>
-    <key name="enable-bottombar" type="b">
-      <default>false</default>
-      <summary>Barra inferior (escritorios, MPRIS, accesos, reloj)</summary>
-      <description>Apagada por defecto hasta validarla en una sesion real. Se aplica en vivo.</description>
-    </key>
-    <key name="move-ubuntu-dock" type="b">
-      <default>true</default>
-      <summary>Mover el Ubuntu Dock si esta a la izquierda</summary>
-      <description>El dock de Ubuntu viene anclado al borde izquierdo, el mismo de la sidebar. Se pasa abajo al activar Nebula y se restaura al desactivarla (no al bloquear la pantalla).</description>
-    </key>
-    <key name="ubuntu-dock-prev-position" type="s">
-      <default>''</default>
-      <summary>Uso interno: posicion del dock antes de moverlo</summary>
-      <description>Vacio si Nebula no movio el dock.</description>
-    </key>
-    <key name="debug" type="b">
-      <default>false</default>
-      <summary>Logs de diagnostico</summary>
-      <description>Registra en el journal cada clic y transicion del lanzador/sidebar.</description>
-    </key>
   </schema>
 </schemalist>

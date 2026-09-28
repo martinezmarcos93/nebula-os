@@ -35,13 +35,13 @@ export class UnredirectGuard {
         this._queue(-1);
     }
 
-    // BUG-26 (docs/BUGS.md): hold()/release() ya NO
+    // BUG-25 (docs/BUGS.md, docs/CRASH-BUG25.md): hold()/release() ya NO
     // llaman a Meta.disable/enable_unredirect_for_display de forma sincronica.
     // Un hide()+show() sincronico disparado desde el onComplete de una
     // animacion de Clutter emite notify::visible sincronicamente tambien, y
     // llamar ahi mismo a la API de mutter reentra sobre el compositor a mitad
     // de un frame o de un evento X11 -> segfault nativo confirmado con gdb
-    // sobre el coredump real (ver docs/BUGS.md, BUG-26). Encolar el delta neto
+    // sobre el coredump real (ver docs/CRASH-BUG25.md). Encolar el delta neto
     // y aplicarlo en el proximo ciclo del main loop saca esa llamada del
     // callback nativo por completo; de paso, un hide()+show() que no cambia
     // el estado final (toggle interno) nunca llega a tocar a mutter.

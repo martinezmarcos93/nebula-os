@@ -33,10 +33,6 @@ export class NebulaBottomBar {
         this._mprisName = null;
         this._mprisProxy = null;
         this._nameWatchId = 0;
-        // Cancela las llamadas D-Bus asincronas en vuelo al destruir (R-308):
-        // sin esto, un ListNames/DBusProxy.new que terminaba despues de
-        // disable() tocaba actores ya destruidos.
-        this._cancellable = new Gio.Cancellable();
 
         this._build();
         this._place();
@@ -137,9 +133,7 @@ export class NebulaBottomBar {
                 label: `${i + 1}`,
                 can_focus: true,
             });
-            // Atada al ciclo de vida del boton: _syncWorkspaces() los destruye
-            // y recrea en cada cambio de n-workspaces (ver sidebar.js/BUG-19).
-            b.connect('clicked', () => {
+            this._connect(b, 'clicked', () => {
                 wm.get_workspace_by_index(i)?.activate(global.get_current_time());
             });
             this._wsBox.add_child(b);
@@ -194,15 +188,13 @@ export class NebulaBottomBar {
         Gio.DBus.session.call(
             'org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
             'ListNames', null, new GLib.VariantType('(as)'),
-            Gio.DBusCallFlags.NONE, -1, this._cancellable, (bus, res) => {
+            Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
                 let names = [];
                 try {
                     [names] = bus.call_finish(res).deepUnpack();
                 } catch (_e) {
-                    return;   // cancelado (destroy) o bus caido
-                }
-                if (!this._bar)
                     return;
+                }
                 const hit = names.find(n => n.startsWith('org.mpris.MediaPlayer2.'));
                 if (hit)
                     this._attachMpris(hit);
@@ -215,17 +207,13 @@ export class NebulaBottomBar {
         this._mprisName = name;
         Gio.DBusProxy.new(
             Gio.DBus.session, Gio.DBusProxyFlags.NONE, null,
-            name, MPRIS_PATH, MPRIS_PLAYER_IFACE, this._cancellable, (_s, res) => {
-                let proxy;
+            name, MPRIS_PATH, MPRIS_PLAYER_IFACE, null, (_s, res) => {
                 try {
-                    proxy = Gio.DBusProxy.new_finish(res);
+                    this._mprisProxy = Gio.DBusProxy.new_finish(res);
                 } catch (_e) {
-                    this._mprisName = null;   // cancelado (destroy) o reproductor ya no esta
+                    this._mprisName = null;
                     return;
                 }
-                if (!this._bar)
-                    return;
-                this._mprisProxy = proxy;
                 this._mprisPropsId = this._mprisProxy.connect(
                     'g-properties-changed', () => this._updateMpris());
                 this._updateMpris();
@@ -275,8 +263,6 @@ export class NebulaBottomBar {
     }
 
     destroy() {
-        this._cancellable?.cancel();
-        this._cancellable = null;
         if (this._clockId) {
             GLib.source_remove(this._clockId);
             this._clockId = 0;

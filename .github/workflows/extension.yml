@@ -1,13 +1,16 @@
 name: extension
 
 # Nebula Shell (extension GNOME 46) probada en un GNOME Shell REAL headless:
-# comportamiento (FS-20 Overview/fullscreen, FS-16 senales, R-310 estado
-# corrupto, disable/enable limpio) y cero errores JS en el log del shell.
+# comportamiento y persistencia del estado, disable/enable limpio y cero
+# errores JS en el log del shell.
 on:
   push:
     paths:
       - extension/**
       - tools/test-extension.sh
+      - tools/test-sidebar-core.sh
+      - tools/test-state-persistence.sh
+      - tools/test-state-persistence.mjs
       - dotfiles/nebula/**
       - bin/nebula-categories
       - .github/workflows/extension.yml
@@ -15,6 +18,9 @@ on:
     paths:
       - extension/**
       - tools/test-extension.sh
+      - tools/test-sidebar-core.sh
+      - tools/test-state-persistence.sh
+      - tools/test-state-persistence.mjs
       - dotfiles/nebula/**
       - bin/nebula-categories
       - .github/workflows/extension.yml
@@ -35,8 +41,6 @@ jobs:
             libglib2.0-dev-bin gir1.2-gtk-4.0 gnome-shell-extension-ubuntu-dock \
             xvfb xdotool xterm
 
-      # GNOME Shell necesita org.freedesktop.login1 en el bus de sistema. El
-      # runner trae systemd; si no estuviera, se usa el logind simulado.
       - name: Bus de sistema con logind
         run: |
           if ! busctl --system status org.freedesktop.login1 >/dev/null 2>&1; then
@@ -46,5 +50,8 @@ jobs:
             sleep 2
           fi
 
-      - name: tools/test-extension.sh
-        run: bash tools/test-extension.sh
+      - name: tools/test-state-persistence.sh
+        run: bash tools/test-state-persistence.sh
+
+      - name: tools/test-sidebar-core.sh (Producto 1)
+        run: bash tools/test-sidebar-core.sh

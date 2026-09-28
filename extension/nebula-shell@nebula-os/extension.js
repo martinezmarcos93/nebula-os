@@ -14,42 +14,23 @@
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {FEATURE_KEYS, readFeatures, setDebug} from './config.js';
-import {moveDockAway, restoreDock} from './dock.js';
+import {FEATURES} from './config.js';
 import {NebulaSidebar} from './sidebar.js';
 import {NebulaBottomBar} from './bottombar.js';
 import {UnredirectGuard} from './unredirect.js';
 
 export default class NebulaShellExtension extends Extension {
     enable() {
-        this._settings = this.getSettings();
-        setDebug(this._settings.get_boolean('debug'));
-        this._settingsIds = [
-            this._settings.connect('changed::debug', () =>
-                setDebug(this._settings.get_boolean('debug'))),
-            // Cambiar un componente reconstruye todo: mas simple y seguro que
-            // injertar/quitar piezas en caliente dentro de la sidebar.
-            ...FEATURE_KEYS.map(k => this._settings.connect(`changed::${k}`, () => {
-                this._destroyComponents();
-                this._buildComponents();
-            })),
-        ];
-        moveDockAway(this._settings);
-        this._buildComponents();
-    }
-
-    _buildComponents() {
-        const features = readFeatures(this._settings);
         // Guarda compartida (BUG-18/BUG-22, docs/BUGS.md): inhibe el unredirect
         // de mutter mientras la sidebar y/o el lanzador esten visibles, para
         // que no queden tapados con el escritorio sin ventanas o en grabacion.
         this._unredirect = new UnredirectGuard();
-        this._sidebar = new NebulaSidebar(this, this._unredirect, features);
-        if (features.bottombar)
+        this._sidebar = new NebulaSidebar(this, this._unredirect);
+        if (FEATURES.bottombar)
             this._bottomBar = new NebulaBottomBar();
     }
 
-    _destroyComponents() {
+    disable() {
         this._sidebar?.destroy();
         this._sidebar = null;
         this._bottomBar?.destroy();
@@ -58,15 +39,5 @@ export default class NebulaShellExtension extends Extension {
         // dejar el unredirect de mutter inhibido para el resto de la sesion.
         this._unredirect?.releaseAll();
         this._unredirect = null;
-    }
-
-    disable() {
-        for (const id of this._settingsIds ?? [])
-            this._settings.disconnect(id);
-        this._settingsIds = null;
-        this._destroyComponents();
-        restoreDock(this._settings);
-        this._settings = null;
-        setDebug(false);
     }
 }

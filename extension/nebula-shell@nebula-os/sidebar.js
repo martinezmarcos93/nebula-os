@@ -29,7 +29,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {dlog} from './config.js';
+import {FEATURES} from './config.js';
 import {buildModel, invalidateIconCache} from './model.js';
 import {NebulaLauncher} from './launcher.js';
 import {NebulaMeters} from './meters.js';
@@ -50,7 +50,7 @@ const POWER_ACTIONS = {
 };
 
 export class NebulaSidebar {
-    constructor(extension, unredirect, features) {
+    constructor(extension, unredirect) {
         this._ext = extension;
         this._settings = extension.getSettings();
         this._unredirect = unredirect;
@@ -67,8 +67,9 @@ export class NebulaSidebar {
         this._inFullscreen = false;
         this._autoCollapseId = 0;
         this._hotEdge = null;
+        this._togglingVisibility = false;   // BUG-25: true durante el hide()+show() diferido
 
-        this._launcher = features.launcher
+        this._launcher = FEATURES.launcher
             ? new NebulaLauncher(
                 extension,
                 SIDEBAR_WIDTH,
@@ -81,15 +82,12 @@ export class NebulaSidebar {
                 unredirect,
             )
             : null;
-        this._meters = features.meters ? new NebulaMeters() : null;
+        this._meters = FEATURES.meters ? new NebulaMeters() : null;
 
         this._buildActors();
         this._place();
         this._populate();
         this._startClock();
-        // Los meters solo sondean con la sidebar a la vista (R-305): colapsada
-        // no se ven y nvidia-smi cada 2 s puede impedir que la GPU baje de
-        // estado de energia. Arranca visible; _setMetersActive() los sigue.
         this._meters?.start();
         this._addKeybinding();
 
@@ -375,7 +373,7 @@ export class NebulaSidebar {
     // --- categorias / lanzador -----------------------------------
 
     _onCategory(index) {
-        dlog(`CATEGORY CLICK index=${index} active=${this._activeIndex} ` +
+        console.log(`[Nebula] CATEGORY CLICK index=${index} active=${this._activeIndex} ` +
             `launcherOpen=${this._launcher?.visible} collapsed=${this._collapsed}`);
         if (!this._launcher) {
             // Sin lanzador (incremento 1): el clic solo marca la categoria.
@@ -431,7 +429,6 @@ export class NebulaSidebar {
         if (fs === this._inFullscreen)
             return;
         this._inFullscreen = fs;
-        this._setMetersActive(!fs && !this._collapsed);
         if (fs) {
             this._cancelAutoCollapse();
             this._launcher?.close('fullscreen');
@@ -450,7 +447,6 @@ export class NebulaSidebar {
         if (!this._collapsed || this._inFullscreen)
             return;
         this._collapsed = false;
-        this._setMetersActive(true);
         this._sidebar.show();
         // BUG-24 (docs/BUGS.md): show() no siempre alcanza para que el motor
         // de layout recalcule la region de input a tiempo -- un clic que
@@ -473,7 +469,7 @@ export class NebulaSidebar {
                 // esas señales reales (mismo workaround que usa el propio
                 // GNOME Shell para este problema tras animaciones de slide).
                 //
-                // BUG-26 (docs/BUGS.md): el toggle NO puede ser
+                // BUG-25 (docs/CRASH-BUG25.md): el toggle NO puede ser
                 // sincronico aca: onComplete corre dentro del frame callback
                 // de Clutter, y hide()/show() ahi adentro provoco un segfault
                 // nativo real en mutter. Diferido a GLib.idle_add corre
@@ -482,8 +478,10 @@ export class NebulaSidebar {
                     this._addIdle(() => {
                         if (this._collapsed || !this._sidebar)
                             return;
+                        this._togglingVisibility = true;
                         this._sidebar.hide();
                         this._sidebar.show();
+                        this._togglingVisibility = false;
                     });
                 }
             },
@@ -495,7 +493,6 @@ export class NebulaSidebar {
         if (this._collapsed)
             return;
         this._collapsed = true;
-        this._setMetersActive(false);
         this._launcher?.close('sidebar-collapse');
         this._sidebar.ease({
             translation_x: -SIDEBAR_WIDTH,
@@ -503,7 +500,7 @@ export class NebulaSidebar {
             duration: REVEAL_MS,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
             onComplete: () => {
-                // BUG-26 (docs/BUGS.md): mismo motivo que en _expand()
+                // BUG-25 (docs/CRASH-BUG25.md): mismo motivo que en _expand()
                 // -- hide() y _queueUpdateRegions() no pueden correr dentro
                 // del frame callback de la animacion. Van juntos al mismo
                 // idle para que la region se recalcule ya con el hide()
@@ -512,21 +509,14 @@ export class NebulaSidebar {
                     this._addIdle(() => {
                         if (!this._collapsed || !this._sidebar)
                             return;
+                        this._togglingVisibility = true;
                         this._sidebar.hide();   // suelta los struts: las ventanas recuperan el ancho
+                        this._togglingVisibility = false;
                         Main.layoutManager._queueUpdateRegions?.();
                     });
                 }
             },
         });
-    }
-
-    _setMetersActive(active) {
-        if (!this._meters)
-            return;
-        if (active)
-            this._meters.start();
-        else
-            this._meters.stop();
     }
 
     _onSidebarHover() {
@@ -611,7 +601,7 @@ export class NebulaSidebar {
         return id;
     }
 
-    // Igual que _addTimeout pero para GLib.idle_add (BUG-26): se cancela con
+    // Igual que _addTimeout pero para GLib.idle_add (BUG-25): se cancela con
     // el mismo mecanismo en destroy(), _timeoutIds solo guarda ids de fuentes
     // GLib cancelables, no importa si son timeout o idle.
     _addIdle(cb) {
