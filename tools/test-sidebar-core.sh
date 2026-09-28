@@ -59,6 +59,12 @@ check 'sin holds de unredirect despues de cerrar' "G._count === 0"
 e "$X Main.overview.show(); 1" >/dev/null; sleep 1; e "Main.overview.hide(); 1" >/dev/null; sleep 1
 check 'Overview no resucita launcher cerrado' "!L._isOpen && !L._panel.visible"
 check 'Overview no resucita sidebar colapsada' "S._collapsed && !S._sidebar.visible"
+e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep .3
+check 'disable no deja extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
+check 'disable libera la sidebar' "!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebar"
+e "Main.extensionManager.enableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 1
+check 're-enable recupera la extension' "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"
+check 're-enable recrea sidebar' "!!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebar"
 EOF
 
 cat > "$T/phase-wayland.sh" <<'EOF'
