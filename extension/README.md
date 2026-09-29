@@ -29,8 +29,9 @@ Hace:
   puntero se aleja (`AUTO_COLLAPSE_MS`); se revela acercando el puntero a una
   franja de 6 px pegada al borde (`HOT_EDGE_W`) — mismo patrón de *hot edge*
   que `nebula-edge-sidebar` en el núcleo bspwm, no una ventana siempre fija.
-  Reserva su ancho (`struts`) mientras está expandida → las ventanas
-  maximizadas no quedan debajo en ese momento. Contenido:
+  Se superpone al escritorio **sin reservar espacio** (sin `struts`, BUG-33):
+  desplegarla no cambia el área de trabajo, así que ni los iconos del
+  escritorio ni las ventanas maximizadas se reacomodan. Contenido:
   - cabecera: marca (`brand-mark.png`) + "NEBULA OS" + "cosmic minimalism";
   - reloj en vivo (fecha en español + hora grande);
   - lista de las 13 categorías (icono de línea simbólico + nombre); clic → abre
@@ -71,7 +72,7 @@ que se decida un *shell theme*.
 |---|---|
 | `nebula-shell@nebula-os/metadata.json` | UUID, `shell-version: ["46"]`, schema de settings |
 | `nebula-shell@nebula-os/extension.js` | `enable()` / `disable()` — solo instancia y destruye el sidebar |
-| `nebula-shell@nebula-os/sidebar.js` | Sidebar ancha (cabecera + reloj + categorías + energía) + struts + atajo + ciclo de vida |
+| `nebula-shell@nebula-os/sidebar.js` | Sidebar ancha (cabecera + reloj + categorías + energía) + atajo + ciclo de vida (superpuesta, sin struts) |
 | `nebula-shell@nebula-os/launcher.js` | Panel "Buscar aplicaciones...": búsqueda + lista plana icono/nombre/descripción |
 | `nebula-shell@nebula-os/meters.js` | Bloque SISTEMA: CPU/RAM/SWAP/GPU/Disco/Red en vivo + sparkline (Cairo) |
 | `nebula-shell@nebula-os/bottombar.js` | Barra inferior: escritorios + MPRIS (DBus) + accesos + reloj |

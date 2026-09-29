@@ -64,6 +64,15 @@ check 'extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os')
 check 'sidebar creada' "!!S && !!S._sidebar && S._model.length > 0"
 check 'launcher creado' "!!L && !!L._panel"
 check 'sidebar visible al iniciar' "S._sidebar.visible"
+# BUG-33: desplegar/colapsar no debe tocar el area de trabajo (DING reubica los
+# iconos y las ventanas maximizadas se redimensionan en cada workareas-changed).
+check 'la sidebar no reserva struts (BUG-33)' "!Main.layoutManager._trackedActors.some(t => t.affectsStruts && (t.actor === S._sidebar || t.actor === S._hotEdge || t.actor === L._panel))"
+WA="(() => { const r = global.workspace_manager.get_active_workspace().get_work_area_for_monitor(Main.layoutManager.primaryIndex); return [r.x, r.y, r.width, r.height].join(','); })()"
+# El Ubuntu Dock tambien reserva struts y se acomoda asincronicamente al
+# iniciar: esperar a que el area de trabajo se estabilice antes de medir.
+WA0="$(e "$WA")"
+for _ in $(seq 1 10); do sleep 1; w="$(e "$WA")"; [[ "$w" == "$WA0" ]] && break; WA0="$w"; done
+e "globalThis.__wac = 0; globalThis.__wacId = global.display.connect('workareas-changed', () => globalThis.__wac++); 1" >/dev/null
 e "$X S._collapse(); 1" >/dev/null; sleep .5
 check 'collapse oculta sidebar' "S._collapsed && !S._sidebar.visible"
 e "$X S._expand(); 1" >/dev/null
@@ -82,6 +91,10 @@ e "$X L.close('search-test'); 1" >/dev/null; sleep .5
 for i in 1 2 3 4 5; do e "$X S._expand(); L.open(0); L.close('cycle'); S._collapse(); 1" >/dev/null; sleep .2; done
 check '5 ciclos sidebar/launcher sin perder estado' "!L._isOpen && S._collapsed && !S._sidebar.visible"
 check 'sin holds de unredirect despues de cerrar' "G._count === 0"
+check 'desplegar/colapsar no emite workareas-changed (BUG-33)' "globalThis.__wac === 0"
+[[ "$(e "$WA")" == "$WA0" ]] && ok 'area de trabajo intacta tras los ciclos (BUG-33)' \
+  || bad "area de trabajo cambio tras los ciclos (BUG-33): $WA0 -> $(e "$WA")"
+e "global.display.disconnect(globalThis.__wacId); 1" >/dev/null
 e "$X Main.overview.show(); 1" >/dev/null; sleep 1; e "Main.overview.hide(); 1" >/dev/null; sleep 1
 check 'Overview no resucita launcher cerrado' "!L._isOpen && !L._panel.visible"
 check 'Overview no resucita sidebar colapsada' "S._collapsed && !S._sidebar.visible"

@@ -14,7 +14,9 @@
 //   |  [power][lock][reboot]|  al pie
 //   +----------------------+
 //
-// Reserva su ancho via struts -> las ventanas maximizadas no quedan debajo.
+// Se superpone al escritorio SIN struts (BUG-33): reservar el ancho en cada
+// desplegar/colapsar cambiaba el area de trabajo y DING reacomodaba los iconos
+// (y las ventanas maximizadas saltaban). Como el lanzador, flota por encima.
 // GNOME Shell 46 / GJS 1.80.
 //
 // Incrementos siguientes: barra inferior (5), wallpaper/tema (6), instalador (7).
@@ -34,7 +36,7 @@ import {buildModel, invalidateIconCache} from './model.js';
 import {NebulaLauncher} from './launcher.js';
 import {NebulaMeters} from './meters.js';
 
-const SIDEBAR_WIDTH = 236;    // px reservados al escritorio (struts)
+const SIDEBAR_WIDTH = 236;    // px de ancho (superpuesta: no reserva area de trabajo)
 const CAT_ICON = 16;
 const CLOCK_TICK_S = 15;
 const REPOPULATE_DEBOUNCE_MS = 1500;
@@ -141,7 +143,7 @@ export class NebulaSidebar {
         // 2 holds sin nada a la vista). La pantalla completa se maneja a mano
         // en _syncFullscreen(), respetando _collapsed.
         Main.layoutManager.addChrome(this._sidebar, {
-            affectsStruts: true,
+            affectsStruts: false,   // BUG-33: no tocar el area de trabajo
             affectsInputRegion: true,
         });
         // BUG-18/BUG-22 (docs/BUGS.md): sin esto, la sidebar tambien queda
@@ -510,7 +512,7 @@ export class NebulaSidebar {
                         if (!this._collapsed || !this._sidebar)
                             return;
                         this._togglingVisibility = true;
-                        this._sidebar.hide();   // suelta los struts: las ventanas recuperan el ancho
+                        this._sidebar.hide();
                         this._togglingVisibility = false;
                         Main.layoutManager._queueUpdateRegions?.();
                     });

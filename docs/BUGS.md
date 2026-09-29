@@ -1011,10 +1011,20 @@ y desactivar la extension en vivo fue limpio.
   2. **Struts permanentes** (reservar los 236 px aunque este colapsada): sin
      saltos, pero se pierden 236 px de pantalla todo el tiempo y el
      auto-colapso deja de tener sentido.
-- **Test necesario (regla de estabilizacion de Producto 1):** expandir y
-  colapsar la sidebar no debe emitir `workareas-changed` ni cambiar
-  `get_work_area_for_monitor()`.
-- **Estado:** 🟡 Diagnosticado; pendiente la decision entre 1 y 2.
+- **Decision (2026-09-28):** opcion 1. GNOME conserva su geometria normal;
+  Nebula aparece por encima cuando se la necesita y se retrae, sin que el
+  escritorio tenga que reacomodarse nunca.
+- **Correccion:** `affectsStruts: false` en el `addChrome()` de la sidebar
+  (el lanzador y la franja de borde ya eran asi).
+- **Test:** `tools/test-sidebar-core.sh` verifica que ningun actor de Nebula
+  reserve struts y que los ciclos desplegar/colapsar + lanzador no emitan
+  `workareas-changed` ni cambien `get_work_area_for_monitor()` (espera antes a
+  que el Ubuntu Dock, que tambien reserva struts, se estabilice). Con el
+  codigo anterior falla.
+- **Pendiente de validacion real:** CI cubre la regresion automatizable; la
+  interaccion con DING y con ventanas maximizadas reales se confirma en la
+  maquina de referencia.
+- **Estado:** ✅ Resuelto y cubierto por CI; falta confirmarlo en uso real.
 
 ### BUG-34 — Hacer clic en una app abierta (p. ej. Chrome) abre otra instancia en vez de traerla al frente
 - **Componente:** `model.js` (`launch()`, camino `Shell.App`).
