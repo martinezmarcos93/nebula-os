@@ -975,6 +975,71 @@ X11 el stage no ve los clics sobre ventanas normales, por eso ademas del
 `captured-event` se escucha `notify::focus-window` (diferido, para no cerrarlo
 por el paso transitorio del foco al abrir).
 
+## 3c. Uso real en la maquina de referencia (2026-09-28)
+
+Primera sesion de uso diario del Producto 1 (`main` `e4b1a31`) en la sesion
+GNOME Shell 46.0 **X11** de la maquina de referencia (Ubuntu 24.04, NVIDIA),
+con el journal completo registrado a disco. Sin crashes ni errores JS; activar
+y desactivar la extension en vivo fue limpio.
+
+### BUG-33 — Los iconos del escritorio se corren cada vez que la sidebar se despliega o se colapsa
+- **Componente:** `sidebar.js` (`addChrome(this._sidebar, {affectsStruts: true})`
+  y `this._sidebar.hide()` en `_collapse()`), en convivencia con la extension
+  de iconos de escritorio de Ubuntu (`ding@rastersoft.com`).
+- **Sintoma:** usando la sidebar, los iconos del escritorio se desplazan
+  horizontalmente y vuelven a su lugar. Reportado por el usuario.
+- **Causa raiz:** la sidebar reserva sus 236 px (`SIDEBAR_WIDTH`) con struts
+  mientras esta expandida, y al colapsarse hace `hide()`, que los suelta. Cada
+  desplegar/colapsar cambia el area de trabajo del monitor -> mutter emite
+  `workareas-changed`. DING esta conectado a esa senal
+  (`/usr/share/gnome-shell/extensions/ding@rastersoft.com/extension.js:194`,
+  `updateDesktopGeometry()`) y recalcula la geometria del escritorio y
+  reubica los iconos en cada cambio.
+- **Efecto colateral esperado (mismo mecanismo):** una ventana maximizada se
+  achica y se agranda cada vez que la sidebar aparece y desaparece.
+- **Variables:** sidebar con auto-colapso (`AUTO_COLLAPSE_MS`, hot edge) +
+  `affectsStruts: true` + cualquier cliente que reaccione a
+  `workareas-changed` (DING, ventanas maximizadas). La barra inferior tambien
+  usa struts pero fijos: no dispara la senal repetidamente.
+- **Opciones evaluadas:**
+  1. **Superpuesta, sin struts** (`affectsStruts: false`, como el lanzador):
+     el area de trabajo no cambia nunca -> ni iconos ni ventanas se mueven.
+     Costo: mientras esta desplegada tapa ~236 px del borde izquierdo de una
+     ventana maximizada (se retrae sola 350 ms despues de sacar el puntero).
+     **Recomendada:** en una sidebar que se esconde sola, reservar espacio en
+     cada aparicion es lo que produce el salto.
+  2. **Struts permanentes** (reservar los 236 px aunque este colapsada): sin
+     saltos, pero se pierden 236 px de pantalla todo el tiempo y el
+     auto-colapso deja de tener sentido.
+- **Test necesario (regla de estabilizacion de Producto 1):** expandir y
+  colapsar la sidebar no debe emitir `workareas-changed` ni cambiar
+  `get_work_area_for_monitor()`.
+- **Estado:** 🟡 Diagnosticado; pendiente la decision entre 1 y 2.
+
+### BUG-34 — Hacer clic en una app abierta (p. ej. Chrome) abre otra instancia en vez de traerla al frente
+- **Componente:** `model.js` (`launch()`, camino `Shell.App`).
+- **Sintoma:** con Chrome abierto, clic en "Google Chrome" en el lanzador
+  abre una ventana nueva ("Se esta abriendo en una sesion de navegador
+  existente" en el journal) en vez de mostrar la que ya estaba.
+- **Causa raiz:** `launch()` resolvia bien la app (`google-chrome.desktop`)
+  pero llamaba a `app.open_new_window(-1)`, que por definicion abre SIEMPRE
+  una ventana nueva. El dock de Ubuntu usa `activate()`: si la app tiene
+  ventanas, trae la mas reciente al frente; si no, la lanza.
+- **Detalle encontrado al testear:** sin evento de entrada en curso (llamada
+  diferida o por D-Bus) `global.get_current_time()` es 0 y mutter aplica la
+  prevencion de robo de foco: la ventana queda minimizada y "pidiendo
+  atencion". En uso real `launch()` corre dentro del handler del clic/Enter
+  y tiene timestamp valido, pero se agrego el respaldo
+  `global.display.get_current_time_roundtrip()` para no depender de eso.
+- **Correccion:** `app.activate_full(-1, time)` en lugar de
+  `open_new_window(-1)`. Los comandos con argumentos (`alacritty -e nvim`)
+  siguen lanzandose como antes: no tienen una app del Shell asociada.
+- **Test:** `tools/test-sidebar-core.sh` (gate de CI de Producto 1) lanza dos
+  veces una app de instancia unica que abre ventana nueva por activacion
+  (como Chrome), minimizandola en el medio: debe quedar 1 ventana, con foco,
+  y 1 sola activacion. Con el codigo anterior falla (2 ventanas).
+- **Estado:** ✅ Resuelto y cubierto por CI.
+
 ---
 
 ## 4. Sin verificar
