@@ -29,6 +29,28 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 export default class Harness extends Extension { enable(){ global.context.unsafe_mode=true; } disable(){} }
 EOF
 
+# BUG-34: app de instancia unica que abre una ventana NUEVA cada vez que la
+# relanzan (como Chrome). Deja una linea por activacion.
+mkdir -p "$T/bin" "$XDG_DATA_HOME/applications"
+cat > "$T/testwin.js" <<EOF
+imports.gi.versions.Gtk = '4.0';
+const {Gtk, GLib} = imports.gi;
+const app = new Gtk.Application({application_id: 'org.nebula.TestWin'});
+app.connect('activate', () => {
+  const f = '$T/activations.txt';
+  const prev = GLib.file_test(f, GLib.FileTest.EXISTS) ? new TextDecoder().decode(GLib.file_get_contents(f)[1]) : '';
+  GLib.file_set_contents(f, prev + 'x\n');
+  new Gtk.ApplicationWindow({application: app, title: 'nebula-testwin'}).present();
+});
+app.hold();
+GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 20, () => { app.release(); app.quit(); return GLib.SOURCE_REMOVE; });
+app.run([]);
+EOF
+printf '#!/bin/sh\nexec gjs %s\n' "$T/testwin.js" > "$T/bin/nebtestwin"
+chmod +x "$T/bin/nebtestwin"
+printf '[Desktop Entry]\nType=Application\nName=Nebula Test Win\nExec=%s\n' "$T/bin/nebtestwin" \
+  > "$XDG_DATA_HOME/applications/org.nebula.TestWin.desktop"
+
 cat > "$T/common.sh" <<'EOF'
 ok(){ printf '  OK   %s\n' "$*"; }
 bad(){ printf '  FAIL %s\n' "$*"; }
@@ -42,6 +64,15 @@ check 'extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os')
 check 'sidebar creada' "!!S && !!S._sidebar && S._model.length > 0"
 check 'launcher creado' "!!L && !!L._panel"
 check 'sidebar visible al iniciar' "S._sidebar.visible"
+# BUG-33: desplegar/colapsar no debe tocar el area de trabajo (DING reubica los
+# iconos y las ventanas maximizadas se redimensionan en cada workareas-changed).
+check 'la sidebar no reserva struts (BUG-33)' "!Main.layoutManager._trackedActors.some(t => t.affectsStruts && (t.actor === S._sidebar || t.actor === S._hotEdge || t.actor === L._panel))"
+WA="(() => { const r = global.workspace_manager.get_active_workspace().get_work_area_for_monitor(Main.layoutManager.primaryIndex); return [r.x, r.y, r.width, r.height].join(','); })()"
+# El Ubuntu Dock tambien reserva struts y se acomoda asincronicamente al
+# iniciar: esperar a que el area de trabajo se estabilice antes de medir.
+WA0="$(e "$WA")"
+for _ in $(seq 1 10); do sleep 1; w="$(e "$WA")"; [[ "$w" == "$WA0" ]] && break; WA0="$w"; done
+e "globalThis.__wac = 0; globalThis.__wacId = global.display.connect('workareas-changed', () => globalThis.__wac++); 1" >/dev/null
 e "$X S._collapse(); 1" >/dev/null; sleep .5
 check 'collapse oculta sidebar' "S._collapsed && !S._sidebar.visible"
 e "$X S._expand(); 1" >/dev/null
@@ -60,9 +91,24 @@ e "$X L.close('search-test'); 1" >/dev/null; sleep .5
 for i in 1 2 3 4 5; do e "$X S._expand(); L.open(0); L.close('cycle'); S._collapse(); 1" >/dev/null; sleep .2; done
 check '5 ciclos sidebar/launcher sin perder estado' "!L._isOpen && S._collapsed && !S._sidebar.visible"
 check 'sin holds de unredirect despues de cerrar' "G._count === 0"
+check 'desplegar/colapsar no emite workareas-changed (BUG-33)' "globalThis.__wac === 0"
+[[ "$(e "$WA")" == "$WA0" ]] && ok 'area de trabajo intacta tras los ciclos (BUG-33)' \
+  || bad "area de trabajo cambio tras los ciclos (BUG-33): $WA0 -> $(e "$WA")"
+e "global.display.disconnect(globalThis.__wacId); 1" >/dev/null
 e "$X Main.overview.show(); 1" >/dev/null; sleep 1; e "Main.overview.hide(); 1" >/dev/null; sleep 1
 check 'Overview no resucita launcher cerrado' "!L._isOpen && !L._panel.visible"
 check 'Overview no resucita sidebar colapsada' "S._collapsed && !S._sidebar.visible"
+# BUG-34: lanzar una app que ya tiene ventana la trae al frente, no abre otra.
+NW="global.get_window_actors().filter(a => a.meta_window.get_title() === 'nebula-testwin').length"
+LW="import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => m.launch('nebtestwin')); 1"
+e "$LW" >/dev/null
+for _ in $(seq 1 20); do [[ "$(e "$NW")" == 1 ]] && break; sleep .5; done
+check 'launch: app estilo Chrome abre su primera ventana' "$NW === 1"
+e "global.get_window_actors().find(a => a.meta_window.get_title() === 'nebula-testwin')?.meta_window.minimize(); 1" >/dev/null; sleep .5
+e "$LW" >/dev/null; sleep 3
+check 'launch: relanzar una app abierta no abre otra ventana (BUG-34)' "$NW === 1"
+check 'launch: relanzar la trae al frente (des-minimizada y con foco)' "global.display.focus_window?.get_title() === 'nebula-testwin' && !global.display.focus_window.minimized"
+[[ "$(grep -c x "$T/activations.txt" 2>/dev/null)" == 1 ]] && ok 'launch: la app se activo una sola vez' || bad "launch: la app se activo $(grep -c x "$T/activations.txt" 2>/dev/null) veces"
 e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep .3
 check 'disable no deja extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
 check 'disable libera la sidebar' "!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebar"

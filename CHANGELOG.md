@@ -29,6 +29,17 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido (2026-09-28, extension GNOME — uso real del Producto 1)
+- BUG-34: abrir desde el lanzador una app que ya estaba abierta (p. ej.
+  Chrome) abria otra ventana; ahora la trae al frente, como el dock
+  (`app.activate_full()` en vez de `open_new_window()`). Cubierto en
+  `tools/test-sidebar-core.sh`.
+- BUG-33: la sidebar reservaba y soltaba sus struts en cada
+  desplegar/colapsar; el area de trabajo cambiaba y DING reacomodaba los
+  iconos del escritorio (y las ventanas maximizadas saltaban). Ahora se
+  superpone sin reservar espacio, como el lanzador. Cubierto en
+  `tools/test-sidebar-core.sh`.
+
 ### Anadido (2026-09-26, Fase UX — sesion bspwm + eww)
 - Barra lateral que se desliza (`bin/nebula-sidebar`), categorias como
   submenus en acordeon y buscador de apps (`nebula-categories search`: sin
