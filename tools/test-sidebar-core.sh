@@ -101,6 +101,7 @@ check 'Overview no resucita sidebar colapsada' "S._collapsed && !S._sidebar.visi
 # BUG-34: lanzar una app que ya tiene ventana la trae al frente, no abre otra.
 NW="global.get_window_actors().filter(a => a.meta_window.get_title() === 'nebula-testwin').length"
 LW="import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => m.launch('nebtestwin')); 1"
+: > "$T/activations.txt"   # este bloque corre en cada fase (Wayland y X11)
 e "$LW" >/dev/null
 for _ in $(seq 1 20); do [[ "$(e "$NW")" == 1 ]] && break; sleep .5; done
 check 'launch: app estilo Chrome abre su primera ventana' "$NW === 1"
