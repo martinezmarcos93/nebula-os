@@ -29,6 +29,28 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 export default class Harness extends Extension { enable(){ global.context.unsafe_mode=true; } disable(){} }
 EOF
 
+# BUG-34: app de instancia unica que abre una ventana NUEVA cada vez que la
+# relanzan (como Chrome). Deja una linea por activacion.
+mkdir -p "$T/bin" "$XDG_DATA_HOME/applications"
+cat > "$T/testwin.js" <<EOF
+imports.gi.versions.Gtk = '4.0';
+const {Gtk, GLib} = imports.gi;
+const app = new Gtk.Application({application_id: 'org.nebula.TestWin'});
+app.connect('activate', () => {
+  const f = '$T/activations.txt';
+  const prev = GLib.file_test(f, GLib.FileTest.EXISTS) ? new TextDecoder().decode(GLib.file_get_contents(f)[1]) : '';
+  GLib.file_set_contents(f, prev + 'x\n');
+  new Gtk.ApplicationWindow({application: app, title: 'nebula-testwin'}).present();
+});
+app.hold();
+GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 20, () => { app.release(); app.quit(); return GLib.SOURCE_REMOVE; });
+app.run([]);
+EOF
+printf '#!/bin/sh\nexec gjs %s\n' "$T/testwin.js" > "$T/bin/nebtestwin"
+chmod +x "$T/bin/nebtestwin"
+printf '[Desktop Entry]\nType=Application\nName=Nebula Test Win\nExec=%s\n' "$T/bin/nebtestwin" \
+  > "$XDG_DATA_HOME/applications/org.nebula.TestWin.desktop"
+
 cat > "$T/common.sh" <<'EOF'
 ok(){ printf '  OK   %s\n' "$*"; }
 bad(){ printf '  FAIL %s\n' "$*"; }
@@ -63,6 +85,17 @@ check 'sin holds de unredirect despues de cerrar' "G._count === 0"
 e "$X Main.overview.show(); 1" >/dev/null; sleep 1; e "Main.overview.hide(); 1" >/dev/null; sleep 1
 check 'Overview no resucita launcher cerrado' "!L._isOpen && !L._panel.visible"
 check 'Overview no resucita sidebar colapsada' "S._collapsed && !S._sidebar.visible"
+# BUG-34: lanzar una app que ya tiene ventana la trae al frente, no abre otra.
+NW="global.get_window_actors().filter(a => a.meta_window.get_title() === 'nebula-testwin').length"
+LW="import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => m.launch('nebtestwin')); 1"
+e "$LW" >/dev/null
+for _ in $(seq 1 20); do [[ "$(e "$NW")" == 1 ]] && break; sleep .5; done
+check 'launch: app estilo Chrome abre su primera ventana' "$NW === 1"
+e "global.get_window_actors().find(a => a.meta_window.get_title() === 'nebula-testwin')?.meta_window.minimize(); 1" >/dev/null; sleep .5
+e "$LW" >/dev/null; sleep 3
+check 'launch: relanzar una app abierta no abre otra ventana (BUG-34)' "$NW === 1"
+check 'launch: relanzar la trae al frente (des-minimizada y con foco)' "global.display.focus_window?.get_title() === 'nebula-testwin' && !global.display.focus_window.minimized"
+[[ "$(grep -c x "$T/activations.txt" 2>/dev/null)" == 1 ]] && ok 'launch: la app se activo una sola vez' || bad "launch: la app se activo $(grep -c x "$T/activations.txt" 2>/dev/null) veces"
 e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep .3
 check 'disable no deja extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
 check 'disable libera la sidebar' "!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebar"

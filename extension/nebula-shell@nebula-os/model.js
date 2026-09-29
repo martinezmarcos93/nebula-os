@@ -100,6 +100,9 @@ export function isInstalled(exec) {
  * figurar como "en ejecucion" en el dock. Ahora, en orden:
  *   1. Flatpak o comando SIN argumentos con un .desktop que lo ejecuta
  *      -> Shell.App (el Shell la registra como cualquier app del dock).
+ *      Con activate(), igual que un clic en el dock: si ya tiene ventanas
+ *      trae la mas reciente al frente; si no, la lanza (BUG-34: antes era
+ *      open_new_window() y cada clic abria otra ventana de Chrome).
  *   2. Comando CON argumentos ("alacritty -e nvim"): el .desktop perderia los
  *      argumentos -> AppInfo desde la linea de comandos, lanzado con el
  *      contexto del Shell (notificacion de arranque, espacio de trabajo).
@@ -122,7 +125,10 @@ export function launch(exec) {
     const app = desktopId ? appSystem.lookup_app(desktopId) : null;
     if (app) {
         try {
-            app.open_new_window(-1);
+            // Sin evento en curso (p. ej. llamada diferida) get_current_time()
+            // es 0 y mutter no le da el foco: queda "pidiendo atencion".
+            const time = global.get_current_time() || global.display.get_current_time_roundtrip();
+            app.activate_full(-1, time);
             return 'app';
         } catch (e) {
             console.error(`Nebula Shell: Shell.App fallo para "${exec}": ${e}`);
