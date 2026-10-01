@@ -49,6 +49,8 @@ const POWER_ACTIONS = {
     'system-shutdown-symbolic': 'gnome-session-quit --power-off',
     'system-lock-screen-symbolic': 'loginctl lock-session',
     'system-reboot-symbolic': 'gnome-session-quit --reboot',
+    'system-log-out-symbolic': 'gnome-session-quit --logout',
+    'media-playback-pause-symbolic': 'systemctl suspend',
 };
 
 export class NebulaSidebar {
