@@ -20,7 +20,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
-import {isHidden, categoryOverride, isFavorite, favoriteExecutions, recentExecutions, recordRecent, hiddenExecutions} from './state.js';
+import {isHidden, categoryOverride, favoriteExecutions, recentExecutions, recordRecent, hiddenExecutions} from './state.js';
 
 /** Lee y parsea categories.json. Devuelve [] si falta o esta corrupto. */
 export function loadCategories(extensionPath) {
