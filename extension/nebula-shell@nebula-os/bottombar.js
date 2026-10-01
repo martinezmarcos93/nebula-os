@@ -17,6 +17,7 @@ import {
     WindowTracker,
     listWindows,
     activateWindow,
+    toggleTaskWindow,
     windowIcon,
     windowLabel,
 } from './window-manager.js';
@@ -214,7 +215,7 @@ export class NebulaBottomBar {
                 style_class: 'nebula-window-label',
             }));
             button.set_child(box);
-            button.connect('clicked', () => activateWindow(window));
+            button.connect('clicked', () => toggleTaskWindow(window));
             this._windowBox.add_child(button);
             this._windowButtons.push(button);
         }
