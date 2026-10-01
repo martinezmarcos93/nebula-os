@@ -1,0 +1,43 @@
+name: Nebula static validation
+
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+  pull_request:
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate shell scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            bash -n "$file"
+          done < <(find bin install dotfiles -type f -name '*.sh' -print0)
+
+      - name: Validate JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find extension/nebula-shell@nebula-os -type f -name '*.js' -print0)
+
+      - name: Validate JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m json.tool extension/nebula-shell@nebula-os/metadata.json >/dev/null
+          python3 -m json.tool extension/nebula-shell@nebula-os/categories.json >/dev/null
+
+      - name: Validate Nebula categories
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin/nebula-categories check --toml dotfiles/nebula/categories.toml
