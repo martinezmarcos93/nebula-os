@@ -380,6 +380,11 @@ nombre = "Mis discos y nubes"
 icono  = "drive"
 tipo   = "ubicaciones"
 
+[[categoria]]
+nombre = "Accesos rapidos"
+icono  = "folder"
+tipo   = "accesos"
+
 
 [[categoria]]
 nombre = "Sistema"
