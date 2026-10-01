@@ -246,7 +246,6 @@ export class NebulaBottomBar {
         Main.panel.menuManager.addMenu(menu);
         this._windowMenu = menu;
 
-        const active = window.has_focus?.() && !window.minimized;
         const maximized = window.is_maximized?.() ?? false;
         const maxItem = new PopupMenu.PopupMenuItem(maximized ? 'Restaurar' : 'Maximizar');
         maxItem.connect('activate', () => toggleMaximizeWindow(window));
