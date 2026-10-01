@@ -22,6 +22,8 @@ function emptyState() {
         categoria_override: {},   // { exec: "Nombre de categoria" }
         ocultos: [],               // [exec, ...]
         recientes: [],             // [exec, ...] mas reciente primero
+        anclados_taskbar: [],     // [exec, ...]
+        nombres: {},              // {exec: 'nombre visual'}
     };
 }
 
@@ -38,6 +40,10 @@ export function sanitize(data) {
     base.favoritos = strings(data.favoritos);
     base.ocultos = strings(data.ocultos);
     base.recientes = strings(data.recientes);
+    base.anclados_taskbar = strings(data.anclados_taskbar);
+    if (data.nombres && typeof data.nombres === 'object' && !Array.isArray(data.nombres)) {
+        for (const [k,v] of Object.entries(data.nombres)) if (typeof v === 'string' && v.trim()) base.nombres[k]=v.trim();
+    }
     const co = data.categoria_override;
     if (co && typeof co === 'object' && !Array.isArray(co)) {
         for (const [k, v] of Object.entries(co)) {
@@ -161,3 +167,9 @@ export function hiddenExecutions() {
 export function favoriteExecutions() {
     return [...loadState().favoritos];
 }
+
+export function isTaskbarPinned(exec){return loadState().anclados_taskbar.includes(exec);}
+export function toggleTaskbarPinned(exec){const s=loadState();const i=s.anclados_taskbar.indexOf(exec);if(i>=0)s.anclados_taskbar.splice(i,1);else s.anclados_taskbar.push(exec);saveState(s);return i<0;}
+export function displayName(exec){return loadState().nombres[exec]??null;}
+export function setDisplayName(exec,name){const s=loadState();if(name&&name.trim())s.nombres[exec]=name.trim();else delete s.nombres[exec];saveState(s);}
+export function taskbarPinnedExecutions(){return [...loadState().anclados_taskbar];}
