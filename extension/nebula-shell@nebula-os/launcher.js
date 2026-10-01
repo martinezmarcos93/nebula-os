@@ -29,6 +29,7 @@ import {flatApps, filterApps, launch} from './model.js';
 import {runWithConfirmation} from './system-actions.js';
 import {isFavorite, toggleFavorite, setHidden} from './state.js';
 import {buildModel} from './model.js';
+import {searchFiles} from './file-search.js';
 
 const PANEL_WIDTH = 380;
 const MAX_HEIGHT = 560;
@@ -85,6 +86,9 @@ export class NebulaLauncher {
         this._lastMonitorLabel = 'n/a';
         this._toggleIdleId = 0;             // BUG-25: hide()+show() diferido de _present()
         this._togglingVisibility = false;   // true durante ese hide()+show()
+        this._fileSearchProcess = null;
+        this._fileSearchSerial = 0;
+        this._fileResults = [];
 
         this._build();
     }
@@ -137,7 +141,10 @@ export class NebulaLauncher {
         this._connect(ct, 'text-changed', () => this._rebuild());
         this._connect(ct, 'activate', () => {
             if (this._firstApp) {
-                launch(this._firstApp.exec);
+                if (this._firstApp.archivo)
+                    this._openUri(this._firstApp.uri);
+                else
+                    launch(this._firstApp.exec);
                 this.close('app-launch-enter');
             }
         });
@@ -360,7 +367,54 @@ export class NebulaLauncher {
         return this._flat;
     }
 
-    _rebuild() {
+    _cancelFileSearch() {
+        this._fileSearchSerial++;
+        if (this._fileSearchProcess) {
+            try { this._fileSearchProcess.force_exit(); } catch (_e) {}
+            this._fileSearchProcess = null;
+        }
+    }
+
+    _fileEntries(uris) {
+        return uris.map(uri => {
+            let nombre = uri;
+            let icono = new Gio.ThemedIcon({name: 'text-x-generic-symbolic'});
+            try {
+                const file = Gio.File.new_for_uri(uri);
+                nombre = file.get_basename() || uri;
+                const info = file.query_info('standard::type,standard::content-type', Gio.FileQueryInfoFlags.NONE, null);
+                if (info.get_file_type() === Gio.FileType.DIRECTORY)
+                    icono = new Gio.ThemedIcon({name: 'folder-symbolic'});
+                else
+                    icono = new Gio.ThemedIcon({name: 'text-x-generic-symbolic'});
+            } catch (_e) {}
+            return {
+                nombre,
+                exec: '',
+                uri,
+                icono,
+                desc: uri,
+                archivo: true,
+                categoria: 'Archivos',
+            };
+        });
+    }
+
+    _openUri(uri) {
+        if (!uri)
+            return;
+        try {
+            Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
+        } catch (e) {
+            console.error(`Nebula Shell: no se pudo abrir ${uri}: ${e}`);
+        }
+    }
+
+    _rebuild(fromFileCallback = false) {
+        if (!fromFileCallback) {
+            this._cancelFileSearch();
+            this._fileResults = [];
+        }
         this._results.destroy_all_children();
         this._rows = [];
         this._firstApp = null;
@@ -368,66 +422,72 @@ export class NebulaLauncher {
         const query = this._entry.get_text();
         const appResults = filterApps(this._baseList(), query);
         const actionResults = this._filterIndex < 0 ? safeActions(query) : [];
-        const list = [...actionResults, ...appResults];
+        const list = [...actionResults, ...this._fileResults, ...appResults];
         if (list.length === 0) {
             this._results.add_child(new St.Label({
-                text: 'Sin resultados',
+                text: query.trim().length >= 2 ? 'Sin resultados' : 'Sin resultados',
                 style_class: 'nebula-result-empty',
             }));
-            return;
-        }
-        this._firstApp = list[0];
-
-        for (const app of list) {
-            const btn = new St.Button({
-                style_class: 'nebula-result',
-                can_focus: true,
-                x_expand: true,
-            });
-            const box = new St.BoxLayout({style_class: 'nebula-result-box'});
-            // width fijo por CSS (.nebula-result-icon): icon_size es solo una
-            // sugerencia de tamaño, no reserva columna -- un icono resuelto
-            // mas chico (o el fallback simbolico, con mucho padding interno)
-            // angosta la columna y descoloca el texto de esa fila respecto a
-            // las demas ("tabulacion irregular").
-            box.add_child(new St.Icon({
-                gicon: app.icono,
-                icon_size: 28,
-                style_class: 'nebula-result-icon',
-            }));
-            const txt = new St.BoxLayout({
-                vertical: true,
-                y_align: Clutter.ActorAlign.CENTER,
-                x_expand: true,
-            });
-            txt.add_child(new St.Label({text: app.nombre, style_class: 'nebula-result-name'}));
-            if (app.desc) {
-                txt.add_child(new St.Label({
-                    text: app.desc,
-                    style_class: 'nebula-result-desc',
+        } else {
+            this._firstApp = list[0];
+            for (const app of list) {
+                const btn = new St.Button({
+                    style_class: 'nebula-result',
+                    can_focus: true,
+                    x_expand: true,
+                });
+                const box = new St.BoxLayout({style_class: 'nebula-result-box'});
+                box.add_child(new St.Icon({
+                    gicon: app.icono,
+                    icon_size: 28,
+                    style_class: 'nebula-result-icon',
                 }));
+                const txt = new St.BoxLayout({
+                    vertical: true,
+                    y_align: Clutter.ActorAlign.CENTER,
+                    x_expand: true,
+                });
+                txt.add_child(new St.Label({text: app.nombre, style_class: 'nebula-result-name'}));
+                if (app.desc) {
+                    txt.add_child(new St.Label({
+                        text: app.desc,
+                        style_class: 'nebula-result-desc',
+                    }));
+                }
+                box.add_child(txt);
+                btn.set_child(box);
+                btn.connect('clicked', () => {
+                    if (app.archivo)
+                        this._openUri(app.uri);
+                    else if (app.accion)
+                        runWithConfirmation(app.nombre, app.exec);
+                    else
+                        launch(app.exec);
+                    this.close(app.archivo ? 'file-open' : 'app-launch');
+                });
+                btn.connect('button-press-event', (_actor, event) => {
+                    if (app.accion || app.archivo || event.get_button() !== 3)
+                        return Clutter.EVENT_PROPAGATE;
+                    this._openAppMenu(btn, app);
+                    return Clutter.EVENT_STOP;
+                });
+                this._results.add_child(btn);
+                this._rows.push(btn);
             }
-            box.add_child(txt);
-            btn.set_child(box);
-            // La conexion pertenece al ciclo de vida del boton: cuando
-            // _rebuild() hace destroy_all_children() (o el panel se destruye),
-            // GObject la desconecta sola. NO va a this._signalIds, que queda
-            // reservado para conexiones que viven tanto como el NebulaLauncher.
-            btn.connect('clicked', () => {
-                if (app.accion)
-                    runWithConfirmation(app.nombre, app.exec);
-                else
-                    launch(app.exec);
-                this.close('app-launch');
+        }
+
+        // Solo el modo global consulta archivos. Las categorias siguen siendo
+        // rapidas y deterministas, sin disparar consultas al indice por cada
+        // submenu abierto.
+        if (!fromFileCallback && this._filterIndex < 0 && query.trim().length >= 2) {
+            const serial = this._fileSearchSerial;
+            this._fileSearchProcess = searchFiles(query, uris => {
+                this._fileSearchProcess = null;
+                if (serial !== this._fileSearchSerial || !this._isOpen)
+                    return;
+                this._fileResults = this._fileEntries(uris);
+                this._rebuild(true);
             });
-            btn.connect('button-press-event', (_actor, event) => {
-                if (app.accion || event.get_button() !== 3)
-                    return Clutter.EVENT_PROPAGATE;
-                this._openAppMenu(btn, app);
-                return Clutter.EVENT_STOP;
-            });
-            this._results.add_child(btn);
-            this._rows.push(btn);
         }
     }
 
@@ -472,6 +532,8 @@ export class NebulaLauncher {
 
     destroy() {
         this._isOpen = false;
+        this._cancelFileSearch();
+        this._fileResults = [];
         if (this._toggleIdleId) {
             GLib.source_remove(this._toggleIdleId);
             this._toggleIdleId = 0;
