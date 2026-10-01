@@ -20,7 +20,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
-import {isHidden, categoryOverride, isFavorite, favoriteExecutions, recentExecutions, recordRecent} from './state.js';
+import {isHidden, categoryOverride, isFavorite, favoriteExecutions, recentExecutions, recordRecent, hiddenExecutions} from './state.js';
 
 /** Lee y parsea categories.json. Devuelve [] si falta o esta corrupto. */
 export function loadCategories(extensionPath) {
@@ -493,4 +493,29 @@ export function filterApps(apps, query) {
         a.nombre.toLowerCase().includes(q) ||
         (a.desc ?? '').toLowerCase().includes(q) ||
         (a.categoria ?? '').toLowerCase().includes(q));
+}
+
+
+/** Devuelve las aplicaciones ocultas para permitir su restauracion desde la UI. */
+export function hiddenApps(extensionPath) {
+    const wanted = new Set(hiddenExecutions());
+    if (wanted.size === 0)
+        return [];
+    const out = [];
+    const seen = new Set();
+    for (const cat of loadCategories(extensionPath)) {
+        for (const app of (Array.isArray(cat.app) ? cat.app : [])) {
+            if (!app?.exec || !wanted.has(app.exec) || seen.has(app.exec) || !isInstalled(app.exec))
+                continue;
+            out.push({
+                nombre: app.nombre ?? firstToken(app.exec),
+                exec: app.exec,
+                icono: iconForApp(app),
+                desc: app.desc ?? descForApp(app),
+                categoria: cat.nombre ?? '?',
+            });
+            seen.add(app.exec);
+        }
+    }
+    return out;
 }
