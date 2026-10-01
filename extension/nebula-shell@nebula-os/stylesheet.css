@@ -207,6 +207,30 @@
     margin-top: 2px;
 }
 
+/* ---- Bateria ----------------------------------------------------- */
+
+.nebula-battery {
+    padding: 6px 8px;
+    border-radius: 8px;
+}
+
+.nebula-battery:hover {
+    background-color: rgba(124, 58, 237, 0.18);
+}
+
+.nebula-battery-row {
+    spacing: 8px;
+}
+
+.nebula-battery-icon {
+    color: #9ca3af;
+}
+
+.nebula-battery-label {
+    font-size: 8.5pt;
+    color: #9ca3af;
+}
+
 /* ---- Fila de energia --------------------------------------------- */
 
 .nebula-power {
