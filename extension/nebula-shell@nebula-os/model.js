@@ -20,7 +20,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
-import {isHidden, categoryOverride, favoriteExecutions, recentExecutions, recordRecent, hiddenExecutions, displayName, taskbarPinnedExecutions} from './state.js';
+import {isHidden, categoryOverride, favoriteExecutions, recentExecutions, recordRecent, hiddenExecutions, displayName, taskbarPinnedExecutions, appOrder} from './state.js';
 
 /** Lee y parsea categories.json. Devuelve [] si falta o esta corrupto. */
 export function loadCategories(extensionPath) {
@@ -460,6 +460,15 @@ export function buildModel(extensionPath) {
         const apps = buckets.get(catName) ?? [];
         if (apps.length === 0)
             continue;
+        const order = appOrder(catName);
+        if (order.length) {
+            const positions = new Map(order.map((exec, i) => [exec, i]));
+            apps.sort((a, b) => {
+                const pa = positions.has(a.exec) ? positions.get(a.exec) : Number.MAX_SAFE_INTEGER;
+                const pb = positions.has(b.exec) ? positions.get(b.exec) : Number.MAX_SAFE_INTEGER;
+                return pa - pb;
+            });
+        }
         out.push({
             nombre: catName,
             icono: iconForCategory(extensionPath, cat),
