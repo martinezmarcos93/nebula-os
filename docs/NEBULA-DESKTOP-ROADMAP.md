@@ -320,6 +320,18 @@ El launcher conserva la búsqueda de aplicaciones y ahora agrega una primera cap
 
 Las acciones destructivas (apagar, reiniciar, cerrar sesión) no se agregan al buscador todavía: requieren una confirmación explícita y quedarán en el siguiente incremento de acciones de energía. Tampoco se implementa ejecución arbitraria de texto.
 
+### Requisito visual pendiente — alineamiento de submenús
+
+Las filas de aplicaciones dentro de un submenu deben compartir exactamente la misma columna de inicio para el texto. Por ejemplo:
+
+```
+Navegadores
+Chrome
+Firefox
+```
+
+No debe existir una tabulación o sangría adicional entre la primera y las siguientes filas. Esto es un requisito de presentación P2 de baja complejidad, pero queda pendiente de validación visual en GNOME real porque la causa puede estar en el layout de actores/iconos y no en un simple `padding` CSS. La solución deberá mantener una columna de iconos de ancho constante y evitar desplazamientos dependientes del contenido de cada fila.
+
 ### Criterio de aceptación
 
 El usuario puede realizar operaciones frecuentes mediante “Super → escribir → Enter” o equivalente, sin navegar manualmente por múltiples menús.
