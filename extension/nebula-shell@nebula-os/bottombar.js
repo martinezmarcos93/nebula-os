@@ -16,7 +16,6 @@ import St from 'gi://St';
 import {
     WindowTracker,
     listWindows,
-    activateWindow,
     toggleTaskWindow,
     windowIcon,
     windowLabel,
