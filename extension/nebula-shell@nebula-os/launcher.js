@@ -17,6 +17,7 @@
 // No reserva espacio (sin struts): las ventanas no se reacomodan.
 
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
@@ -27,6 +28,29 @@ import {flatApps, filterApps, launch} from './model.js';
 const PANEL_WIDTH = 380;
 const MAX_HEIGHT = 560;
 const TOP_INSET = 118;
+
+const SAFE_ACTIONS = [
+    ['Captura de pantalla', 'captura screenshot pantalla', 'nebula-screenshot full', 'camera-photo-symbolic', 'Capturar la pantalla completa'],
+    ['Red y Wi-Fi', 'wifi red internet network', 'gnome-control-center network', 'network-wireless-symbolic', 'Configurar red y Wi-Fi'],
+    ['Sonido', 'audio volumen sonido', 'gnome-control-center sound', 'audio-volume-high-symbolic', 'Configurar volumen y dispositivos de audio'],
+    ['Bluetooth', 'bluetooth dispositivos', 'gnome-control-center bluetooth', 'bluetooth-active-symbolic', 'Configurar dispositivos Bluetooth'],
+    ['Pantalla y brillo', 'pantalla monitor brillo display', 'gnome-control-center display', 'display-brightness-symbolic', 'Configurar monitores y brillo'],
+    ['Archivos', 'archivos carpetas home documentos nautilus', 'gio open ~', 'system-file-manager-symbolic', 'Abrir el gestor de archivos'],
+    ['Configuración', 'configuracion ajustes settings', 'gnome-control-center', 'preferences-system-symbolic', 'Abrir la configuración de GNOME'],
+];
+
+function safeActions(query) {
+    const q = String(query ?? '').trim().toLowerCase();
+    return SAFE_ACTIONS
+        .filter(a => !q || (a[0] + ' ' + a[1] + ' ' + a[4]).toLowerCase().includes(q))
+        .map(a => ({
+            nombre: a[0],
+            exec: a[2],
+            icono: new Gio.ThemedIcon({name: a[3]}),
+            desc: a[4],
+            accion: true,
+        }));
+}
 
 export class NebulaLauncher {
     constructor(extension, leftInset, onClose, getGuardActor, unredirect) {
@@ -329,7 +353,10 @@ export class NebulaLauncher {
         this._rows = [];
         this._firstApp = null;
 
-        const list = filterApps(this._baseList(), this._entry.get_text());
+        const query = this._entry.get_text();
+        const appResults = filterApps(this._baseList(), query);
+        const actionResults = this._filterIndex < 0 ? safeActions(query) : [];
+        const list = [...actionResults, ...appResults];
         if (list.length === 0) {
             this._results.add_child(new St.Label({
                 text: 'Sin resultados',
