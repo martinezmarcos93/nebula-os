@@ -23,7 +23,7 @@ function trackerAvailable() {
 function normalizeOutput(text) {
     const out = [];
     const seen = new Set();
-    for (const raw of String(text ?? '').split('\\n')) {
+    for (const raw of String(text ?? '').split('\n')) {
         const line = raw.trim();
         if (!line || line.startsWith('Results:') || line.startsWith('Querying') || line === '—')
             continue;
@@ -54,7 +54,7 @@ export function searchFiles(query, callback) {
     // One argument per term avoids shell parsing entirely. tracker3 performs
     // its own tokenization and escaping; no arbitrary command text reaches a
     // shell.
-    const terms = q.split(/\\s+/).filter(Boolean).slice(0, 6);
+    const terms = q.split(/\s+/).filter(Boolean).slice(0, 6);
     const argv = [
         TRACKER, 'search',
         '--files', '--folders',
