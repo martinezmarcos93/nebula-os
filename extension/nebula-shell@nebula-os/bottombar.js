@@ -35,8 +35,10 @@ const MPRIS_PATH = '/org/mpris/MediaPlayer2';
 const MPRIS_PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
 
 const QUICK = [
-    ['audio-volume-high-symbolic', 'pavucontrol'],
-    ['network-wireless-symbolic', 'nm-connection-editor'],
+    ['audio-volume-high-symbolic', 'gnome-control-center sound'],
+    ['network-wireless-symbolic', 'gnome-control-center network'],
+    ['bluetooth-active-symbolic', 'gnome-control-center bluetooth'],
+    ['display-brightness-symbolic', 'gnome-control-center display'],
 ];
 
 export class NebulaBottomBar {
