@@ -178,6 +178,7 @@ function execInfoMap() {
         _execInfoCache.set(base, {
             id: info.get_id?.() ?? null,
             icon: info.get_icon?.() ?? null,
+            file: info.get_filename?.() ?? null,
             desc: info.get_description?.() || info.get_generic_name?.() || '',
         });
     }
@@ -518,4 +519,39 @@ export function hiddenApps(extensionPath) {
         }
     }
     return out;
+}
+
+
+/** Crea un acceso directo en el Escritorio copiando el .desktop del sistema.
+ * Solo se permite para aplicaciones con DesktopAppInfo real; no se generan
+ * archivos .desktop desde texto arbitrario del usuario. */
+export function createDesktopShortcut(exec) {
+    try {
+        const fp = flatpakAppInfo(exec);
+        const hit = fp ? {info: fp} : execInfoMap().get(firstToken(exec));
+        const info = hit?.info ?? (hit?.file ? Gio.DesktopAppInfo.new_for_filename(hit.file) : null);
+        const sourcePath = hit?.file ?? info?.get_filename?.();
+        if (!sourcePath)
+            return null;
+
+        const desktopPath = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP);
+        if (!desktopPath)
+            return null;
+        const source = Gio.File.new_for_path(sourcePath);
+        const base = source.get_basename();
+        if (!base?.endsWith('.desktop'))
+            return null;
+        const target = Gio.File.new_for_path(GLib.build_filenamev([desktopPath, base]));
+        source.copy(target, Gio.FileCopyFlags.OVERWRITE, null, null);
+        try {
+            target.set_attribute_uint32('unix::mode', 0o755, Gio.FileQueryInfoFlags.NONE, null);
+        } catch (_e) {}
+        try {
+            target.set_attribute_string('metadata::trusted', 'true', Gio.FileQueryInfoFlags.NONE, null);
+        } catch (_e) {}
+        return target.get_uri();
+    } catch (e) {
+        console.error('Nebula: no se pudo crear acceso directo: ' + e);
+        return null;
+    }
 }
