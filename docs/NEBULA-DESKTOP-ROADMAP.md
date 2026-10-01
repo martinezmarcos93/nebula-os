@@ -486,6 +486,10 @@ Debe poder activarse y desactivarse de forma segura.
 
 ---
 
+### Decisión técnica — grabación de pantalla
+
+La grabación no se implementa mediante APIs privadas de GNOME Shell. La ruta pública es el portal XDG `org.freedesktop.portal.ScreenCast`, cuyo ciclo es crear sesión → seleccionar fuentes → iniciar → obtener streams PipeWire. El portal entrega el stream; todavía falta integrar un consumidor/encoder y definir la UX de inicio/detención. Queda como implementación posterior y validación específica en Wayland. 
+
 ## ETAPA 10 — Widgets y módulos
 
 **Prioridad: P2/P3.**
@@ -625,9 +629,9 @@ Nebula 1.0 requiere como mínimo:
 
 - [ ] Instalación limpia.
 - [ ] Recuperación ante fallo de extensión.
-- [ ] Tests automatizados.
+- [x] Validación estática automatizada (CI GitHub: sintaxis JS/bash, JSON y categories.toml).
 - [ ] Validación en uso real.
-- [ ] CI.
+- [x] CI estático inicial.
 - [ ] Documentación de rollback.
 
 ---
