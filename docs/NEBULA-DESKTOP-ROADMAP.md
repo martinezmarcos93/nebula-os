@@ -285,6 +285,8 @@ Cada entrada abre su URI mediante `gio open`, delegando la navegacion al gestor 
 
 El usuario puede acceder a sus ubicaciones habituales desde Nebula y continuar el trabajo en el gestor de archivos del sistema. Los discos y nubes que estén montados aparecen automáticamente; si un volumen no está montado, Nebula no inventa una entrada falsa.
 
+La búsqueda global también expone la Papelera como acción del sistema, delegando su apertura al URI `trash:///` en lugar de implementar una papelera paralela.
+
 ### Validación pendiente
 
 Con los dos discos del usuario y las cuentas de Google Drive montadas, comprobar que todos aparecen bajo **Mis discos y nubes**, que cada entrada abre la ubicación correcta y que desconectar/reconectar una unidad actualiza el listado al reconstruir la sidebar.
@@ -561,7 +563,7 @@ Nebula 1.0 requiere como mínimo:
 - [ ] Persistencia.
 - [ ] Accesos directos.
 - [ ] Wallpaper.
-- [ ] Papelera.
+- [x] Papelera (acción global delegada a `gio open trash:///`).
 - [ ] Menú contextual.
 
 ### Sistema
