@@ -49,6 +49,7 @@ export class NebulaBottomBar {
         this._signalIds = [];
         this._clockId = 0;
         this._wsButtons = [];
+        this._pinnedButtons = [];
         this._windowButtons = [];
         this._windowTracker = null;
         this._windowMenu = null;
@@ -61,6 +62,7 @@ export class NebulaBottomBar {
         this._build();
         this._place();
         this._syncWorkspaces();
+        this._syncPinnedApps();
         this._syncWindows();
         this._windowTracker = new WindowTracker(() => this._syncWindows());
         this._startClock();
@@ -86,6 +88,9 @@ export class NebulaBottomBar {
         // Taskbar: una representacion por ventana, no por aplicacion.
         // Clic = activar/restaurar. Esto mantiene separadas las responsabilidades
         // del launcher (abrir) y la barra (volver a una ventana existente).
+        this._pinnedBox = new St.BoxLayout({style_class: 'nebula-pinned-apps'});
+        this._bar.add_child(this._pinnedBox);
+
         this._windowScroll = new St.ScrollView({
             style_class: 'nebula-window-scroll',
             x_expand: true,
@@ -309,6 +314,24 @@ export class NebulaBottomBar {
     }
 
     // --- ventanas / taskbar -----------------------------------
+
+    _syncPinnedApps() {
+        if (!this._pinnedBox) return;
+        this._pinnedBox.destroy_all_children();
+        this._pinnedButtons = [];
+        const apps = taskbarPinnedApps(global.extensionManager?.lookup?.('nebula-shell@nebula-os')?.path ?? '');
+        for (const app of apps) {
+            const b = new St.Button({
+                style_class: 'nebula-pinned-btn',
+                can_focus: true,
+                tooltip_text: app.nombre,
+                child: new St.Icon({gicon: app.icono, icon_size: 16}),
+            });
+            this._connect(b, 'clicked', () => launch(app.exec));
+            this._pinnedBox.add_child(b);
+            this._pinnedButtons.push(b);
+        }
+    }
 
     _syncWindows() {
         if (!this._windowBox)
