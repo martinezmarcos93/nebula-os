@@ -36,6 +36,7 @@ import {buildModel, invalidateIconCache} from './model.js';
 import {NebulaLauncher} from './launcher.js';
 import {runWithConfirmation} from './system-actions.js';
 import {NebulaMeters} from './meters.js';
+import {NebulaBattery} from './battery.js';
 
 const SIDEBAR_WIDTH = 236;    // px de ancho (superpuesta: no reserva area de trabajo)
 const CAT_ICON = 16;
@@ -88,6 +89,7 @@ export class NebulaSidebar {
             )
             : null;
         this._meters = FEATURES.meters ? new NebulaMeters() : null;
+        this._battery = new NebulaBattery(St, Clutter);
 
         this._buildActors();
         this._place();
@@ -135,6 +137,7 @@ export class NebulaSidebar {
         this._sidebar.add_child(new St.Widget({y_expand: true}));   // empuja lo de abajo
         if (this._meters)
             this._sidebar.add_child(this._meters.actor);
+        this._sidebar.add_child(this._battery.actor);
         if (this._launcher)
             this._sidebar.add_child(this._buildQuickSearch());
         this._sidebar.add_child(this._buildPowerRow());
@@ -663,6 +666,8 @@ export class NebulaSidebar {
 
         this._meters?.destroy();
         this._meters = null;
+        this._battery?.destroy();
+        this._battery = null;
         this._launcher?.destroy();
         this._launcher = null;
 
