@@ -533,7 +533,7 @@ Nebula 1.0 requiere como mínimo:
 - [x] Submenús.
 - [x] Lanzamiento de aplicaciones.
 - [x] Búsqueda básica.
-- [ ] Búsqueda unificada.
+- [ ] Búsqueda unificada (acciones seguras ya incorporadas al modo global).
 
 ### Ventanas
 
@@ -560,29 +560,29 @@ Nebula 1.0 requiere como mínimo:
 
 ### Sistema
 
-- [ ] Reloj.
+- [x] Reloj.
 - [x] Calendario (acceso directo desde el reloj; utiliza GNOME Calendar/Settings).
-- [ ] Audio.
-- [ ] Red.
-- [ ] Bluetooth.
-- [ ] Brillo.
+- [x] Audio (acceso al panel nativo de GNOME Settings).
+- [x] Red.
+- [x] Bluetooth.
+- [x] Brillo (acceso al panel nativo de pantalla/brillo).
 - [ ] Batería.
 - [ ] Notificaciones.
 - [ ] No molestar.
 - [x] Captura.
 - [ ] Grabación.
-- [ ] Bloqueo.
-- [ ] Cerrar sesión.
-- [ ] Reiniciar.
-- [ ] Apagar.
-- [ ] Suspender.
+- [x] Bloqueo.
+- [x] Cerrar sesión.
+- [x] Reiniciar.
+- [x] Apagar.
+- [x] Suspender.
 
 ### Archivos
 
-- [ ] Home.
-- [ ] Discos.
-- [ ] Unidades externas.
-- [ ] GOA/Drive.
+- [x] Home.
+- [x] Discos.
+- [x] Unidades externas (montajes detectados dinámicamente).
+- [x] GOA/Drive (cuando está montado por GVfs/GNOME Online Accounts).
 - [ ] Papelera.
 - [ ] Accesos rápidos.
 
