@@ -206,7 +206,11 @@ export class NebulaBottomBar {
             const item = new PopupMenu.PopupMenuItem(info.nombre);
             if (id === currentMode())
                 item.setOrnament(PopupMenu.Ornament.CHECK);
-            item.connect('activate', () => setMode(id));
+            item.connect('activate', () => {
+                setMode(id);
+                for (const modeId of Object.keys(MODES)) global.stage.remove_style_class_name('nebula-mode-' + modeId);
+                global.stage.add_style_class_name('nebula-mode-' + id);
+            });
             modes.menu.addMenuItem(item);
         }
         menu.addMenuItem(modes);
@@ -218,6 +222,7 @@ export class NebulaBottomBar {
                 item.setOrnament(PopupMenu.Ornament.CHECK);
             item.connect('activate', () => {
                 setTheme(id);
+                for (const themeId of Object.keys(THEMES)) global.stage.remove_style_class_name('nebula-theme-' + themeId);
                 global.stage.add_style_class_name('nebula-theme-' + id);
             });
             themes.menu.addMenuItem(item);
