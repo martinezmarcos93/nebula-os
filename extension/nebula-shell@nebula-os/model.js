@@ -20,7 +20,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
-import {isHidden, categoryOverride, favoriteExecutions, recentExecutions, recordRecent, hiddenExecutions} from './state.js';
+import {isHidden, categoryOverride, favoriteExecutions, recentExecutions, recordRecent, hiddenExecutions, displayName, taskbarPinnedExecutions} from './state.js';
 
 /** Lee y parsea categories.json. Devuelve [] si falta o esta corrupto. */
 export function loadCategories(extensionPath) {
@@ -471,6 +471,14 @@ export function buildModel(extensionPath) {
 }
 
 /** Lista plana de apps de todo el modelo, deduplicada por `exec`. */
+export function taskbarPinnedApps(extensionPath) {
+    const all=[]; const seen=new Set();
+    for (const cat of buildModel(extensionPath)) for (const app of cat.apps) {
+        if (taskbarPinnedExecutions().includes(app.exec) && !seen.has(app.exec)) { all.push(app); seen.add(app.exec); }
+    }
+    return all;
+}
+
 export function flatApps(model) {
     const seen = new Set();
     const out = [];
