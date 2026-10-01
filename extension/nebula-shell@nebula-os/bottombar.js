@@ -42,7 +42,8 @@ const QUICK = [
 ];
 
 export class NebulaBottomBar {
-    constructor() {
+    constructor(monitorIndex = 0) {
+        this._monitorIndex = monitorIndex;
         this._signalIds = [];
         this._clockId = 0;
         this._wsButtons = [];
@@ -178,7 +179,8 @@ export class NebulaBottomBar {
     }
 
     _place() {
-        const m = Main.layoutManager.primaryMonitor;
+        const m = Main.layoutManager.monitors?.[this._monitorIndex]
+            ?? (this._monitorIndex === 0 ? Main.layoutManager.primaryMonitor : null);
         if (!m)
             return;
         this._bar.set_position(m.x, m.y + m.height - BAR_HEIGHT);
