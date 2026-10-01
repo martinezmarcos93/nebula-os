@@ -186,6 +186,8 @@ La rama debe instalarse en GNOME 46 y comprobar: abrir dos aplicaciones, abrir d
 - Refresco de la superficie.
 - Soporte multi-monitor.
 
+**Estado multi-monitor (2026-10-01):** el soporte de GNOME/Mutter para conectar y configurar varios monitores ya existe debajo de Nebula. La rama actual escucha `monitors-changed` y vuelve a colocar la sidebar cuando cambia la configuración, por lo que conectar un segundo monitor no debería romper GNOME ni la sesión. Sin embargo, la UI propia de Nebula sigue deliberadamente asociada al monitor primario: sidebar, hot-edge, launcher y barra inferior no se instancian todavía como superficies independientes por monitor. Por eso esto queda pendiente como capacidad P0 de Desktop Surface, no como una falsa implementación "multi-monitor". Para completarlo habrá que definir qué superficies aparecen en cada monitor, cómo se ancla el launcher, cómo se comporta fullscreen por monitor y cómo se distribuyen taskbar/workspaces. GNOME ofrece la señal `monitors-changed` precisamente para reconstruir UI ante hot-plug/configuración, pero la reconstrucción por monitor requiere un diseño de ciclo de vida adicional. No se implementa ahora porque no es un cambio trivial de una línea y hacerlo parcialmente podría duplicar estado o generar comportamientos inconsistentes.
+
 Nebula no debe implementar un gestor de archivos propio para estas operaciones. Debe integrarse con el mecanismo de escritorio y Nautilus/DING cuando corresponda.
 
 ### Decisión de integración
