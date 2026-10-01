@@ -198,6 +198,10 @@ La sidebar permanece sin `affectsStruts`: no reserva espacio del escritorio. Est
 
 El usuario puede organizar el escritorio y sus accesos directos, reiniciar sesión y encontrar la misma organización.
 
+### Integración incorporada — accesos directos
+
+Nebula no implementa un gestor de iconos propio. Cuando una aplicación tiene un `.desktop` instalado, el menú contextual de la aplicación puede copiar ese launcher al directorio XDG Desktop del usuario, marcarlo como ejecutable y solicitar el atributo `metadata::trusted`. Esto deja a DING como responsable de mostrar, ordenar, mover y persistir los iconos del escritorio. La creación automática queda pendiente de validación real sobre Ubuntu 24.04/DING, especialmente el refresco de la superficie y las políticas de confianza.
+
 ---
 
 ## ETAPA 3 — System Center
@@ -568,16 +572,16 @@ Nebula 1.0 requiere como mínimo:
 - [x] Cerrar.
 - [x] Alt+Tab (delegado al comportamiento nativo de GNOME).
 - [x] Workspaces.
-- [ ] Multi-monitor.
+- [x] Multi-monitor (superficies por monitor implementadas; validación GNOME 46 pendiente).
 - [x] Múltiples ventanas por aplicación.
 
 ### Escritorio
 
 - [x] Integración con la superficie de iconos existente de GNOME/DING (Nebula no implementa un desktop manager paralelo).
-- [ ] Reordenamiento.
-- [ ] Persistencia.
-- [ ] Accesos directos.
-- [ ] Wallpaper.
+- [ ] Reordenamiento (responsabilidad de DING; integración pendiente de validación).
+- [ ] Persistencia (responsabilidad de DING; integración pendiente de validación).
+- [x] Accesos directos de aplicaciones (creación de `.desktop` compatible con DING).
+- [x] Wallpaper (acceso a configuración nativa de GNOME).
 - [x] Papelera (acción global delegada a `gio open trash:///`).
 - [ ] Menú contextual.
 
