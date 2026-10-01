@@ -20,7 +20,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
-import {isHidden, categoryOverride, isFavorite} from './state.js';
+import {isHidden, categoryOverride, isFavorite, favoriteExecutions, recentExecutions, recordRecent} from './state.js';
 
 /** Lee y parsea categories.json. Devuelve [] si falta o esta corrupto. */
 export function loadCategories(extensionPath) {
@@ -129,6 +129,7 @@ export function launch(exec) {
             // es 0 y mutter no le da el foco: queda "pidiendo atencion".
             const time = global.get_current_time() || global.display.get_current_time_roundtrip();
             app.activate_full(-1, time);
+            recordRecent(exec);
             return 'app';
         } catch (e) {
             console.error(`Nebula Shell: Shell.App fallo para "${exec}": ${e}`);
@@ -138,6 +139,7 @@ export function launch(exec) {
     try {
         const info = Gio.AppInfo.create_from_commandline(exec, null, Gio.AppInfoCreateFlags.NONE);
         info.launch([], global.create_app_launch_context(0, -1));
+        recordRecent(exec);
         return 'appinfo';
     } catch (e) {
         console.error(`Nebula Shell: AppInfo fallo para "${exec}": ${e}`);
@@ -145,6 +147,7 @@ export function launch(exec) {
 
     try {
         GLib.spawn_command_line_async(exec);
+        recordRecent(exec);
         return 'spawn';
     } catch (e) {
         console.error(`Nebula Shell: fallo al lanzar "${exec}": ${e}`);
@@ -251,6 +254,7 @@ const CATEGORY_SYMBOLIC = {
     'configuracion': 'preferences-other-symbolic',
     'mis-discos-y-nubes': 'drive-harddisk-symbolic',
     'accesos-rapidos': 'folder-symbolic',
+    'recientes': 'document-open-recent-symbolic',
 };
 
 /** Nombre de icono simbolico para una categoria (fallback: grid). */
@@ -405,19 +409,47 @@ export function buildModel(extensionPath) {
         }
     }
 
-    // Favoritos persistentes: la lista vive fuera de categories.toml y se
-    // reinyecta en la categoria existente sin duplicar entradas estaticas.
+    // Capturamos las aplicaciones disponibles antes de inyectar categorias
+    // derivadas para reconstruir Favoritos y Recientes en el orden del
+    // estado del usuario, sin depender del orden de categories.toml.
+    const allApps = [];
+    for (const bucket of buckets.values())
+        allApps.push(...bucket);
+    const appByExec = new Map(allApps.map(app => [app.exec, app]));
+
     const favoriteBucket = buckets.get('Favoritos');
     if (favoriteBucket) {
-        const favoriteExecs = new Set(favoriteBucket.map(a => a.exec));
-        const allApps = [];
-        for (const bucket of buckets.values())
-            allApps.push(...bucket);
-        for (const app of allApps) {
-            if (isFavorite(app.exec) && !favoriteExecs.has(app.exec)) {
+        const staticFavorites = [...favoriteBucket];
+        favoriteBucket.length = 0;
+        const pinned = new Set();
+        for (const exec of favoriteExecutions()) {
+            const app = appByExec.get(exec);
+            if (!app || pinned.has(exec))
+                continue;
+            favoriteBucket.push({...app, categoria: 'Favoritos'});
+            pinned.add(exec);
+        }
+        for (const app of staticFavorites) {
+            if (!pinned.has(app.exec)) {
                 favoriteBucket.push({...app, categoria: 'Favoritos'});
-                favoriteExecs.add(app.exec);
+                pinned.add(app.exec);
             }
+        }
+    }
+
+    const recentExecs = recentExecutions();
+    if (recentExecs.length > 0) {
+        const recentCategory = {
+            nombre: 'Recientes',
+            icono: 'history',
+            tipo: 'recientes',
+        };
+        rawCats.unshift(recentCategory);
+        buckets.set(recentCategory.nombre, []);
+        for (const exec of recentExecs) {
+            const app = appByExec.get(exec);
+            if (app)
+                buckets.get(recentCategory.nombre).push({...app, categoria: 'Recientes'});
         }
     }
 
