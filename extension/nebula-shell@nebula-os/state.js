@@ -24,6 +24,7 @@ function emptyState() {
         recientes: [],             // [exec, ...] mas reciente primero
         anclados_taskbar: [],     // [exec, ...]
         nombres: {},              // {exec: 'nombre visual'}
+        orden: {},               // {categoria: [exec, ...]}
     };
 }
 
@@ -50,6 +51,10 @@ export function sanitize(data) {
             if (typeof v === 'string')
                 base.categoria_override[k] = v;
         }
+    const order = data.orden;
+    if (order && typeof order === 'object' && !Array.isArray(order)) {
+        for (const [k,v] of Object.entries(order))
+            if (Array.isArray(v)) base.orden[k] = v.filter(x => typeof x === 'string');
     }
     return base;
 }
@@ -173,3 +178,6 @@ export function toggleTaskbarPinned(exec){const s=loadState();const i=s.anclados
 export function displayName(exec){return loadState().nombres[exec]??null;}
 export function setDisplayName(exec,name){const s=loadState();if(name&&name.trim())s.nombres[exec]=name.trim();else delete s.nombres[exec];saveState(s);}
 export function taskbarPinnedExecutions(){return [...loadState().anclados_taskbar];}
+
+export function appOrder(category){return [...(loadState().orden[category]??[])];}
+export function moveApp(category,exec,direction){const s=loadState();const arr=s.orden[category]??[];if(!arr.includes(exec))arr.push(exec);const i=arr.indexOf(exec);const j=i+direction;if(j<0||j>=arr.length)return false;[arr[i],arr[j]]=[arr[j],arr[i]];s.orden[category]=arr;saveState(s);return true;}
