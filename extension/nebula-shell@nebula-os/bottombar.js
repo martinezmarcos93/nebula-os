@@ -10,7 +10,6 @@
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
-import Shell from 'gi://Shell';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
@@ -18,6 +17,7 @@ import {
     WindowTracker,
     listWindows,
     activateWindow,
+    windowIcon,
 } from './window-manager.js';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -187,32 +187,10 @@ export class NebulaBottomBar {
 
         for (const window of listWindows()) {
             const icon = new St.Icon({
-                gicon: this._windowTracker ? undefined : undefined,
+                gicon: windowIcon(window),
                 icon_size: 16,
                 style_class: 'nebula-window-icon',
             });
-            try {
-                const app = window.get_gtk_application_id?.()
-                    ? null : null;
-                const trackerApp = global.get_window_actors()
-                    .map(actor => actor.get_meta_window())
-                    .find(candidate => candidate === window);
-                if (trackerApp) {
-                    // El icono se resuelve mediante WindowTracker abajo.
-                }
-            } catch (_e) {
-                // El fallback textual sigue siendo valido.
-            }
-
-            let gicon = null;
-            try {
-                gicon = Shell.WindowTracker.get_default()
-                    .get_window_app(window)?.get_icon?.() ?? null;
-            } catch (_e) {
-                gicon = null;
-            }
-            if (gicon)
-                icon.gicon = gicon;
 
             const label = window.get_title?.() || 'Ventana';
             const button = new St.Button({
