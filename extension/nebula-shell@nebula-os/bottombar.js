@@ -28,6 +28,8 @@ import {
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
+import {MODES, currentMode, setMode} from './modes.js';
+import {THEMES, currentTheme, setTheme} from './theme.js';
 
 const BAR_HEIGHT = 34;
 const CLOCK_TICK_S = 15;
@@ -165,6 +167,15 @@ export class NebulaBottomBar {
         });
         this._connect(this._dndButton, 'clicked', () => this._toggleDnd());
         right.add_child(this._dndButton);
+        const modeButton = new St.Button({
+            style_class: 'nebula-tray-btn',
+            child: new St.Icon({icon_name: 'preferences-desktop-symbolic', icon_size: 15}),
+            can_focus: true,
+            tooltip_text: 'Modo y tema',
+        });
+        this._connect(modeButton, 'clicked', () => this._openAppearanceMenu(modeButton));
+        right.add_child(modeButton);
+
         this._clockLabel = new St.Label({
             text: '', style_class: 'nebula-bottom-clock', y_align: Clutter.ActorAlign.CENTER,
         });
@@ -176,6 +187,41 @@ export class NebulaBottomBar {
             affectsInputRegion: true,
             trackFullscreen: true,
         });
+    }
+
+    _openAppearanceMenu(source) {
+        const menu = new PopupMenu.PopupMenu(source, 0.5, St.Side.TOP);
+        Main.uiGroup.add_child(menu.actor);
+        menu.actor.hide();
+        Main.panel.menuManager.addMenu(menu);
+
+        const modes = new PopupMenu.PopupSubMenuMenuItem('Modo: ' + (MODES[currentMode()]?.nombre ?? 'Normal'), false);
+        for (const [id, info] of Object.entries(MODES)) {
+            const item = new PopupMenu.PopupMenuItem(info.nombre);
+            if (id === currentMode())
+                item.setOrnament(PopupMenu.Ornament.CHECK);
+            item.connect('activate', () => setMode(id));
+            modes.menu.addMenuItem(item);
+        }
+        menu.addMenuItem(modes);
+
+        const themes = new PopupMenu.PopupSubMenuMenuItem('Tema: ' + (THEMES[currentTheme()]?.nombre ?? 'Cosmic Dark'), false);
+        for (const [id, info] of Object.entries(THEMES)) {
+            const item = new PopupMenu.PopupMenuItem(info.nombre);
+            if (id === currentTheme())
+                item.setOrnament(PopupMenu.Ornament.CHECK);
+            item.connect('activate', () => {
+                setTheme(id);
+                global.stage.add_style_class_name('nebula-theme-' + id);
+            });
+            themes.menu.addMenuItem(item);
+        }
+        menu.addMenuItem(themes);
+        menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (!isOpen)
+                menu.destroy();
+        });
+        menu.open(BoxPointer.PopupAnimation.FULL);
     }
 
     _place() {
