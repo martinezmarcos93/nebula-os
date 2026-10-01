@@ -249,6 +249,7 @@ const CATEGORY_SYMBOLIC = {
     'sistema': 'preferences-system-symbolic',
     'herramientas': 'applications-utilities-symbolic',
     'configuracion': 'preferences-other-symbolic',
+    'mis-discos-y-nubes': 'drive-harddisk-symbolic',
 };
 
 /** Nombre de icono simbolico para una categoria (fallback: grid). */
