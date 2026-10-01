@@ -2,6 +2,7 @@
 // Las operaciones destructivas no se ejecutan directamente desde la UI.
 
 import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
