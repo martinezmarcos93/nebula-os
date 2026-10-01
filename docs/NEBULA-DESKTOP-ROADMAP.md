@@ -395,7 +395,7 @@ Preferencias del usuario se mantienen separadas del registro versionado.
 - [x] Restaurar aplicaciones ocultas desde el launcher.
 - [x] Mover aplicaciones entre categorías.
 - [x] Restaurar categoría original.
-- [~] Renombrado visual: persistencia/restauración implementadas; editor UI pendiente de UX GNOME.
+- [x] Renombrado visual persistente desde menú contextual.
 - [x] Anclar a taskbar.
 - [x] Acciones contextuales básicas.
 
