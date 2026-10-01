@@ -20,7 +20,7 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
-import {isHidden, categoryOverride} from './state.js';
+import {isHidden, categoryOverride, isFavorite} from './state.js';
 
 /** Lee y parsea categories.json. Devuelve [] si falta o esta corrupto. */
 export function loadCategories(extensionPath) {
@@ -401,6 +401,22 @@ export function buildModel(extensionPath) {
                 desc: a.desc ?? descForApp(a),
                 categoria: effectiveCat,
             });
+        }
+    }
+
+    // Favoritos persistentes: la lista vive fuera de categories.toml y se
+    // reinyecta en la categoria existente sin duplicar entradas estaticas.
+    const favoriteBucket = buckets.get('Favoritos');
+    if (favoriteBucket) {
+        const favoriteExecs = new Set(favoriteBucket.map(a => a.exec));
+        const allApps = [];
+        for (const bucket of buckets.values())
+            allApps.push(...bucket);
+        for (const app of allApps) {
+            if (isFavorite(app.exec) && !favoriteExecs.has(app.exec)) {
+                favoriteBucket.push({...app, categoria: 'Favoritos'});
+                favoriteExecs.add(app.exec);
+            }
         }
     }
 
