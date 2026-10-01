@@ -250,6 +250,7 @@ const CATEGORY_SYMBOLIC = {
     'herramientas': 'applications-utilities-symbolic',
     'configuracion': 'preferences-other-symbolic',
     'mis-discos-y-nubes': 'drive-harddisk-symbolic',
+    'accesos-rapidos': 'folder-symbolic',
 };
 
 /** Nombre de icono simbolico para una categoria (fallback: grid). */
