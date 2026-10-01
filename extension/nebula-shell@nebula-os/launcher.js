@@ -27,7 +27,7 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 import {flatApps, filterApps, launch, hiddenApps, createDesktopShortcut} from './model.js';
 import {runWithConfirmation} from './system-actions.js';
-import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride, isTaskbarPinned, toggleTaskbarPinned, displayName, setDisplayName} from './state.js';
+import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride, isTaskbarPinned, toggleTaskbarPinned, displayName, setDisplayName, moveApp} from './state.js';
 import {buildModel} from './model.js';
 import {searchFiles} from './file-search.js';
 
@@ -577,6 +577,21 @@ export class NebulaLauncher {
         const launchItem = new PopupMenu.PopupMenuItem('Abrir nueva ventana');
         launchItem.connect('activate', () => launch(app.exec));
         menu.addMenuItem(launchItem);
+
+        if (app.categoria && !['Favoritos','Recientes'].includes(app.categoria)) {
+            const up = new PopupMenu.PopupMenuItem('Subir en la categoría');
+            up.connect('activate', () => {
+                moveApp(app.categoria, app.exec, -1);
+                this.setModel(buildModel(this._ext.path));
+            });
+            menu.addMenuItem(up);
+            const down = new PopupMenu.PopupMenuItem('Bajar en la categoría');
+            down.connect('activate', () => {
+                moveApp(app.categoria, app.exec, 1);
+                this.setModel(buildModel(this._ext.path));
+            });
+            menu.addMenuItem(down);
+        }
 
         const pin = new PopupMenu.PopupMenuItem(
             isTaskbarPinned(app.exec) ? 'Quitar de la taskbar' : 'Anclar a la taskbar',
