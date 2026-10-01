@@ -302,7 +302,7 @@ Con los dos discos del usuario y las cuentas de Google Drive montadas, comprobar
 
 **Prioridad: P0/P1.**
 
-El buscador debe evolucionar de “buscar aplicaciones” a una capa de acciones.
+El buscador debe evolucionar de “buscar aplicaciones” a una capa de acciones y resultados del índice del sistema.
 
 Debe poder encontrar:
 
@@ -331,7 +331,15 @@ No se permitirá ejecución arbitraria privilegiada desde el buscador.
 
 El launcher conserva la búsqueda de aplicaciones y ahora agrega una primera capa de **acciones seguras** cuando se busca desde el modo global: captura de pantalla, red/Wi-Fi, sonido, Bluetooth, pantalla/brillo, Archivos y Configuración. Las acciones usan comandos fijos y delegan en GNOME, `gio` o los scripts existentes de Nebula.
 
-Las acciones de energía sensibles ya están disponibles también en el buscador global. Nebula las enruta por un módulo común de acciones del sistema y exige confirmación explícita antes de apagar, reiniciar o cerrar sesión; suspensión y bloqueo se delegan directamente al sistema. Tampoco se implementa ejecución arbitraria de texto.
+Las acciones de energía sensibles ya están disponibles también en el buscador global.
+
+### Incremento incorporado — búsqueda de archivos y carpetas
+
+El modo de búsqueda global consulta opcionalmente el índice de archivos del sistema mediante `tracker3 search`, sin mantener un índice propio dentro de Nebula. Se consultan archivos y carpetas con un límite pequeño de resultados, las consultas anteriores se cancelan cuando cambia el texto y el resultado se abre mediante el handler URI del sistema.
+
+Tracker es un backend opcional: si el comando no está disponible, Nebula conserva la búsqueda de aplicaciones y acciones sin convertir la ausencia del indexador en un fallo de la extensión. La búsqueda no ejecuta comandos arbitrarios y solo acepta términos como argumentos separados del proceso.
+
+Queda pendiente la validación real en GNOME 46 de disponibilidad del índice, cobertura de las ubicaciones que el usuario espera buscar y presentación de los resultados. Nebula las enruta por un módulo común de acciones del sistema y exige confirmación explícita antes de apagar, reiniciar o cerrar sesión; suspensión y bloqueo se delegan directamente al sistema. Tampoco se implementa ejecución arbitraria de texto.
 
 ### Requisito visual pendiente — alineamiento de submenús
 
@@ -546,7 +554,7 @@ Nebula 1.0 requiere como mínimo:
 - [x] Submenús.
 - [x] Lanzamiento de aplicaciones.
 - [x] Búsqueda básica.
-- [ ] Búsqueda unificada (acciones seguras y acciones de energía ya incorporadas al modo global; faltan archivos/carpetas/configuración indexados en una única capa).
+- [x] Búsqueda unificada inicial (aplicaciones + acciones seguras + archivos/carpetas mediante Tracker; configuración indexada y modos siguen pendientes).
 
 ### Ventanas
 
