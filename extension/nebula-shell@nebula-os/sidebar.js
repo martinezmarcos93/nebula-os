@@ -34,6 +34,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {FEATURES} from './config.js';
 import {buildModel, invalidateIconCache} from './model.js';
 import {NebulaLauncher} from './launcher.js';
+import {runWithConfirmation} from './system-actions.js';
 import {NebulaMeters} from './meters.js';
 
 const SIDEBAR_WIDTH = 236;    // px de ancho (superpuesta: no reserva area de trabajo)
@@ -353,11 +354,14 @@ export class NebulaSidebar {
                 child: new St.Icon({icon_name: icon, icon_size: 18}),
             });
             this._connect(btn, 'clicked', () => {
-                try {
-                    GLib.spawn_command_line_async(cmd);
-                } catch (e) {
-                    console.error(`Nebula Shell: fallo "${cmd}": ${e}`);
-                }
+                const labels = {
+                    'gnome-session-quit --power-off': 'Apagar',
+                    'loginctl lock-session': 'Bloquear',
+                    'gnome-session-quit --reboot': 'Reiniciar',
+                    'gnome-session-quit --logout': 'Cerrar sesión',
+                    'systemctl suspend': 'Suspender',
+                };
+                runWithConfirmation(labels[cmd] ?? 'Ejecutar acción', cmd);
             });
             row.add_child(btn);
         }
