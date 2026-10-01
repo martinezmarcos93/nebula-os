@@ -270,6 +270,7 @@ Nebula proporcionará integración:
 - Pendrives.
 - Papelera.
 - Ubicaciones frecuentes.
+- Accesos rápidos XDG del usuario.
 - Unidades de red.
 - Google Drive/GOA cuando estén configurados.
 - Abrir ubicación desde aplicaciones.
@@ -277,7 +278,9 @@ Nebula proporcionará integración:
 
 ### Incremento implementado
 
-La sidebar incorpora **Mis discos y nubes** como categoria dinamica. Al abrirla, Nebula consulta `Gio.VolumeMonitor` y construye el submenu con los montajes accesibles en esa sesion.
+La sidebar incorpora **Accesos rápidos** como categoria dinamica basada en XDG, con Inicio, Escritorio, Documentos, Descargas, Musica, Imagenes, Videos y Papelera cuando existen en la configuracion del usuario. Cada entrada abre su URI mediante `gio open`, delegando la navegacion al gestor de archivos del sistema.
+
+La sidebar tambien incorpora **Mis discos y nubes** como categoria dinamica. Al abrirla, Nebula consulta `Gio.VolumeMonitor` y construye el submenu con los montajes accesibles en esa sesion.
 
 Se incluyen montajes locales y montajes GVfs/no-`file://`, por lo que Google Drive configurado mediante GNOME Online Accounts puede aparecer como nube sin hardcodear rutas ni nombres de disco.
 
@@ -287,7 +290,7 @@ Cada entrada abre su URI mediante `gio open`, delegando la navegacion al gestor 
 
 El usuario puede acceder a sus ubicaciones habituales desde Nebula y continuar el trabajo en el gestor de archivos del sistema. Los discos y nubes que estén montados aparecen automáticamente; si un volumen no está montado, Nebula no inventa una entrada falsa.
 
-La búsqueda global también expone la Papelera como acción del sistema, delegando su apertura al URI `trash:///` en lugar de implementar una papelera paralela.
+La búsqueda global también expone la Papelera como acción del sistema, delegando su apertura al URI `trash:///` en lugar de implementar una papelera paralela. Las ubicaciones rápidas también forman parte del modelo plano del launcher, por lo que pueden encontrarse desde la búsqueda global sin un índice de archivos propio.
 
 ### Validación pendiente
 
