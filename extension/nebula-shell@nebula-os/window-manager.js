@@ -99,6 +99,18 @@ export function toggleMaximizeWindow(window) {
         window.maximize(Meta.MaximizeFlags.BOTH);
 }
 
+export function moveWindowToWorkspace(window, workspace) {
+    if (!window || !workspace || !window.get_workspace)
+        return;
+    try {
+        if (window.get_workspace() === workspace)
+            return;
+        window.change_workspace(workspace);
+        workspace.activate(global.get_current_time());
+    } catch (e) {
+        console.error(`Nebula Shell: no se pudo mover ventana de escritorio: ${e}`);
+    }
+}
 export function closeWindow(window) {
     if (!window?.can_close?.())
         return;
