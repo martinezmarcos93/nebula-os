@@ -228,6 +228,10 @@ La barra superior debe proporcionar acceso a:
 
 Nebula debe delegar en GNOME/D-Bus/systemd cuando exista una API adecuada.
 
+### Incremento implementado
+
+El reloj/fecha de la sidebar es interactivo y abre GNOME Calendar; si no está disponible, intenta el panel de fecha y hora de GNOME Settings. Nebula no mantiene un calendario propio.
+
 ### Criterio de aceptación
 
 Las operaciones cotidianas de sistema pueden ejecutarse desde la interfaz Nebula sin abrir manualmente Settings o Activities.
@@ -533,7 +537,7 @@ Nebula 1.0 requiere como mínimo:
 ### Sistema
 
 - [ ] Reloj.
-- [ ] Calendario.
+- [x] Calendario (acceso directo desde el reloj; utiliza GNOME Calendar/Settings).
 - [ ] Audio.
 - [ ] Red.
 - [ ] Bluetooth.
