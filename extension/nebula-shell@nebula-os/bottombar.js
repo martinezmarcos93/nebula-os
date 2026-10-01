@@ -52,6 +52,8 @@ export class NebulaBottomBar {
         this._mprisName = null;
         this._mprisProxy = null;
         this._nameWatchId = 0;
+        this._notificationSettings = null;
+        this._notificationSettingsId = 0;
 
         this._build();
         this._place();
@@ -60,6 +62,7 @@ export class NebulaBottomBar {
         this._windowTracker = new WindowTracker(() => this._syncWindows());
         this._startClock();
         this._initMpris();
+        this._initNotifications();
 
         this._connect(Main.layoutManager, 'monitors-changed', () => this._place());
         const wm = global.workspace_manager;
@@ -126,6 +129,7 @@ export class NebulaBottomBar {
             const b = new St.Button({
                 style_class: 'nebula-tray-btn',
                 child: new St.Icon({icon_name: icon, icon_size: 15}),
+                can_focus: true,
             });
             this._connect(b, 'clicked', () => {
                 try {
@@ -136,6 +140,30 @@ export class NebulaBottomBar {
             });
             right.add_child(b);
         }
+
+        this._notificationButton = new St.Button({
+            style_class: 'nebula-tray-btn',
+            child: new St.Icon({icon_name: 'preferences-system-notifications-symbolic', icon_size: 15}),
+            can_focus: true,
+            tooltip_text: 'Notificaciones',
+        });
+        this._connect(this._notificationButton, 'clicked', () => {
+            try {
+                GLib.spawn_command_line_async('gnome-control-center notifications');
+            } catch (e) {
+                console.error(`Nebula Shell: no se pudo abrir Notificaciones: ${e}`);
+            }
+        });
+        right.add_child(this._notificationButton);
+
+        this._dndButton = new St.Button({
+            style_class: 'nebula-tray-btn',
+            child: new St.Icon({icon_name: 'notifications-disabled-symbolic', icon_size: 15}),
+            can_focus: true,
+            tooltip_text: 'No molestar',
+        });
+        this._connect(this._dndButton, 'clicked', () => this._toggleDnd());
+        right.add_child(this._dndButton);
         this._clockLabel = new St.Label({
             text: '', style_class: 'nebula-bottom-clock', y_align: Clutter.ActorAlign.CENTER,
         });
@@ -155,6 +183,51 @@ export class NebulaBottomBar {
             return;
         this._bar.set_position(m.x, m.y + m.height - BAR_HEIGHT);
         this._bar.set_width(m.width);
+    }
+
+    // --- notificaciones / no molestar ---------------------------
+
+    _initNotifications() {
+        try {
+            this._notificationSettings = new Gio.Settings({
+                schema: 'org.gnome.desktop.notifications',
+            });
+            this._notificationSettingsId = this._notificationSettings.connect(
+                'changed::show-banners', () => this._syncDnd());
+            this._syncDnd();
+        } catch (e) {
+            console.debug?.(`Nebula: esquema de notificaciones no disponible: ${e}`);
+            this._notificationSettings = null;
+        }
+    }
+
+    _syncDnd() {
+        if (!this._notificationSettings || !this._dndButton)
+            return;
+        let showBanners = true;
+        try {
+            showBanners = this._notificationSettings.get_boolean('show-banners');
+        } catch (_e) {
+            return;
+        }
+        const dnd = !showBanners;
+        this._dndButton.child.icon_name = dnd
+            ? 'notifications-disabled-symbolic'
+            : 'notifications-symbolic';
+        this._dndButton.set_style_class_name(
+            dnd ? 'nebula-tray-btn nebula-tray-btn-active' : 'nebula-tray-btn');
+        this._dndButton.tooltip_text = dnd ? 'No molestar: activado' : 'No molestar: desactivado';
+    }
+
+    _toggleDnd() {
+        if (!this._notificationSettings)
+            return;
+        try {
+            const showBanners = this._notificationSettings.get_boolean('show-banners');
+            this._notificationSettings.set_boolean('show-banners', !showBanners);
+        } catch (e) {
+            console.error(`Nebula: no se pudo cambiar No molestar: ${e}`);
+        }
     }
 
     // --- escritorios --------------------------------------------
@@ -369,6 +442,11 @@ export class NebulaBottomBar {
             this._mprisPropsId = 0;
         }
         this._mprisProxy = null;
+        if (this._notificationSettings && this._notificationSettingsId) {
+            this._notificationSettings.disconnect(this._notificationSettingsId);
+            this._notificationSettingsId = 0;
+        }
+        this._notificationSettings = null;
         this._mprisName = null;
         this._mprisBox?.hide();
         this._scanMpris();
