@@ -19,9 +19,15 @@ import {
     toggleTaskWindow,
     windowIcon,
     windowLabel,
+    minimizeWindow,
+    toggleMaximizeWindow,
+    closeWindow,
+    moveWindowToWorkspace,
 } from './window-manager.js';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 const BAR_HEIGHT = 34;
 const CLOCK_TICK_S = 15;
@@ -40,6 +46,7 @@ export class NebulaBottomBar {
         this._wsButtons = [];
         this._windowButtons = [];
         this._windowTracker = null;
+        this._windowMenu = null;
         this._mprisName = null;
         this._mprisProxy = null;
         this._nameWatchId = 0;
@@ -215,9 +222,74 @@ export class NebulaBottomBar {
             }));
             button.set_child(box);
             button.connect('clicked', () => toggleTaskWindow(window));
+            button.connect('button-press-event', (_actor, event) => {
+                if (event.get_button() === 3) {
+                    this._openWindowMenu(button, window);
+                    return Clutter.EVENT_STOP;
+                }
+                return Clutter.EVENT_PROPAGATE;
+            });
             this._windowBox.add_child(button);
             this._windowButtons.push(button);
         }
+    }
+
+    _openWindowMenu(source, window) {
+        if (this._windowMenu) {
+            this._windowMenu.destroy();
+            this._windowMenu = null;
+        }
+
+        const menu = new PopupMenu.PopupMenu(source, 0.5, St.Side.TOP);
+        Main.uiGroup.add_child(menu.actor);
+        menu.actor.hide();
+        Main.panel.menuManager.addMenu(menu);
+        this._windowMenu = menu;
+
+        const active = window.has_focus?.() && !window.minimized;
+        const maximized = window.is_maximized?.() ?? false;
+        const maxItem = new PopupMenu.PopupMenuItem(maximized ? 'Restaurar' : 'Maximizar');
+        maxItem.connect('activate', () => toggleMaximizeWindow(window));
+        menu.addMenuItem(maxItem);
+
+        const minItem = new PopupMenu.PopupMenuItem(window.minimized ? 'Restaurar ventana' : 'Minimizar');
+        minItem.connect('activate', () => {
+            if (window.minimized)
+                toggleTaskWindow(window);
+            else
+                minimizeWindow(window);
+        });
+        menu.addMenuItem(minItem);
+
+        const workspaceMenu = new PopupMenu.PopupSubMenuMenuItem('Mover a escritorio');
+        const wm = global.workspace_manager;
+        const current = window.get_workspace?.();
+        const activeIndex = wm.get_active_workspace_index();
+        for (let i = 0; i < wm.get_n_workspaces(); i++) {
+            const workspace = wm.get_workspace_by_index(i);
+            const item = new PopupMenu.PopupMenuItem(
+                i === activeIndex ? `Escritorio ${i + 1} (actual)` : `Escritorio ${i + 1}`,
+            );
+            item.setOrnament?.(
+                workspace === current ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE,
+            );
+            item.connect('activate', () => moveWindowToWorkspace(window, workspace));
+            workspaceMenu.menu.addMenuItem(item);
+        }
+        menu.addMenuItem(workspaceMenu);
+
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        const closeItem = new PopupMenu.PopupMenuItem('Cerrar ventana');
+        closeItem.connect('activate', () => closeWindow(window));
+        menu.addMenuItem(closeItem);
+
+        menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (!isOpen && this._windowMenu === menu) {
+                menu.destroy();
+                this._windowMenu = null;
+            }
+        });
+        menu.open(BoxPointer.PopupAnimation.FULL);
     }
 
     // --- reloj -------------------------------------------------
@@ -347,6 +419,10 @@ export class NebulaBottomBar {
         }
         this._mprisProxy = null;
         this._windowTracker?.destroy();
+        if (this._windowMenu) {
+            this._windowMenu.destroy();
+            this._windowMenu = null;
+        }
         this._windowTracker = null;
 
         for (const [target, id] of this._signalIds)
