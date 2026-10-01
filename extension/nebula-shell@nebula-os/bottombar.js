@@ -18,6 +18,7 @@ import {
     listWindows,
     activateWindow,
     windowIcon,
+    windowLabel,
 } from './window-manager.js';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -192,7 +193,7 @@ export class NebulaBottomBar {
                 style_class: 'nebula-window-icon',
             });
 
-            const label = window.get_title?.() || 'Ventana';
+            const label = windowLabel(window);
             const button = new St.Button({
                 style_class: 'nebula-window-btn',
                 can_focus: true,
