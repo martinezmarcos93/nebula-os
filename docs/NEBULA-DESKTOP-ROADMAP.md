@@ -395,8 +395,8 @@ Preferencias del usuario se mantienen separadas del registro versionado.
 - [x] Restaurar aplicaciones ocultas desde el launcher.
 - [x] Mover aplicaciones entre categorías.
 - [x] Restaurar categoría original.
-- [ ] Renombrado visual.
-- [ ] Anclar a taskbar.
+- [~] Renombrado visual: persistencia/restauración implementadas; editor UI pendiente de UX GNOME.
+- [x] Anclar a taskbar.
 - [x] Acciones contextuales básicas.
 
 ---
@@ -489,6 +489,16 @@ Debe poder activarse y desactivarse de forma segura.
 ### Decisión técnica — grabación de pantalla
 
 La grabación no se implementa mediante APIs privadas de GNOME Shell. La ruta pública es el portal XDG `org.freedesktop.portal.ScreenCast`, cuyo ciclo es crear sesión → seleccionar fuentes → iniciar → obtener streams PipeWire. El portal entrega el stream; todavía falta integrar un consumidor/encoder y definir la UX de inicio/detención. Queda como implementación posterior y validación específica en Wayland. 
+
+### Implementación incorporada — Theme Engine y Modes
+
+Se añadió un Theme Engine mínimo con temas persistentes `cosmic` y `monochrome`, aplicado mediante clases globales del stage. Los componentes mantienen las mismas clases `.nebula-*`; el tema modifica la apariencia sin duplicar componentes.
+
+Se añadió un registro persistente de modos: `normal`, `focus`, `development`, `gaming`, `streaming` y `ai`. El modo es declarativo y no ejecuta comandos arbitrarios. `focus` ya tiene un efecto visual conservador; los demás quedan preparados para políticas funcionales posteriores.
+
+### Implementación incorporada — taskbar y personalización
+
+Las aplicaciones pueden anclarse a la taskbar independientemente de Favoritos. También se almacena un nombre visual y se permite restaurar el nombre original; el editor de texto queda pendiente de una UX validada en GNOME.
 
 ## ETAPA 10 — Widgets y módulos
 
@@ -614,8 +624,8 @@ Nebula 1.0 requiere como mínimo:
 - [x] Discos.
 - [x] Unidades externas (montajes detectados dinámicamente).
 - [x] GOA/Drive (cuando está montado por GVfs/GNOME Online Accounts).
-- [ ] Papelera.
-- [ ] Accesos rápidos.
+- [x] Papelera.
+- [x] Accesos rápidos.
 
 ### Personalización
 
@@ -623,7 +633,7 @@ Nebula 1.0 requiere como mínimo:
 - [ ] Recientes.
 - [ ] Orden personalizado.
 - [ ] Preferencias persistentes.
-- [ ] Temas.
+- [x] Temas (Theme Engine base; validación visual GNOME pendiente).
 
 ### Robustez
 
