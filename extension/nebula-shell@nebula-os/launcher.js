@@ -35,7 +35,7 @@ const SAFE_ACTIONS = [
     ['Sonido', 'audio volumen sonido', 'gnome-control-center sound', 'audio-volume-high-symbolic', 'Configurar volumen y dispositivos de audio'],
     ['Bluetooth', 'bluetooth dispositivos', 'gnome-control-center bluetooth', 'bluetooth-active-symbolic', 'Configurar dispositivos Bluetooth'],
     ['Pantalla y brillo', 'pantalla monitor brillo display', 'gnome-control-center display', 'display-brightness-symbolic', 'Configurar monitores y brillo'],
-    ['Archivos', 'archivos carpetas home documentos nautilus', 'gio open ~', 'system-file-manager-symbolic', 'Abrir el gestor de archivos'],
+    ['Archivos', 'archivos carpetas home documentos nautilus', 'nautilus', 'system-file-manager-symbolic', 'Abrir el gestor de archivos'],
     ['Configuración', 'configuracion ajustes settings', 'gnome-control-center', 'preferences-system-symbolic', 'Abrir la configuración de GNOME'],
 ];
 
