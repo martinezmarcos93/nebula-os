@@ -315,8 +315,18 @@ export function buildModel(extensionPath) {
     const knownNames = new Set(rawCats.map(c => c.nombre ?? '?'));
     const buckets = new Map(rawCats.map(c => [c.nombre ?? '?', []]));
     const locationCat = rawCats.find(c => c.tipo === 'ubicaciones');
-    if (locationCat)
-        buckets.set(locationCat.nombre, mountedLocations());
+    // Compatibilidad con instalaciones cuyo categories.json fue generado
+    // antes de esta capacidad: la categoria se materializa igualmente.
+    const locationsCategory = locationCat ?? {
+        nombre: 'Mis discos y nubes',
+        icono: 'drive',
+        tipo: 'ubicaciones',
+    };
+    if (!knownNames.has(locationsCategory.nombre)) {
+        rawCats.push(locationsCategory);
+        knownNames.add(locationsCategory.nombre);
+    }
+    buckets.set(locationsCategory.nombre, mountedLocations());
 
     for (const cat of rawCats) {
         const catName = cat.nombre ?? '?';
