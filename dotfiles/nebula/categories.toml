@@ -376,6 +376,12 @@ icono  = "rocket"
 
 
 [[categoria]]
+nombre = "Mis discos y nubes"
+icono  = "drive"
+tipo   = "ubicaciones"
+
+
+[[categoria]]
 nombre = "Sistema"
 icono  = "cog"
 
