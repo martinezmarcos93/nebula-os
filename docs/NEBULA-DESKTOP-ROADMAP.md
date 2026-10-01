@@ -384,14 +384,16 @@ Preferencias del usuario se mantienen separadas del registro versionado.
 
 ### Funciones
 
-- ~~Favoritos persistentes~~.
-- Recientes.
-- Orden personalizado.
-- ~~Ocultar aplicaciones desde menú contextual~~.
-- Renombrado visual.
-- Mover entre categorías.
-- Anclar a taskbar.
-- Acciones contextuales.
+- [x] Favoritos persistentes.
+- [x] Orden de favoritos persistente.
+- [x] Recientes persistentes.
+- [x] Ocultar aplicaciones desde menú contextual.
+- [x] Restaurar aplicaciones ocultas desde el launcher.
+- [x] Mover aplicaciones entre categorías.
+- [x] Restaurar categoría original.
+- [ ] Renombrado visual.
+- [ ] Anclar a taskbar.
+- [x] Acciones contextuales básicas.
 
 ---
 
