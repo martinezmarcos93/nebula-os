@@ -390,6 +390,7 @@ Preferencias del usuario se mantienen separadas del registro versionado.
 
 - [x] Favoritos persistentes.
 - [x] Orden de favoritos persistente.
+- [x] Orden de aplicaciones por categoría mediante acciones subir/bajar.
 - [x] Recientes persistentes.
 - [x] Ocultar aplicaciones desde menú contextual.
 - [x] Restaurar aplicaciones ocultas desde el launcher.
