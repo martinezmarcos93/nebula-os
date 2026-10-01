@@ -78,6 +78,18 @@ export function minimizeWindow(window) {
         window.minimize();
 }
 
+/** Comportamiento de taskbar: clic sobre la ventana activa minimiza; clic
+ * sobre otra ventana la activa/restaura. */
+export function toggleTaskWindow(window) {
+    if (!window)
+        return;
+    if (window.has_focus?.() && !window.minimized) {
+        minimizeWindow(window);
+        return;
+    }
+    activateWindow(window);
+}
+
 export function toggleMaximizeWindow(window) {
     if (!window?.can_maximize?.())
         return;
