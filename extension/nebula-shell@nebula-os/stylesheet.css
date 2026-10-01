@@ -291,7 +291,55 @@
     padding: 12px 10px;
 }
 
+/* ---- Ventanas / taskbar ---------------------------------------------- */
+
+.nebula-window-scroll {
+    min-width: 120px;
+}
+
+.nebula-window-list {
+    spacing: 3px;
+    padding: 0 4px;
+}
+
+.nebula-window-btn {
+    min-width: 90px;
+    max-width: 240px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    color: #9ca3af;
+}
+
+.nebula-window-btn:hover {
+    background-color: rgba(124, 58, 237, 0.25);
+    color: #f3f4f6;
+}
+
+.nebula-window-btn:focus,
+.nebula-window-btn-active {
+    background-color: rgba(124, 58, 237, 0.42);
+    color: #ffffff;
+}
+
+.nebula-window-btn-minimized {
+    color: #6b7280;
+}
+
+.nebula-window-box {
+    spacing: 7px;
+}
+
+.nebula-window-icon {
+    icon-size: 16px;
+}
+
+.nebula-window-label {
+    font-size: 8.5pt;
+    max-width: 210px;
+}
+
 /* ---- Barra inferior --------------------------------------------------- */
+
 
 .nebula-bottombar {
     background-color: rgba(8, 8, 16, 0.92);
