@@ -401,7 +401,7 @@ export function buildModel(extensionPath) {
             const override = categoryOverride(a.exec);
             const effectiveCat = (override && knownNames.has(override)) ? override : catName;
             buckets.get(effectiveCat).push({
-                nombre: a.nombre ?? firstToken(a.exec),
+                nombre: displayName(a.exec) ?? (a.nombre ?? firstToken(a.exec)),
                 exec: a.exec,
                 icono: iconForApp(a),
                 desc: a.desc ?? descForApp(a),
@@ -517,7 +517,7 @@ export function hiddenApps(extensionPath) {
             if (!app?.exec || !wanted.has(app.exec) || seen.has(app.exec) || !isInstalled(app.exec))
                 continue;
             out.push({
-                nombre: app.nombre ?? firstToken(app.exec),
+                nombre: displayName(app.exec) ?? (app.nombre ?? firstToken(app.exec)),
                 exec: app.exec,
                 icono: iconForApp(app),
                 desc: app.desc ?? descForApp(app),
