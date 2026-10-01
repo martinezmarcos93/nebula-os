@@ -234,6 +234,10 @@ Nebula debe delegar en GNOME/D-Bus/systemd cuando exista una API adecuada.
 
 El reloj/fecha de la sidebar es interactivo y abre GNOME Calendar; si no está disponible, intenta el panel de fecha y hora de GNOME Settings. Nebula no mantiene un calendario propio.
 
+La barra inferior incorpora accesos directos delegados a GNOME Settings para sonido, red, Bluetooth y pantalla/brillo. Estos accesos no implementan un panel de configuración paralelo: abren el panel nativo correspondiente cuando la instalación de GNOME lo proporciona.
+
+Energía, bloqueo, cierre de sesión, reinicio y suspensión están expuestos desde la sidebar mediante `gnome-session-quit`, `loginctl` y `systemctl`.
+
 ### Criterio de aceptación
 
 Las operaciones cotidianas de sistema pueden ejecutarse desde la interfaz Nebula sin abrir manualmente Settings o Activities.
