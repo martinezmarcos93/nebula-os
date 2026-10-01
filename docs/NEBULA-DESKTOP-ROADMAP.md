@@ -242,6 +242,12 @@ Energía, bloqueo, cierre de sesión, reinicio y suspensión están expuestos de
 
 Las operaciones cotidianas de sistema pueden ejecutarse desde la interfaz Nebula sin abrir manualmente Settings o Activities.
 
+### Incremento incorporado — batería
+
+La sidebar expone el estado dinámico de batería mediante el dispositivo de pantalla de UPower. La entrada solo aparece cuando el sistema informa una batería presente, muestra porcentaje/estado y utiliza el icono proporcionado por UPower cuando está disponible. Un clic abre el panel nativo de energía de GNOME; Nebula no implementa su propio gestor de batería.
+
+La implementación escucha cambios de propiedades de UPower, por lo que carga, descarga y porcentaje se actualizan sin reconstruir la sidebar. La ausencia de batería en un equipo de escritorio no genera una entrada vacía.
+
 ### Corrección incorporada
 
 `nebula-screenshot` ya no depende exclusivamente de X11: en GNOME/Wayland utiliza `org.gnome.Shell.Screenshot`, mientras que la sesión bspwm conserva `maim` como backend. El portapapeles usa `wl-copy` cuando está disponible y mantiene `xclip` como fallback.
@@ -566,7 +572,7 @@ Nebula 1.0 requiere como mínimo:
 - [x] Red.
 - [x] Bluetooth.
 - [x] Brillo (acceso al panel nativo de pantalla/brillo).
-- [ ] Batería.
+- [x] Batería (estado dinámico vía UPower; acceso al panel nativo de energía).
 - [ ] Notificaciones.
 - [ ] No molestar.
 - [x] Captura.
