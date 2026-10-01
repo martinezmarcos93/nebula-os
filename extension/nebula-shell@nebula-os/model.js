@@ -291,11 +291,7 @@ export function mountedLocations() {
                 continue;
 
             const name = mount.get_name?.() || root.get_parse_name?.() || uri;
-            const scheme = (() => {
-                try { return GLib.uri_parse(uri, GLib.UriFlags.NONE).get_scheme(); }
-                catch (_e) { return ''; }
-            })();
-            const cloud = scheme && scheme !== 'file';
+            const cloud = !uri.startsWith('file://');
             out.push({
                 nombre: cloud ? `Nube: ${name}` : name,
                 exec: `gio open ${GLib.shell_quote(uri)}`,
