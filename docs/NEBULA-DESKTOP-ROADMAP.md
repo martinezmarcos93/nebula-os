@@ -593,12 +593,12 @@ Nebula 1.0 requiere como mínimo:
 ### Escritorio
 
 - [x] Integración con la superficie de iconos existente de GNOME/DING (Nebula no implementa un desktop manager paralelo).
-- [ ] Reordenamiento (responsabilidad de DING; integración pendiente de validación).
-- [ ] Persistencia (responsabilidad de DING; integración pendiente de validación).
+- [~] Reordenamiento (delegado a DING; validación real pendiente).
+- [~] Persistencia (delegada a DING; validación real pendiente).
 - [x] Accesos directos de aplicaciones (creación de `.desktop` compatible con DING).
 - [x] Wallpaper (acceso a configuración nativa de GNOME).
 - [x] Papelera (acción global delegada a `gio open trash:///`).
-- [ ] Menú contextual.
+- [~] Menú contextual (DING/GNOME; integración real pendiente).
 
 ### Sistema
 
@@ -630,10 +630,10 @@ Nebula 1.0 requiere como mínimo:
 
 ### Personalización
 
-- [ ] Favoritos.
-- [ ] Recientes.
-- [ ] Orden personalizado.
-- [ ] Preferencias persistentes.
+- [x] Favoritos.
+- [x] Recientes.
+- [x] Orden personalizado.
+- [x] Preferencias persistentes.
 - [x] Temas (Theme Engine base; validación visual GNOME pendiente).
 
 ### Robustez
