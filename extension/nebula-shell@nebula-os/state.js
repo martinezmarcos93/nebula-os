@@ -21,6 +21,7 @@ function emptyState() {
         favoritos: [],            // [exec, ...] orden = orden de pineo
         categoria_override: {},   // { exec: "Nombre de categoria" }
         ocultos: [],               // [exec, ...]
+        recientes: [],             // [exec, ...] mas reciente primero
     };
 }
 
@@ -36,6 +37,7 @@ export function sanitize(data) {
     const strings = v => Array.isArray(v) ? v.filter(x => typeof x === 'string') : [];
     base.favoritos = strings(data.favoritos);
     base.ocultos = strings(data.ocultos);
+    base.recientes = strings(data.recientes);
     const co = data.categoria_override;
     if (co && typeof co === 'object' && !Array.isArray(co)) {
         for (const [k, v] of Object.entries(co)) {
@@ -133,4 +135,29 @@ export function setCategoryOverride(exec, categoryName) {
     else
         delete s.categoria_override[exec];
     saveState(s);
+}
+
+// --- Recientes -------------------------------------------------------
+
+/** Registra una aplicacion lanzada. El orden es por ultimo uso y se limita a 12. */
+export function recordRecent(exec) {
+    if (!exec)
+        return;
+    const s = loadState();
+    s.recientes = s.recientes.filter(item => item !== exec);
+    s.recientes.unshift(exec);
+    s.recientes = s.recientes.slice(0, 12);
+    saveState(s);
+}
+
+export function recentExecutions() {
+    return [...loadState().recientes];
+}
+
+export function hiddenExecutions() {
+    return [...loadState().ocultos];
+}
+
+export function favoriteExecutions() {
+    return [...loadState().favoritos];
 }
