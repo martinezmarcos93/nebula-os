@@ -60,6 +60,18 @@
     letter-spacing: 0.5px;
 }
 
+.nebula-clock-button {
+    padding: 0;
+    border-radius: 8px;
+    background-color: transparent;
+}
+.nebula-clock-button:hover {
+    background-color: rgba(124, 58, 237, 0.16);
+}
+.nebula-clock-button:focus {
+    background-color: rgba(34, 211, 238, 0.12);
+}
+
 .nebula-clock {
     spacing: 2px;
     padding-bottom: 4px;
