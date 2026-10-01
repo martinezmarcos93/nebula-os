@@ -12,8 +12,6 @@
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 
-import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-
 const WINDOW_TYPES = new Set([
     Meta.WindowType.NORMAL,
     Meta.WindowType.DIALOG,
