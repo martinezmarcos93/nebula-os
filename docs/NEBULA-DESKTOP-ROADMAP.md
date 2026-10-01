@@ -242,6 +242,8 @@ Energía, bloqueo, cierre de sesión, reinicio y suspensión están expuestos de
 
 Las operaciones cotidianas de sistema pueden ejecutarse desde la interfaz Nebula sin abrir manualmente Settings o Activities.
 
+La barra inferior incorpora acceso a la configuración nativa de Notificaciones y un conmutador de No molestar sincronizado con `org.gnome.desktop.notifications/show-banners`. Nebula no mantiene una cola de notificaciones propia ni sustituye el centro de notificaciones de GNOME.
+
 ### Incremento incorporado — batería
 
 La sidebar expone el estado dinámico de batería mediante el dispositivo de pantalla de UPower. La entrada solo aparece cuando el sistema informa una batería presente, muestra porcentaje/estado y utiliza el icono proporcionado por UPower cuando está disponible. Un clic abre el panel nativo de energía de GNOME; Nebula no implementa su propio gestor de batería.
@@ -575,8 +577,8 @@ Nebula 1.0 requiere como mínimo:
 - [x] Bluetooth.
 - [x] Brillo (acceso al panel nativo de pantalla/brillo).
 - [x] Batería (estado dinámico vía UPower; acceso al panel nativo de energía).
-- [ ] Notificaciones.
-- [ ] No molestar.
+- [x] Notificaciones (acceso al panel nativo de GNOME).
+- [x] No molestar (conmutación mediante GSettings nativo de GNOME).
 - [x] Captura.
 - [ ] Grabación.
 - [x] Bloqueo.
