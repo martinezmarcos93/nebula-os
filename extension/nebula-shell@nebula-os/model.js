@@ -273,6 +273,53 @@ export function symbolicForCategory(nombre) {
  * Cuentas en linea). No se fija ningun /dev/sdX: la etiqueta y URI vienen del
  * sistema en tiempo de ejecucion.
  */
+/**
+ * Construye accesos rapidos usando los directorios XDG del usuario. No se
+ * hardcodean rutas: GLib resuelve la configuracion local de cada usuario.
+ * Los directorios que no existen se omiten. Home y Papelera son estables.
+ */
+export function quickLocations() {
+    const out = [];
+    const seen = new Set();
+    const add = (nombre, file, icono) => {
+        try {
+            const uri = file?.get_uri?.();
+            if (!uri || seen.has(uri) || !file.query_exists?.(null))
+                return;
+            out.push({
+                nombre,
+                exec: 'gio open ' + GLib.shell_quote(uri),
+                icono: new Gio.ThemedIcon({name: icono}),
+                desc: uri,
+                categoria: 'Accesos rapidos',
+            });
+            seen.add(uri);
+        } catch (e) {
+            console.debug?.('Nebula: no se pudo leer acceso rapido: ' + e);
+        }
+    };
+
+    add('Inicio', Gio.File.new_for_path(GLib.get_home_dir()), 'user-home-symbolic');
+    const dirs = [
+        [GLib.UserDirectory.DIRECTORY_DESKTOP, 'Escritorio', 'user-desktop-symbolic'],
+        [GLib.UserDirectory.DIRECTORY_DOCUMENTS, 'Documentos', 'folder-documents-symbolic'],
+        [GLib.UserDirectory.DIRECTORY_DOWNLOAD, 'Descargas', 'folder-download-symbolic'],
+        [GLib.UserDirectory.DIRECTORY_MUSIC, 'Musica', 'folder-music-symbolic'],
+        [GLib.UserDirectory.DIRECTORY_PICTURES, 'Imagenes', 'folder-pictures-symbolic'],
+        [GLib.UserDirectory.DIRECTORY_VIDEOS, 'Videos', 'folder-videos-symbolic'],
+    ];
+    for (const [kind, nombre, icono] of dirs) {
+        try {
+            const path = GLib.get_user_special_dir(kind);
+            if (path)
+                add(nombre, Gio.File.new_for_path(path), icono);
+        } catch (_e) {
+            // Algunas instalaciones no declaran todos los directorios XDG.
+        }
+    }
+    add('Papelera', Gio.File.new_for_uri('trash:///'), 'user-trash-symbolic');
+    return out;
+}
 export function mountedLocations() {
     const monitor = Gio.VolumeMonitor.get();
     const mounts = monitor.get_mounts?.() ?? [];
@@ -315,6 +362,7 @@ export function buildModel(extensionPath) {
     const knownNames = new Set(rawCats.map(c => c.nombre ?? '?'));
     const buckets = new Map(rawCats.map(c => [c.nombre ?? '?', []]));
     const locationCat = rawCats.find(c => c.tipo === 'ubicaciones');
+    const quickCat = rawCats.find(c => c.tipo === 'accesos');
     // Compatibilidad con instalaciones cuyo categories.json fue generado
     // antes de esta capacidad: la categoria se materializa igualmente.
     const locationsCategory = locationCat ?? {
@@ -327,6 +375,17 @@ export function buildModel(extensionPath) {
         knownNames.add(locationsCategory.nombre);
     }
     buckets.set(locationsCategory.nombre, mountedLocations());
+
+    const quickCategory = quickCat ?? {
+        nombre: 'Accesos rapidos',
+        icono: 'folder',
+        tipo: 'accesos',
+    };
+    if (!knownNames.has(quickCategory.nombre)) {
+        rawCats.push(quickCategory);
+        knownNames.add(quickCategory.nombre);
+    }
+    buckets.set(quickCategory.nombre, quickLocations());
 
     for (const cat of rawCats) {
         const catName = cat.nombre ?? '?';
