@@ -292,13 +292,32 @@ export class NebulaSidebar {
     }
 
     _buildClock() {
-        const box = new St.BoxLayout({vertical: true, style_class: 'nebula-clock'});
+        const button = new St.Button({
+            style_class: 'nebula-clock-button',
+            can_focus: true,
+            x_expand: true,
+            child: new St.BoxLayout({vertical: true, style_class: 'nebula-clock'}),
+        });
+        const box = button.child;
         this._dateLabel = new St.Label({text: '', style_class: 'nebula-date'});
         this._timeLabel = new St.Label({text: '', style_class: 'nebula-time'});
         this._noEllipsize(this._dateLabel);
         box.add_child(this._dateLabel);
         box.add_child(this._timeLabel);
-        return box;
+        this._connect(button, 'clicked', () => this._openCalendar());
+        return button;
+    }
+
+    _openCalendar() {
+        try {
+            GLib.spawn_command_line_async('gnome-calendar');
+        } catch (e) {
+            try {
+                GLib.spawn_command_line_async('gnome-control-center datetime');
+            } catch (fallbackError) {
+                console.error(`Nebula Shell: no se pudo abrir el calendario: ${fallbackError}`);
+            }
+        }
     }
 
     // Recuadro de busqueda permanente, arriba de la fila de energia. No
