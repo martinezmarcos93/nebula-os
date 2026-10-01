@@ -64,7 +64,7 @@ export default class NebulaShellExtension extends Extension {
         for (let i = 0; i < count; i++) {
             this._sidebars.push(new NebulaSidebar(this, this._unredirect, i, i === 0));
             if (FEATURES.bottombar)
-                this._bottomBars.push(new NebulaBottomBar(i));
+                this._bottomBars.push(new NebulaBottomBar(i, this.path));
         }
     }
 
