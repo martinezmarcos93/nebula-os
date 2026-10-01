@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# nebula-screenshot - Capturas de pantalla para Nebula OS (backend: maim).
-#   full    (por defecto)  pantalla completa      -> archivo (+ portapapeles)
-#   region                 seleccion interactiva  -> archivo (+ portapapeles)
-#   window                 ventana activa         -> archivo (+ portapapeles)
-#   clip                   seleccion interactiva  -> SOLO al portapapeles
-# Los archivos van a  <carpeta Imagenes de XDG>/Capturas/AAAA-MM-DD_HH-MM-SS.png
-# Uso: nebula-screenshot [full|region|window|clip] [--help]
+# nebula-screenshot - Capturas de pantalla para Nebula OS.
+#
+# En GNOME/Wayland usa org.gnome.Shell.Screenshot, la interfaz nativa de
+# Mutter/GNOME Shell. En X11 conserva maim como backend para la sesion bspwm.
+#
+#   full    (por defecto) pantalla completa -> archivo + portapapeles
+#   region                 seleccion interactiva -> archivo + portapapeles
+#   window                 ventana activa -> archivo + portapapeles
+#   clip                   seleccion interactiva -> solo portapapeles
 set -uo pipefail
 
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
-    sed -n '2,8p' "$0"
+    sed -n '2,10p' "$0"
     exit 0
 fi
 
@@ -17,66 +19,139 @@ notify() {
     command -v notify-send >/dev/null 2>&1 && notify-send -a "Nebula" "$1" "${2:-}" || true
 }
 
-command -v maim >/dev/null 2>&1 || { notify "Captura" "Falta 'maim' en el PATH."; exit 1; }
+pictures_dir() {
+    local dir
+    dir="$(xdg-user-dir PICTURES 2>/dev/null || true)"
+    [[ -n "$dir" && -d "$dir" ]] || dir="$HOME"
+    printf '%s/Capturas' "$dir"
+}
 
-have_clip=0
-command -v xclip >/dev/null 2>&1 && have_clip=1
-# xclip queda en segundo plano sirviendo el portapapeles: sin redirigir su
-# salida, heredaba el stdout del script y quien lo capturara esperaba para
-# siempre.
-copy_png() { [[ "$have_clip" -eq 1 ]] && xclip -selection clipboard -t image/png >/dev/null 2>&1; }
+new_file() {
+    local dir
+    dir="$(pictures_dir)"
+    mkdir -p "$dir" || return 1
+    printf '%s/%s.png' "$dir" "$(date +%Y-%m-%d_%H-%M-%S)"
+}
+
+copy_png() {
+    local file="$1"
+    if [[ "${WAYLAND_DISPLAY:-}" && "$(command -v wl-copy || true)" ]]; then
+        wl-copy --type image/png < "$file" >/dev/null 2>&1 || true
+    elif command -v xclip >/dev/null 2>&1; then
+        xclip -selection clipboard -t image/png -i "$file" >/dev/null 2>&1 || true
+    fi
+}
+
+wayland_session() {
+    [[ "${XDG_SESSION_TYPE:-}" == "wayland" || -n "${WAYLAND_DISPLAY:-}" ]]
+}
+
+wayland_screenshot() {
+    local mode="$1" file="$2" result success x y w h
+    command -v gdbus >/dev/null 2>&1 || {
+        notify "Captura" "Falta gdbus para usar la captura nativa de GNOME."
+        return 1
+    }
+
+    case "$mode" in
+        full)
+            result="$(gdbus call --session                 --dest org.gnome.Shell                 --object-path /org/gnome/Shell/Screenshot                 --method org.gnome.Shell.Screenshot.Screenshot                 true false "$file" 2>/dev/null)" || return 1
+            ;;
+        window)
+            result="$(gdbus call --session                 --dest org.gnome.Shell                 --object-path /org/gnome/Shell/Screenshot                 --method org.gnome.Shell.Screenshot.ScreenshotWindow                 false true false "$file" 2>/dev/null)" || return 1
+            ;;
+        region)
+            result="$(gdbus call --session                 --dest org.gnome.Shell                 --object-path /org/gnome/Shell/Screenshot                 --method org.gnome.Shell.Screenshot.SelectArea 2>/dev/null)" || return 1
+            read -r x y w h < <(
+                printf '%s\n' "$result" |
+                    sed -nE 's/^\\((-?[0-9]+), (-?[0-9]+), ([0-9]+), ([0-9]+)\\)$/\\1 \\2 \\3 \\4/p'
+            )
+            [[ "${x:-}" && "${y:-}" && "${w:-}" && "${h:-}" ]] || {
+                # Esc/cancelacion: no generar un archivo falso.
+                return 1
+            }
+            result="$(gdbus call --session                 --dest org.gnome.Shell                 --object-path /org/gnome/Shell/Screenshot                 --method org.gnome.Shell.Screenshot.ScreenshotArea                 "$x" "$y" "$w" "$h" true "$file" 2>/dev/null)" || return 1
+            ;;
+        *)
+            return 2
+            ;;
+    esac
+
+    success="$(printf '%s\n' "$result" | sed -nE "s/^\\((true|false),.*$/\\1/p")"
+    [[ "$success" == true && -f "$file" ]]
+}
+
+x11_screenshot() {
+    local mode="$1" file="$2" args=()
+    command -v maim >/dev/null 2>&1 || {
+        notify "Captura" "Falta 'maim' en el PATH."
+        return 1
+    }
+
+    case "$mode" in
+        full) args=(-u) ;;
+        region) args=(-u -s) ;;
+        window)
+            command -v xdotool >/dev/null 2>&1 || {
+                notify "Captura" "Falta 'xdotool' para el modo 'window'."
+                return 1
+            }
+            local wid geo
+            wid="$(xdotool getactivewindow)"
+            geo="$(xwininfo -id "$wid" 2>/dev/null | awk '
+                /Absolute upper-left X/ {x=$NF}
+                /Absolute upper-left Y/ {y=$NF}
+                /^ *Width:/ {w=$NF}
+                /^ *Height:/ {h=$NF}
+                END { if (w && h) printf "%dx%d+%d+%d", w, h, x, y }')"
+            if [[ -n "$geo" ]]; then
+                args=(-u -g "$geo")
+            else
+                args=(-u -i "$wid")
+            fi
+            ;;
+        *) return 2 ;;
+    esac
+
+    maim "${args[@]}" "$file"
+}
 
 mode="${1:-full}"
+file="$(new_file)" || exit 1
 
-# Modo 'clip': ni archivo ni carpeta, va derecho al portapapeles.
-if [[ "$mode" == "clip" ]]; then
-    if [[ "$have_clip" -ne 1 ]]; then
-        notify "Captura" "Falta 'xclip' para copiar al portapapeles."
-        exit 1
-    fi
-    if maim -u -s | copy_png; then
-        notify "Captura" "Region copiada al portapapeles."
-    fi
-    exit 0
+if [[ "$mode" == clip ]]; then
+    mode=region
+    clip_only=1
+else
+    clip_only=0
 fi
 
 case "$mode" in
-    full)   args=(-u) ;;
-    region) args=(-u -s) ;;
-    window)
-        command -v xdotool >/dev/null 2>&1 \
-            || { notify "Captura" "Falta 'xdotool' para el modo 'window'."; exit 1; }
-        # Solo el contenido de la ventana: `maim -i` incluye el borde de bspwm
-        # (2 px violeta alrededor de cada captura). xwininfo da la esquina
-        # absoluta y el tamano del area cliente, sin borde.
-        wid="$(xdotool getactivewindow)"
-        geo="$(xwininfo -id "$wid" 2>/dev/null | awk '
-            /Absolute upper-left X/ {x=$NF} /Absolute upper-left Y/ {y=$NF}
-            /^ *Width:/ {w=$NF} /^ *Height:/ {h=$NF}
-            END { if (w && h) printf "%dx%d+%d+%d", w, h, x, y }')"
-        if [[ -n "$geo" ]]; then
-            args=(-u -g "$geo")
-        else
-            args=(-u -i "$wid")
-        fi ;;
+    full|region|window) ;;
     *)
         echo "uso: nebula-screenshot [full|region|window|clip]" >&2
-        exit 2 ;;
+        exit 2
+        ;;
 esac
 
-dir="$(xdg-user-dir PICTURES 2>/dev/null || true)"
-[[ -n "$dir" && -d "$dir" ]] || dir="$HOME"
-dir="$dir/Capturas"
-mkdir -p "$dir"
-file="$dir/$(date +%Y-%m-%d_%H-%M-%S).png"
-
-if ! maim "${args[@]}" "$file"; then
-    # maim sale !=0 si se cancela la seleccion (Esc) o si falla: sin ruido.
-    [[ -f "$file" ]] && rm -f "$file"
-    exit 1
+if wayland_session; then
+    if ! wayland_screenshot "$mode" "$file"; then
+        rm -f "$file"
+        notify "Captura" "GNOME Shell no pudo realizar la captura."
+        exit 1
+    fi
+else
+    if ! x11_screenshot "$mode" "$file"; then
+        rm -f "$file"
+        exit 1
+    fi
 fi
 
-# Ademas del archivo, dejarla en el portapapeles para pegar de una.
-[[ "$have_clip" -eq 1 ]] && copy_png < "$file" >/dev/null 2>&1 || true
+copy_png "$file"
 
-notify "Captura guardada" "${file/#"$HOME"/~}"
+if [[ "$clip_only" -eq 1 ]]; then
+    notify "Captura" "Region copiada al portapapeles."
+    rm -f "$file"
+else
+    notify "Captura guardada" "${file/#"$HOME"/~}"
+fi
