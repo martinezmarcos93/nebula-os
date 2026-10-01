@@ -265,10 +265,61 @@ export function symbolicForCategory(nombre) {
  * y queda en la original -- nunca se inventa una categoria nueva aca).
  * Devuelve [{ nombre, icono(GIcon), apps: [{ nombre, exec, icono(GIcon) }] }]
  */
+
+/**
+ * Construye entradas dinamicas para ubicaciones montadas. Gio.VolumeMonitor
+ * ve tanto montajes locales como GVfs (incluyendo Google Drive configurado en
+ * Cuentas en linea). No se fija ningun /dev/sdX: la etiqueta y URI vienen del
+ * sistema en tiempo de ejecucion.
+ */
+export function mountedLocations() {
+    const monitor = Gio.VolumeMonitor.get();
+    const mounts = monitor.get_mounts?.() ?? [];
+    const out = [];
+    const seen = new Set();
+
+    for (const mount of mounts) {
+        try {
+            const root = mount.get_root?.();
+            const uri = root?.get_uri?.();
+            if (!uri || seen.has(uri))
+                continue;
+            // El root del sistema ya esta disponible como Home/Archivos y no
+            // debe duplicarse como una unidad. Conservamos el resto de
+            // montajes accesibles por el usuario, incluidos GVfs/cloud.
+            if (uri === 'file:///' || uri === 'file:///boot' || uri === 'file:///boot/efi')
+                continue;
+
+            const name = mount.get_name?.() || root.get_parse_name?.() || uri;
+            const scheme = (() => {
+                try { return GLib.uri_parse(uri, GLib.UriFlags.NONE).get_scheme(); }
+                catch (_e) { return ''; }
+            })();
+            const cloud = scheme && scheme !== 'file';
+            out.push({
+                nombre: cloud ? `Nube: ${name}` : name,
+                exec: `gio open ${GLib.shell_quote(uri)}`,
+                icono: new Gio.ThemedIcon({
+                    name: cloud ? 'folder-remote-symbolic' : 'drive-harddisk-symbolic',
+                }),
+                desc: uri,
+                categoria: 'Mis discos y nubes',
+            });
+            seen.add(uri);
+        } catch (e) {
+            console.debug?.(`Nebula: no se pudo leer un montaje: ${e}`);
+        }
+    }
+
+    return out;
+}
 export function buildModel(extensionPath) {
     const rawCats = loadCategories(extensionPath);
     const knownNames = new Set(rawCats.map(c => c.nombre ?? '?'));
     const buckets = new Map(rawCats.map(c => [c.nombre ?? '?', []]));
+    const locationCat = rawCats.find(c => c.tipo === 'ubicaciones');
+    if (locationCat)
+        buckets.set(locationCat.nombre, mountedLocations());
 
     for (const cat of rawCats) {
         const catName = cat.nombre ?? '?';
@@ -290,7 +341,7 @@ export function buildModel(extensionPath) {
     const out = [];
     for (const cat of rawCats) {
         const catName = cat.nombre ?? '?';
-        const apps = buckets.get(catName);
+        const apps = buckets.get(catName) ?? [];
         if (apps.length === 0)
             continue;
         out.push({
