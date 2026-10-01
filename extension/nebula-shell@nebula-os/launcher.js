@@ -27,7 +27,7 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 import {flatApps, filterApps, launch, hiddenApps, createDesktopShortcut} from './model.js';
 import {runWithConfirmation} from './system-actions.js';
-import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride} from './state.js';
+import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride, isTaskbarPinned, toggleTaskbarPinned, displayName, setDisplayName} from './state.js';
 import {buildModel} from './model.js';
 import {searchFiles} from './file-search.js';
 
@@ -577,6 +577,20 @@ export class NebulaLauncher {
         const launchItem = new PopupMenu.PopupMenuItem('Abrir nueva ventana');
         launchItem.connect('activate', () => launch(app.exec));
         menu.addMenuItem(launchItem);
+
+        const pin = new PopupMenu.PopupMenuItem(
+            isTaskbarPinned(app.exec) ? 'Quitar de la taskbar' : 'Anclar a la taskbar',
+        );
+        pin.connect('activate', () => toggleTaskbarPinned(app.exec));
+        menu.addMenuItem(pin);
+
+        const rename = new PopupMenu.PopupMenuItem('Restaurar nombre original');
+        rename.setSensitive(Boolean(displayName(app.exec)));
+        rename.connect('activate', () => {
+            setDisplayName(app.exec, null);
+            this.setModel(buildModel(this._ext.path));
+        });
+        menu.addMenuItem(rename);
 
         const shortcut = new PopupMenu.PopupMenuItem('Crear acceso directo en el escritorio');
         shortcut.connect('activate', () => {
