@@ -503,8 +503,8 @@ Nebula 1.0 requiere como mínimo:
 
 - [ ] Taskbar/lista de ventanas.
 - [ ] Activación.
-- [ ] Minimizar.
-- [ ] Restaurar.
+- [x] Minimizar.
+- [x] Restaurar.
 - [ ] Maximizar.
 - [ ] Cerrar.
 - [ ] Alt+Tab.
