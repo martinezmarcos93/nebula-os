@@ -10,8 +10,15 @@
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import Shell from 'gi://Shell';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
+
+import {
+    WindowTracker,
+    listWindows,
+    activateWindow,
+} from './window-manager.js';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
@@ -30,6 +37,8 @@ export class NebulaBottomBar {
         this._signalIds = [];
         this._clockId = 0;
         this._wsButtons = [];
+        this._windowButtons = [];
+        this._windowTracker = null;
         this._mprisName = null;
         this._mprisProxy = null;
         this._nameWatchId = 0;
@@ -37,6 +46,8 @@ export class NebulaBottomBar {
         this._build();
         this._place();
         this._syncWorkspaces();
+        this._syncWindows();
+        this._windowTracker = new WindowTracker(() => this._syncWindows());
         this._startClock();
         this._initMpris();
 
@@ -55,6 +66,22 @@ export class NebulaBottomBar {
 
         this._wsBox = new St.BoxLayout({style_class: 'nebula-ws'});
         this._bar.add_child(this._wsBox);
+
+        // Taskbar: una representacion por ventana, no por aplicacion.
+        // Clic = activar/restaurar. Esto mantiene separadas las responsabilidades
+        // del launcher (abrir) y la barra (volver a una ventana existente).
+        this._windowScroll = new St.ScrollView({
+            style_class: 'nebula-window-scroll',
+            x_expand: true,
+            can_focus: false,
+        });
+        this._windowScroll.set_policy(St.PolicyType.NEVER, St.PolicyType.NEVER);
+        this._windowBox = new St.BoxLayout({
+            style_class: 'nebula-window-list',
+            x_expand: true,
+        });
+        this._windowScroll.set_child(this._windowBox);
+        this._bar.add_child(this._windowScroll);
 
         this._bar.add_child(new St.Widget({x_expand: true}));
 
@@ -148,6 +175,70 @@ export class NebulaBottomBar {
             b.set_style_class_name(i === active
                 ? 'nebula-ws-btn nebula-ws-btn-active'
                 : 'nebula-ws-btn'));
+    }
+
+    // --- ventanas / taskbar -----------------------------------
+
+    _syncWindows() {
+        if (!this._windowBox)
+            return;
+        this._windowBox.destroy_all_children();
+        this._windowButtons = [];
+
+        for (const window of listWindows()) {
+            const icon = new St.Icon({
+                gicon: this._windowTracker ? undefined : undefined,
+                icon_size: 16,
+                style_class: 'nebula-window-icon',
+            });
+            try {
+                const app = window.get_gtk_application_id?.()
+                    ? null : null;
+                const trackerApp = global.get_window_actors()
+                    .map(actor => actor.get_meta_window())
+                    .find(candidate => candidate === window);
+                if (trackerApp) {
+                    // El icono se resuelve mediante WindowTracker abajo.
+                }
+            } catch (_e) {
+                // El fallback textual sigue siendo valido.
+            }
+
+            let gicon = null;
+            try {
+                gicon = Shell.WindowTracker.get_default()
+                    .get_window_app(window)?.get_icon?.() ?? null;
+            } catch (_e) {
+                gicon = null;
+            }
+            if (gicon)
+                icon.gicon = gicon;
+
+            const label = window.get_title?.() || 'Ventana';
+            const button = new St.Button({
+                style_class: 'nebula-window-btn',
+                can_focus: true,
+                reactive: true,
+            });
+            if (window.minimized)
+                button.add_style_class_name('nebula-window-btn-minimized');
+            if (window.has_focus?.())
+                button.add_style_class_name('nebula-window-btn-active');
+
+            const box = new St.BoxLayout({
+                style_class: 'nebula-window-box',
+            });
+            box.add_child(icon);
+            box.add_child(new St.Label({
+                text: label,
+                y_align: Clutter.ActorAlign.CENTER,
+                style_class: 'nebula-window-label',
+            }));
+            button.set_child(box);
+            button.connect('clicked', () => activateWindow(window));
+            this._windowBox.add_child(button);
+            this._windowButtons.push(button);
+        }
     }
 
     // --- reloj -------------------------------------------------
@@ -276,6 +367,8 @@ export class NebulaBottomBar {
             this._mprisPropsId = 0;
         }
         this._mprisProxy = null;
+        this._windowTracker?.destroy();
+        this._windowTracker = null;
 
         for (const [target, id] of this._signalIds)
             target.disconnect(id);
