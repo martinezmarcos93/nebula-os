@@ -25,7 +25,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
-import {flatApps, filterApps, launch} from './model.js';
+import {flatApps, filterApps, launch, hiddenApps} from './model.js';
 import {runWithConfirmation} from './system-actions.js';
 import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride} from './state.js';
 import {buildModel} from './model.js';
@@ -45,6 +45,7 @@ const SAFE_ACTIONS = [
     ['Archivos', 'archivos carpetas home documentos nautilus', 'nautilus', 'system-file-manager-symbolic', 'Abrir el gestor de archivos'],
     ['Papelera', 'papelera basura trash reciclaje', 'gio open trash:///', 'user-trash-symbolic', 'Abrir la papelera del sistema'],
     ['Configuración', 'configuracion ajustes settings', 'gnome-control-center', 'preferences-system-symbolic', 'Abrir la configuración de GNOME'],
+    ['Aplicaciones ocultas', 'ocultas restaurar recuperar aplicaciones escondidas', '', 'view-reveal-symbolic', 'Restaurar aplicaciones ocultas'],
     ['Suspender', 'suspender suspensión sleep', 'systemctl suspend', 'media-playback-pause-symbolic', 'Suspender la sesión'],
     ['Cerrar sesión', 'cerrar sesion logout salir', 'gnome-session-quit --logout', 'system-log-out-symbolic', 'Cerrar la sesión actual'],
     ['Reiniciar', 'reiniciar reboot reinicio', 'gnome-session-quit --reboot', 'system-reboot-symbolic', 'Reiniciar el sistema'],
@@ -62,6 +63,7 @@ function safeActions(query) {
             desc: a[4],
             accion: true,
             destructiva: a[2].startsWith('gnome-session-quit'),
+            ocultas: a[0] === 'Aplicaciones ocultas',
         }));
 }
 
@@ -410,6 +412,34 @@ export class NebulaLauncher {
         }
     }
 
+    _openHiddenAppsMenu(source) {
+        const menu = new PopupMenu.PopupMenu(source, 0.5, St.Side.TOP);
+        Main.uiGroup.add_child(menu.actor);
+        menu.actor.hide();
+        Main.panel.menuManager.addMenu(menu);
+
+        const apps = hiddenApps(this._ext.path);
+        if (apps.length === 0) {
+            const empty = new PopupMenu.PopupMenuItem('No hay aplicaciones ocultas');
+            empty.setSensitive(false);
+            menu.addMenuItem(empty);
+        } else {
+            for (const app of apps) {
+                const item = new PopupMenu.PopupImageMenuItem(app.nombre, app.icono);
+                item.connect('activate', () => {
+                    setHidden(app.exec, false);
+                    this.setModel(buildModel(this._ext.path));
+                });
+                menu.addMenuItem(item);
+            }
+        }
+        menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (!isOpen)
+                menu.destroy();
+        });
+        menu.open(BoxPointer.PopupAnimation.FULL);
+    }
+
     _rebuild(fromFileCallback = false) {
         if (!fromFileCallback) {
             this._cancelFileSearch();
@@ -459,6 +489,8 @@ export class NebulaLauncher {
                 btn.connect('clicked', () => {
                     if (app.archivo)
                         this._openUri(app.uri);
+                    else if (app.ocultas)
+                        this._openHiddenAppsMenu(btn);
                     else if (app.accion)
                         runWithConfirmation(app.nombre, app.exec);
                     else
@@ -466,7 +498,7 @@ export class NebulaLauncher {
                     this.close(app.archivo ? 'file-open' : 'app-launch');
                 });
                 btn.connect('button-press-event', (_actor, event) => {
-                    if (app.accion || app.archivo || event.get_button() !== 3)
+                    if (app.accion || app.archivo || app.ocultas || event.get_button() !== 3)
                         return Clutter.EVENT_PROPAGATE;
                     this._openAppMenu(btn, app);
                     return Clutter.EVENT_STOP;
