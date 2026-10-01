@@ -228,6 +228,10 @@ Nebula debe delegar en GNOME/D-Bus/systemd cuando exista una API adecuada.
 
 Las operaciones cotidianas de sistema pueden ejecutarse desde la interfaz Nebula sin abrir manualmente Settings o Activities.
 
+### Corrección incorporada
+
+`nebula-screenshot` ya no depende exclusivamente de X11: en GNOME/Wayland utiliza `org.gnome.Shell.Screenshot`, mientras que la sesión bspwm conserva `maim` como backend. El portapapeles usa `wl-copy` cuando está disponible y mantiene `xclip` como fallback.
+
 ---
 
 ## ETAPA 4 — Files & Storage
@@ -501,14 +505,14 @@ Nebula 1.0 requiere como mínimo:
 
 ### Ventanas
 
-- [ ] Taskbar/lista de ventanas.
-- [ ] Activación.
+- [x] Taskbar/lista de ventanas.
+- [x] Activación.
 - [x] Minimizar.
 - [x] Restaurar.
-- [ ] Maximizar.
-- [ ] Cerrar.
-- [ ] Alt+Tab.
-- [ ] Workspaces.
+- [x] Maximizar.
+- [x] Cerrar.
+- [x] Alt+Tab (delegado al comportamiento nativo de GNOME).
+- [x] Workspaces.
 - [ ] Multi-monitor.
 - [x] Múltiples ventanas por aplicación.
 
@@ -533,7 +537,7 @@ Nebula 1.0 requiere como mínimo:
 - [ ] Batería.
 - [ ] Notificaciones.
 - [ ] No molestar.
-- [ ] Captura.
+- [x] Captura.
 - [ ] Grabación.
 - [ ] Bloqueo.
 - [ ] Cerrar sesión.
