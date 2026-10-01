@@ -145,6 +145,8 @@ export class NebulaLauncher {
             if (this._firstApp) {
                 if (this._firstApp.archivo)
                     this._openUri(this._firstApp.uri);
+                else if (this._firstApp.ocultas)
+                    this._openHiddenAppsMenu(this._entry);
                 else
                     launch(this._firstApp.exec);
                 this.close('app-launch-enter');
