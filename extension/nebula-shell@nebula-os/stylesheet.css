@@ -455,3 +455,43 @@
     color: #e5e7eb;
     padding-left: 4px;
 }
+
+
+/* ---- Theme Engine -------------------------------------------------- */
+/* Cosmic Dark es el tema base. Las variantes se aplican sobre los mismos
+ * componentes: no existen dos implementaciones visuales paralelas. */
+.nebula-theme-monochrome .nebula-sidebar,
+.nebula-theme-monochrome .nebula-bottombar {
+    background-color: rgba(16, 16, 16, 0.94);
+    border-color: rgba(210, 210, 210, 0.28);
+}
+.nebula-theme-monochrome .nebula-launcher {
+    background-color: rgba(24, 24, 24, 0.98);
+    border-color: rgba(210, 210, 210, 0.30);
+}
+.nebula-theme-monochrome .nebula-cat-active,
+.nebula-theme-monochrome .nebula-result:hover,
+.nebula-theme-monochrome .nebula-result:focus,
+.nebula-theme-monochrome .nebula-window-btn-active {
+    background-color: rgba(210, 210, 210, 0.18);
+}
+.nebula-theme-monochrome .nebula-brand,
+.nebula-theme-monochrome .nebula-cat-active .nebula-cat-icon {
+    color: #d0d0d0;
+}
+.nebula-theme-monochrome .nebula-cat:hover {
+    border-left-color: #d0d0d0;
+}
+.nebula-theme-monochrome .nebula-search:focus {
+    border-color: #d0d0d0;
+}
+
+/* ---- Modes --------------------------------------------------------- */
+.nebula-mode-focus .nebula-meters,
+.nebula-mode-focus .nebula-mpris {
+    opacity: 0.35;
+}
+.nebula-mode-focus .nebula-track,
+.nebula-mode-focus .nebula-mpris-btn {
+    opacity: 0.35;
+}
