@@ -44,8 +44,9 @@ const QUICK = [
 ];
 
 export class NebulaBottomBar {
-    constructor(monitorIndex = 0) {
+    constructor(monitorIndex = 0, extensionPath = null) {
         this._monitorIndex = monitorIndex;
+        this._extensionPath = extensionPath;
         this._signalIds = [];
         this._clockId = 0;
         this._wsButtons = [];
@@ -319,7 +320,7 @@ export class NebulaBottomBar {
         if (!this._pinnedBox) return;
         this._pinnedBox.destroy_all_children();
         this._pinnedButtons = [];
-        const apps = taskbarPinnedApps(global.extensionManager?.lookup?.('nebula-shell@nebula-os')?.path ?? '');
+        const apps = taskbarPinnedApps(this._extensionPath);
         for (const app of apps) {
             const b = new St.Button({
                 style_class: 'nebula-pinned-btn',
