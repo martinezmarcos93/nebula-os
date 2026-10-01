@@ -421,6 +421,11 @@ exec   = "nebula-screenshot region"
 icono  = "camera"
 
 [[categoria.app]]
+nombre = "Grabacion de pantalla"
+exec   = "nebula-screenrecord"
+icono  = "video"
+
+[[categoria.app]]
 nombre = "Portapapeles"
 exec   = "copyq toggle"
 icono  = "clipboard"
