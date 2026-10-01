@@ -114,7 +114,7 @@ Cada capa debe reutilizar APIs/servicios existentes siempre que sea razonable.
 
 ### Estado
 
-**EN CURSO — documentación inicial creada en esta rama.**
+**COMPLETADA — documentación inicial consolidada en esta rama.**
 
 ### Criterio de salida
 
@@ -125,6 +125,10 @@ No quedan contradicciones entre el roadmap de reparación y el roadmap funcional
 ## ETAPA 1 — Desktop Core
 
 **Prioridad: P0.**
+
+**Estado actual: IMPLEMENTACIÓN EN CURSO.**
+
+Primer incremento implementado en esta rama: `window-manager.js` + taskbar viva integrada en `bottombar.js`. La validación real sobre GNOME queda pendiente de ejecución en la máquina de referencia.
 
 Nebula debe controlar las ventanas como un escritorio normal.
 
@@ -148,7 +152,18 @@ Nebula debe controlar las ventanas como un escritorio normal.
 
 ### Criterio de aceptación
 
-Con varias aplicaciones abiertas, el usuario puede localizar, activar, minimizar, restaurar, maximizar, cerrar y cambiar de workspace sin recurrir a Activities para operaciones normales.
+Con varias aplicaciones abiertas, el usuario puede localizar y activar cada ventana desde la taskbar, incluyendo varias ventanas de una misma aplicación y ventanas situadas en otros workspaces. Minimizar/restaurar/maximizar/cerrar se completará mediante las acciones de ventana del siguiente incremento/context-menu, mientras GNOME mantiene sus atajos nativos.
+
+### Incremento implementado
+
+- `window-manager.js`: abstracción de ventanas sobre Mutter/Shell.
+- `bottombar.js`: taskbar con una representación por ventana.
+- `stylesheet.css`: estados normal, activo y minimizado.
+- El launcher conserva su semántica: abrir una aplicación no se convierte en activar silenciosamente una ventana existente.
+
+### Validación pendiente
+
+La rama debe instalarse en GNOME 46 y comprobar: abrir dos aplicaciones, abrir dos ventanas de Chrome, activar cada una desde la taskbar, minimizar/restaurar, cambiar de workspace y cerrar una ventana. También se debe comprobar que la taskbar desaparece limpiamente al deshabilitar la extensión.
 
 ---
 
@@ -483,7 +498,7 @@ Nebula 1.0 requiere como mínimo:
 - [ ] Alt+Tab.
 - [ ] Workspaces.
 - [ ] Multi-monitor.
-- [ ] Múltiples ventanas por aplicación.
+- [x] Múltiples ventanas por aplicación.
 
 ### Escritorio
 
