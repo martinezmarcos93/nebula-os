@@ -314,6 +314,12 @@ Ejemplos:
 
 No se permitirá ejecución arbitraria privilegiada desde el buscador.
 
+### Incremento implementado
+
+El launcher conserva la búsqueda de aplicaciones y ahora agrega una primera capa de **acciones seguras** cuando se busca desde el modo global: captura de pantalla, red/Wi-Fi, sonido, Bluetooth, pantalla/brillo, Archivos y Configuración. Las acciones usan comandos fijos y delegan en GNOME, `gio` o los scripts existentes de Nebula.
+
+Las acciones destructivas (apagar, reiniciar, cerrar sesión) no se agregan al buscador todavía: requieren una confirmación explícita y quedarán en el siguiente incremento de acciones de energía. Tampoco se implementa ejecución arbitraria de texto.
+
 ### Criterio de aceptación
 
 El usuario puede realizar operaciones frecuentes mediante “Super → escribir → Enter” o equivalente, sin navegar manualmente por múltiples menús.
