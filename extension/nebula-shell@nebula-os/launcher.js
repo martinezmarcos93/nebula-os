@@ -584,6 +584,32 @@ export class NebulaLauncher {
         pin.connect('activate', () => toggleTaskbarPinned(app.exec));
         menu.addMenuItem(pin);
 
+        const renameRow = new PopupMenu.PopupBaseMenuItem({activate: false});
+        const renameEntry = new St.Entry({
+            text: displayName(app.exec) ?? app.nombre,
+            hint_text: 'Nombre visual',
+            can_focus: true,
+            x_expand: true,
+        });
+        const saveName = new St.Button({
+            label: 'Guardar',
+            can_focus: true,
+            style_class: 'nebula-rename-save',
+        });
+        renameRow.add_child(renameEntry);
+        renameRow.add_child(saveName);
+        const save = () => {
+            const value = renameEntry.get_text().trim();
+            if (value) {
+                setDisplayName(app.exec, value);
+                this.setModel(buildModel(this._ext.path));
+            }
+            menu.close();
+        };
+        saveName.connect('clicked', save);
+        renameEntry.clutter_text.connect('activate', save);
+        menu.addMenuItem(renameRow);
+
         const rename = new PopupMenu.PopupMenuItem('Restaurar nombre original');
         rename.setSensitive(Boolean(displayName(app.exec)));
         rename.connect('activate', () => {
