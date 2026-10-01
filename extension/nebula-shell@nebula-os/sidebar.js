@@ -56,8 +56,10 @@ const POWER_ACTIONS = {
 };
 
 export class NebulaSidebar {
-    constructor(extension, unredirect) {
+    constructor(extension, unredirect, monitorIndex = 0, ownsKeybinding = false) {
         this._ext = extension;
+        this._monitorIndex = monitorIndex;
+        this._ownsKeybinding = ownsKeybinding;
         this._settings = extension.getSettings();
         this._unredirect = unredirect;
         this._unredirectSignalId = 0;
@@ -178,7 +180,8 @@ export class NebulaSidebar {
 
     _monitor() {
         const lm = Main.layoutManager;
-        return lm.primaryMonitor
+        return lm.monitors?.[this._monitorIndex]
+            ?? (this._monitorIndex === 0 ? lm.primaryMonitor : null)
             ?? lm.monitors?.[lm.primaryIndex]
             ?? lm.monitors?.[0]
             ?? null;
@@ -600,6 +603,8 @@ export class NebulaSidebar {
     // --- atajo de teclado ---------------------------------------
 
     _addKeybinding() {
+        if (!this._ownsKeybinding)
+            return;
         Main.wm.addKeybinding(
             'toggle-sidebar',
             this._settings,
@@ -610,7 +615,8 @@ export class NebulaSidebar {
     }
 
     _removeKeybinding() {
-        Main.wm.removeKeybinding('toggle-sidebar');
+        if (this._ownsKeybinding)
+            Main.wm.removeKeybinding('toggle-sidebar');
     }
 
     // --- ciclo de vida ----------------------------------------
