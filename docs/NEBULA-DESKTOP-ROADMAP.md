@@ -249,9 +249,21 @@ Nebula proporcionará integración:
 - Abrir ubicación desde aplicaciones.
 - Acciones de archivo mediante Nautilus.
 
+### Incremento implementado
+
+La sidebar incorpora **Mis discos y nubes** como categoria dinamica. Al abrirla, Nebula consulta `Gio.VolumeMonitor` y construye el submenu con los montajes accesibles en esa sesion.
+
+Se incluyen montajes locales y montajes GVfs/no-`file://`, por lo que Google Drive configurado mediante GNOME Online Accounts puede aparecer como nube sin hardcodear rutas ni nombres de disco.
+
+Cada entrada abre su URI mediante `gio open`, delegando la navegacion al gestor de archivos del sistema.
+
 ### Criterio de aceptación
 
-El usuario puede acceder a sus ubicaciones habituales desde Nebula y continuar el trabajo en el gestor de archivos del sistema.
+El usuario puede acceder a sus ubicaciones habituales desde Nebula y continuar el trabajo en el gestor de archivos del sistema. Los discos y nubes que estén montados aparecen automáticamente; si un volumen no está montado, Nebula no inventa una entrada falsa.
+
+### Validación pendiente
+
+Con los dos discos del usuario y las cuentas de Google Drive montadas, comprobar que todos aparecen bajo **Mis discos y nubes**, que cada entrada abre la ubicación correcta y que desconectar/reconectar una unidad actualiza el listado al reconstruir la sidebar.
 
 ---
 
