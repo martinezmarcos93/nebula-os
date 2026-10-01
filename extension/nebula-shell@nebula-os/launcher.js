@@ -22,9 +22,13 @@ import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 import {flatApps, filterApps, launch} from './model.js';
 import {runWithConfirmation} from './system-actions.js';
+import {isFavorite, toggleFavorite, setHidden} from './state.js';
+import {buildModel} from './model.js';
 
 const PANEL_WIDTH = 380;
 const MAX_HEIGHT = 560;
@@ -415,9 +419,48 @@ export class NebulaLauncher {
                     launch(app.exec);
                 this.close('app-launch');
             });
+            btn.connect('button-press-event', (_actor, event) => {
+                if (app.accion || event.get_button() !== 3)
+                    return Clutter.EVENT_PROPAGATE;
+                this._openAppMenu(btn, app);
+                return Clutter.EVENT_STOP;
+            });
             this._results.add_child(btn);
             this._rows.push(btn);
         }
+    }
+
+    _openAppMenu(source, app) {
+        const menu = new PopupMenu.PopupMenu(source, 0.5, St.Side.TOP);
+        Main.uiGroup.add_child(menu.actor);
+        menu.actor.hide();
+        Main.panel.menuManager.addMenu(menu);
+        const favorite = new PopupMenu.PopupMenuItem(
+            isFavorite(app.exec) ? 'Quitar de favoritos' : 'Agregar a favoritos',
+        );
+        favorite.connect('activate', () => {
+            toggleFavorite(app.exec);
+            this.setModel(buildModel(this._ext.path));
+        });
+        menu.addMenuItem(favorite);
+
+        const hide = new PopupMenu.PopupMenuItem('Ocultar aplicación');
+        hide.connect('activate', () => {
+            setHidden(app.exec, true);
+            this.setModel(buildModel(this._ext.path));
+            if (this._isOpen)
+                this._rebuild();
+        });
+        menu.addMenuItem(hide);
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        const launchItem = new PopupMenu.PopupMenuItem('Abrir nueva ventana');
+        launchItem.connect('activate', () => launch(app.exec));
+        menu.addMenuItem(launchItem);
+        menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (!isOpen)
+                menu.destroy();
+        });
+        menu.open(BoxPointer.PopupAnimation.FULL);
     }
 
     _connect(target, signal, cb) {
