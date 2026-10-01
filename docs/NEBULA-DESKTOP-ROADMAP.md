@@ -188,6 +188,10 @@ La rama debe instalarse en GNOME 46 y comprobar: abrir dos aplicaciones, abrir d
 
 Nebula no debe implementar un gestor de archivos propio para estas operaciones. Debe integrarse con el mecanismo de escritorio y Nautilus/DING cuando corresponda.
 
+### Decisión de integración
+
+La sidebar permanece sin `affectsStruts`: no reserva espacio del escritorio. Esto evita que al desplegar/retraer Nebula GNOME/DING reacomode los iconos o que las ventanas maximizadas cambien de geometría. El ordenamiento, persistencia, papelera y menú contextual de iconos siguen siendo responsabilidad de la superficie de escritorio existente.
+
 ### Criterio de aceptación
 
 El usuario puede organizar el escritorio y sus accesos directos, reiniciar sesión y encontrar la misma organización.
@@ -518,7 +522,7 @@ Nebula 1.0 requiere como mínimo:
 
 ### Escritorio
 
-- [ ] Iconos.
+- [x] Integración con la superficie de iconos existente de GNOME/DING (Nebula no implementa un desktop manager paralelo).
 - [ ] Reordenamiento.
 - [ ] Persistencia.
 - [ ] Accesos directos.
