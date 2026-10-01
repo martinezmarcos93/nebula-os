@@ -27,7 +27,7 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 import {flatApps, filterApps, launch} from './model.js';
 import {runWithConfirmation} from './system-actions.js';
-import {isFavorite, toggleFavorite, setHidden} from './state.js';
+import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride} from './state.js';
 import {buildModel} from './model.js';
 import {searchFiles} from './file-search.js';
 
@@ -504,6 +504,32 @@ export class NebulaLauncher {
             this.setModel(buildModel(this._ext.path));
         });
         menu.addMenuItem(favorite);
+
+        const move = new PopupMenu.PopupSubMenuMenuItem('Mover a categoría', false);
+        const dynamicCategories = new Set(['Favoritos', 'Recientes', 'Mis discos y nubes', 'Accesos rapidos']);
+        for (const category of this._model) {
+            if (dynamicCategories.has(category.nombre))
+                continue;
+            const item = new PopupMenu.PopupMenuItem(category.nombre);
+            if (app.categoria === category.nombre)
+                item.setOrnament(PopupMenu.Ornament.CHECK);
+            item.connect('activate', () => {
+                setCategoryOverride(app.exec, category.nombre);
+                this.setModel(buildModel(this._ext.path));
+            });
+            move.menu.addMenuItem(item);
+        }
+        if (categoryOverride(app.exec)) {
+            const restore = new PopupMenu.PopupMenuItem('Restaurar categoría original');
+            restore.connect('activate', () => {
+                setCategoryOverride(app.exec, null);
+                this.setModel(buildModel(this._ext.path));
+            });
+            move.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+            move.menu.addMenuItem(restore);
+        }
+        if (!move.menu.isEmpty())
+            menu.addMenuItem(move);
 
         const hide = new PopupMenu.PopupMenuItem('Ocultar aplicación');
         hide.connect('activate', () => {
