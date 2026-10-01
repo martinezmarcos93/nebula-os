@@ -24,6 +24,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {flatApps, filterApps, launch} from './model.js';
+import {runWithConfirmation} from './system-actions.js';
 
 const PANEL_WIDTH = 380;
 const MAX_HEIGHT = 560;
@@ -37,6 +38,10 @@ const SAFE_ACTIONS = [
     ['Pantalla y brillo', 'pantalla monitor brillo display', 'gnome-control-center display', 'display-brightness-symbolic', 'Configurar monitores y brillo'],
     ['Archivos', 'archivos carpetas home documentos nautilus', 'nautilus', 'system-file-manager-symbolic', 'Abrir el gestor de archivos'],
     ['Configuración', 'configuracion ajustes settings', 'gnome-control-center', 'preferences-system-symbolic', 'Abrir la configuración de GNOME'],
+    ['Suspender', 'suspender suspensión sleep', 'systemctl suspend', 'media-playback-pause-symbolic', 'Suspender la sesión'],
+    ['Cerrar sesión', 'cerrar sesion logout salir', 'gnome-session-quit --logout', 'system-log-out-symbolic', 'Cerrar la sesión actual'],
+    ['Reiniciar', 'reiniciar reboot reinicio', 'gnome-session-quit --reboot', 'system-reboot-symbolic', 'Reiniciar el sistema'],
+    ['Apagar', 'apagar shutdown poweroff apagar equipo', 'gnome-session-quit --power-off', 'system-shutdown-symbolic', 'Apagar el sistema'],
 ];
 
 function safeActions(query) {
@@ -49,6 +54,7 @@ function safeActions(query) {
             icono: new Gio.ThemedIcon({name: a[3]}),
             desc: a[4],
             accion: true,
+            destructiva: a[2].startsWith('gnome-session-quit'),
         }));
 }
 
@@ -402,7 +408,10 @@ export class NebulaLauncher {
             // GObject la desconecta sola. NO va a this._signalIds, que queda
             // reservado para conexiones que viven tanto como el NebulaLauncher.
             btn.connect('clicked', () => {
-                launch(app.exec);
+                if (app.accion)
+                    runWithConfirmation(app.nombre, app.exec);
+                else
+                    launch(app.exec);
                 this.close('app-launch');
             });
             this._results.add_child(btn);
