@@ -318,7 +318,7 @@ No se permitirá ejecución arbitraria privilegiada desde el buscador.
 
 El launcher conserva la búsqueda de aplicaciones y ahora agrega una primera capa de **acciones seguras** cuando se busca desde el modo global: captura de pantalla, red/Wi-Fi, sonido, Bluetooth, pantalla/brillo, Archivos y Configuración. Las acciones usan comandos fijos y delegan en GNOME, `gio` o los scripts existentes de Nebula.
 
-Las acciones destructivas (apagar, reiniciar, cerrar sesión) no se agregan al buscador todavía: requieren una confirmación explícita y quedarán en el siguiente incremento de acciones de energía. Tampoco se implementa ejecución arbitraria de texto.
+Las acciones de energía sensibles ya están disponibles también en el buscador global. Nebula las enruta por un módulo común de acciones del sistema y exige confirmación explícita antes de apagar, reiniciar o cerrar sesión; suspensión y bloqueo se delegan directamente al sistema. Tampoco se implementa ejecución arbitraria de texto.
 
 ### Requisito visual pendiente — alineamiento de submenús
 
@@ -533,7 +533,7 @@ Nebula 1.0 requiere como mínimo:
 - [x] Submenús.
 - [x] Lanzamiento de aplicaciones.
 - [x] Búsqueda básica.
-- [ ] Búsqueda unificada (acciones seguras ya incorporadas al modo global).
+- [ ] Búsqueda unificada (acciones seguras y acciones de energía ya incorporadas al modo global; faltan archivos/carpetas/configuración indexados en una única capa).
 
 ### Ventanas
 
