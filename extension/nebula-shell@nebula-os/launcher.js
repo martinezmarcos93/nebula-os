@@ -25,7 +25,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
-import {flatApps, filterApps, launch, hiddenApps} from './model.js';
+import {flatApps, filterApps, launch, hiddenApps, createDesktopShortcut} from './model.js';
 import {runWithConfirmation} from './system-actions.js';
 import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride} from './state.js';
 import {buildModel} from './model.js';
@@ -577,6 +577,12 @@ export class NebulaLauncher {
         const launchItem = new PopupMenu.PopupMenuItem('Abrir nueva ventana');
         launchItem.connect('activate', () => launch(app.exec));
         menu.addMenuItem(launchItem);
+
+        const shortcut = new PopupMenu.PopupMenuItem('Crear acceso directo en el escritorio');
+        shortcut.connect('activate', () => {
+            createDesktopShortcut(app.exec);
+        });
+        menu.addMenuItem(shortcut);
         menu.connect('open-state-changed', (_menu, isOpen) => {
             if (!isOpen)
                 menu.destroy();
