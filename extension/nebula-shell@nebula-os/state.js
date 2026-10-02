@@ -51,6 +51,7 @@ export function sanitize(data) {
             if (typeof v === 'string')
                 base.categoria_override[k] = v;
         }
+    }
     const order = data.orden;
     if (order && typeof order === 'object' && !Array.isArray(order)) {
         for (const [k,v] of Object.entries(order))
