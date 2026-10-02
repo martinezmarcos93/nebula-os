@@ -503,3 +503,24 @@
 .nebula-theme-monochrome .nebula-pinned-btn:hover, .nebula-theme-monochrome .nebula-pinned-btn:focus { background-color: rgba(210, 210, 210, 0.18); }
 
 .nebula-rename-save { padding: 4px 8px; border-radius: 5px; }
+
+
+/* Alineacion estricta de filas del lanzador: la columna de icono tiene ancho
+   fijo y el bloque de texto empieza siempre en la misma coordenada. */
+.nebula-result-box {
+    spacing: 10px;
+    x-align: fill;
+}
+.nebula-result-icon-slot {
+    width: 36px;
+    min-width: 36px;
+    max-width: 36px;
+}
+.nebula-result-icon {
+    width: 28px;
+    height: 28px;
+}
+.nebula-result-name,
+.nebula-result-desc {
+    x-align: fill;
+}
