@@ -34,7 +34,9 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {FEATURES} from './config.js';
 import {buildModel, invalidateIconCache} from './model.js';
 import {NebulaLauncher} from './launcher.js';
+import {runWithConfirmation} from './system-actions.js';
 import {NebulaMeters} from './meters.js';
+import {NebulaBattery} from './battery.js';
 
 const SIDEBAR_WIDTH = 236;    // px de ancho (superpuesta: no reserva area de trabajo)
 const CAT_ICON = 16;
@@ -49,11 +51,15 @@ const POWER_ACTIONS = {
     'system-shutdown-symbolic': 'gnome-session-quit --power-off',
     'system-lock-screen-symbolic': 'loginctl lock-session',
     'system-reboot-symbolic': 'gnome-session-quit --reboot',
+    'system-log-out-symbolic': 'gnome-session-quit --logout',
+    'system-suspend-symbolic': 'systemctl suspend',
 };
 
 export class NebulaSidebar {
-    constructor(extension, unredirect) {
+    constructor(extension, unredirect, monitorIndex = 0, ownsKeybinding = false) {
         this._ext = extension;
+        this._monitorIndex = monitorIndex;
+        this._ownsKeybinding = ownsKeybinding;
         this._settings = extension.getSettings();
         this._unredirect = unredirect;
         this._unredirectSignalId = 0;
@@ -85,6 +91,7 @@ export class NebulaSidebar {
             )
             : null;
         this._meters = FEATURES.meters ? new NebulaMeters() : null;
+        this._battery = new NebulaBattery(St, Clutter);
 
         this._buildActors();
         this._place();
@@ -132,6 +139,7 @@ export class NebulaSidebar {
         this._sidebar.add_child(new St.Widget({y_expand: true}));   // empuja lo de abajo
         if (this._meters)
             this._sidebar.add_child(this._meters.actor);
+        this._sidebar.add_child(this._battery.actor);
         if (this._launcher)
             this._sidebar.add_child(this._buildQuickSearch());
         this._sidebar.add_child(this._buildPowerRow());
@@ -172,7 +180,8 @@ export class NebulaSidebar {
 
     _monitor() {
         const lm = Main.layoutManager;
-        return lm.primaryMonitor
+        return lm.monitors?.[this._monitorIndex]
+            ?? (this._monitorIndex === 0 ? lm.primaryMonitor : null)
             ?? lm.monitors?.[lm.primaryIndex]
             ?? lm.monitors?.[0]
             ?? null;
@@ -292,13 +301,32 @@ export class NebulaSidebar {
     }
 
     _buildClock() {
-        const box = new St.BoxLayout({vertical: true, style_class: 'nebula-clock'});
+        const button = new St.Button({
+            style_class: 'nebula-clock-button',
+            can_focus: true,
+            x_expand: true,
+            child: new St.BoxLayout({vertical: true, style_class: 'nebula-clock'}),
+        });
+        const box = button.child;
         this._dateLabel = new St.Label({text: '', style_class: 'nebula-date'});
         this._timeLabel = new St.Label({text: '', style_class: 'nebula-time'});
         this._noEllipsize(this._dateLabel);
         box.add_child(this._dateLabel);
         box.add_child(this._timeLabel);
-        return box;
+        this._connect(button, 'clicked', () => this._openCalendar());
+        return button;
+    }
+
+    _openCalendar() {
+        try {
+            GLib.spawn_command_line_async('gnome-calendar');
+        } catch (e) {
+            try {
+                GLib.spawn_command_line_async('gnome-control-center datetime');
+            } catch (fallbackError) {
+                console.error(`Nebula Shell: no se pudo abrir el calendario: ${fallbackError}`);
+            }
+        }
     }
 
     // Recuadro de busqueda permanente, arriba de la fila de energia. No
@@ -332,11 +360,14 @@ export class NebulaSidebar {
                 child: new St.Icon({icon_name: icon, icon_size: 18}),
             });
             this._connect(btn, 'clicked', () => {
-                try {
-                    GLib.spawn_command_line_async(cmd);
-                } catch (e) {
-                    console.error(`Nebula Shell: fallo "${cmd}": ${e}`);
-                }
+                const labels = {
+                    'gnome-session-quit --power-off': 'Apagar',
+                    'loginctl lock-session': 'Bloquear',
+                    'gnome-session-quit --reboot': 'Reiniciar',
+                    'gnome-session-quit --logout': 'Cerrar sesión',
+                    'systemctl suspend': 'Suspender',
+                };
+                runWithConfirmation(labels[cmd] ?? 'Ejecutar acción', cmd);
             });
             row.add_child(btn);
         }
@@ -572,6 +603,8 @@ export class NebulaSidebar {
     // --- atajo de teclado ---------------------------------------
 
     _addKeybinding() {
+        if (!this._ownsKeybinding)
+            return;
         Main.wm.addKeybinding(
             'toggle-sidebar',
             this._settings,
@@ -582,7 +615,8 @@ export class NebulaSidebar {
     }
 
     _removeKeybinding() {
-        Main.wm.removeKeybinding('toggle-sidebar');
+        if (this._ownsKeybinding)
+            Main.wm.removeKeybinding('toggle-sidebar');
     }
 
     // --- ciclo de vida ----------------------------------------
@@ -638,6 +672,8 @@ export class NebulaSidebar {
 
         this._meters?.destroy();
         this._meters = null;
+        this._battery?.destroy();
+        this._battery = null;
         this._launcher?.destroy();
         this._launcher = null;
 

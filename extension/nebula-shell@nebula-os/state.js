@@ -21,6 +21,10 @@ function emptyState() {
         favoritos: [],            // [exec, ...] orden = orden de pineo
         categoria_override: {},   // { exec: "Nombre de categoria" }
         ocultos: [],               // [exec, ...]
+        recientes: [],             // [exec, ...] mas reciente primero
+        anclados_taskbar: [],     // [exec, ...]
+        nombres: {},              // {exec: 'nombre visual'}
+        orden: {},               // {categoria: [exec, ...]}
     };
 }
 
@@ -36,12 +40,21 @@ export function sanitize(data) {
     const strings = v => Array.isArray(v) ? v.filter(x => typeof x === 'string') : [];
     base.favoritos = strings(data.favoritos);
     base.ocultos = strings(data.ocultos);
+    base.recientes = strings(data.recientes);
+    base.anclados_taskbar = strings(data.anclados_taskbar);
+    if (data.nombres && typeof data.nombres === 'object' && !Array.isArray(data.nombres)) {
+        for (const [k,v] of Object.entries(data.nombres)) if (typeof v === 'string' && v.trim()) base.nombres[k]=v.trim();
+    }
     const co = data.categoria_override;
     if (co && typeof co === 'object' && !Array.isArray(co)) {
         for (const [k, v] of Object.entries(co)) {
             if (typeof v === 'string')
                 base.categoria_override[k] = v;
         }
+    const order = data.orden;
+    if (order && typeof order === 'object' && !Array.isArray(order)) {
+        for (const [k,v] of Object.entries(order))
+            if (Array.isArray(v)) base.orden[k] = v.filter(x => typeof x === 'string');
     }
     return base;
 }
@@ -134,3 +147,37 @@ export function setCategoryOverride(exec, categoryName) {
         delete s.categoria_override[exec];
     saveState(s);
 }
+
+// --- Recientes -------------------------------------------------------
+
+/** Registra una aplicacion lanzada. El orden es por ultimo uso y se limita a 12. */
+export function recordRecent(exec) {
+    if (!exec)
+        return;
+    const s = loadState();
+    s.recientes = s.recientes.filter(item => item !== exec);
+    s.recientes.unshift(exec);
+    s.recientes = s.recientes.slice(0, 12);
+    saveState(s);
+}
+
+export function recentExecutions() {
+    return [...loadState().recientes];
+}
+
+export function hiddenExecutions() {
+    return [...loadState().ocultos];
+}
+
+export function favoriteExecutions() {
+    return [...loadState().favoritos];
+}
+
+export function isTaskbarPinned(exec){return loadState().anclados_taskbar.includes(exec);}
+export function toggleTaskbarPinned(exec){const s=loadState();const i=s.anclados_taskbar.indexOf(exec);if(i>=0)s.anclados_taskbar.splice(i,1);else s.anclados_taskbar.push(exec);saveState(s);return i<0;}
+export function displayName(exec){return loadState().nombres[exec]??null;}
+export function setDisplayName(exec,name){const s=loadState();if(name&&name.trim())s.nombres[exec]=name.trim();else delete s.nombres[exec];saveState(s);}
+export function taskbarPinnedExecutions(){return [...loadState().anclados_taskbar];}
+
+export function appOrder(category){return [...(loadState().orden[category]??[])];}
+export function moveApp(category,exec,direction){const s=loadState();const arr=s.orden[category]??[];if(!arr.includes(exec))arr.push(exec);const i=arr.indexOf(exec);const j=i+direction;if(j<0||j>=arr.length)return false;[arr[i],arr[j]]=[arr[j],arr[i]];s.orden[category]=arr;saveState(s);return true;}

@@ -60,6 +60,18 @@
     letter-spacing: 0.5px;
 }
 
+.nebula-clock-button {
+    padding: 0;
+    border-radius: 8px;
+    background-color: transparent;
+}
+.nebula-clock-button:hover {
+    background-color: rgba(124, 58, 237, 0.16);
+}
+.nebula-clock-button:focus {
+    background-color: rgba(34, 211, 238, 0.12);
+}
+
 .nebula-clock {
     spacing: 2px;
     padding-bottom: 4px;
@@ -195,6 +207,30 @@
     margin-top: 2px;
 }
 
+/* ---- Bateria ----------------------------------------------------- */
+
+.nebula-battery {
+    padding: 6px 8px;
+    border-radius: 8px;
+}
+
+.nebula-battery:hover {
+    background-color: rgba(124, 58, 237, 0.18);
+}
+
+.nebula-battery-row {
+    spacing: 8px;
+}
+
+.nebula-battery-icon {
+    color: #9ca3af;
+}
+
+.nebula-battery-label {
+    font-size: 8.5pt;
+    color: #9ca3af;
+}
+
 /* ---- Fila de energia --------------------------------------------- */
 
 .nebula-power {
@@ -291,7 +327,55 @@
     padding: 12px 10px;
 }
 
+/* ---- Ventanas / taskbar ---------------------------------------------- */
+
+.nebula-window-scroll {
+    min-width: 120px;
+}
+
+.nebula-window-list {
+    spacing: 3px;
+    padding: 0 4px;
+}
+
+.nebula-window-btn {
+    min-width: 90px;
+    max-width: 240px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    color: #9ca3af;
+}
+
+.nebula-window-btn:hover {
+    background-color: rgba(124, 58, 237, 0.25);
+    color: #f3f4f6;
+}
+
+.nebula-window-btn:focus,
+.nebula-window-btn-active {
+    background-color: rgba(124, 58, 237, 0.42);
+    color: #ffffff;
+}
+
+.nebula-window-btn-minimized {
+    color: #6b7280;
+}
+
+.nebula-window-box {
+    spacing: 7px;
+}
+
+.nebula-window-icon {
+    icon-size: 16px;
+}
+
+.nebula-window-label {
+    font-size: 8.5pt;
+    max-width: 210px;
+}
+
 /* ---- Barra inferior --------------------------------------------------- */
+
 
 .nebula-bottombar {
     background-color: rgba(8, 8, 16, 0.92);
@@ -360,9 +444,62 @@
     color: #f3f4f6;
 }
 
+.nebula-tray-btn-active {
+    background-color: rgba(124, 58, 237, 0.40);
+    color: #e879f9;
+}
+
 .nebula-bottom-clock {
     font-size: 9pt;
     font-weight: 600;
     color: #e5e7eb;
     padding-left: 4px;
 }
+
+
+/* ---- Theme Engine -------------------------------------------------- */
+/* Cosmic Dark es el tema base. Las variantes se aplican sobre los mismos
+ * componentes: no existen dos implementaciones visuales paralelas. */
+.nebula-theme-monochrome .nebula-sidebar,
+.nebula-theme-monochrome .nebula-bottombar {
+    background-color: rgba(16, 16, 16, 0.94);
+    border-color: rgba(210, 210, 210, 0.28);
+}
+.nebula-theme-monochrome .nebula-launcher {
+    background-color: rgba(24, 24, 24, 0.98);
+    border-color: rgba(210, 210, 210, 0.30);
+}
+.nebula-theme-monochrome .nebula-cat-active,
+.nebula-theme-monochrome .nebula-result:hover,
+.nebula-theme-monochrome .nebula-result:focus,
+.nebula-theme-monochrome .nebula-window-btn-active {
+    background-color: rgba(210, 210, 210, 0.18);
+}
+.nebula-theme-monochrome .nebula-brand,
+.nebula-theme-monochrome .nebula-cat-active .nebula-cat-icon {
+    color: #d0d0d0;
+}
+.nebula-theme-monochrome .nebula-cat:hover {
+    border-left-color: #d0d0d0;
+}
+.nebula-theme-monochrome .nebula-search:focus {
+    border-color: #d0d0d0;
+}
+
+/* ---- Modes --------------------------------------------------------- */
+.nebula-mode-focus .nebula-meters,
+.nebula-mode-focus .nebula-mpris {
+    opacity: 0.35;
+}
+.nebula-mode-focus .nebula-track,
+.nebula-mode-focus .nebula-mpris-btn {
+    opacity: 0.35;
+}
+
+
+.nebula-pinned-apps { spacing: 2px; }
+.nebula-pinned-btn { padding: 4px 6px; border-radius: 6px; color: #9ca3af; }
+.nebula-pinned-btn:hover, .nebula-pinned-btn:focus { background-color: rgba(124, 58, 237, 0.28); color: #f3f4f6; }
+.nebula-theme-monochrome .nebula-pinned-btn:hover, .nebula-theme-monochrome .nebula-pinned-btn:focus { background-color: rgba(210, 210, 210, 0.18); }
+
+.nebula-rename-save { padding: 4px 8px; border-radius: 5px; }

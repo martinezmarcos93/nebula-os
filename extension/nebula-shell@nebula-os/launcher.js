@@ -17,16 +17,55 @@
 // No reserva espacio (sin struts): las ventanas no se reacomodan.
 
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
-import {flatApps, filterApps, launch} from './model.js';
+import {flatApps, filterApps, launch, hiddenApps, createDesktopShortcut} from './model.js';
+import {runWithConfirmation} from './system-actions.js';
+import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride, isTaskbarPinned, toggleTaskbarPinned, displayName, setDisplayName, moveApp} from './state.js';
+import {buildModel} from './model.js';
+import {searchFiles} from './file-search.js';
 
 const PANEL_WIDTH = 380;
 const MAX_HEIGHT = 560;
 const TOP_INSET = 118;
+
+const SAFE_ACTIONS = [
+    ['Captura de pantalla', 'captura screenshot pantalla', 'nebula-screenshot full', 'camera-photo-symbolic', 'Capturar la pantalla completa'],
+    ['Red y Wi-Fi', 'wifi red internet network', 'gnome-control-center network', 'network-wireless-symbolic', 'Configurar red y Wi-Fi'],
+    ['Sonido', 'audio volumen sonido', 'gnome-control-center sound', 'audio-volume-high-symbolic', 'Configurar volumen y dispositivos de audio'],
+    ['Bluetooth', 'bluetooth dispositivos', 'gnome-control-center bluetooth', 'bluetooth-active-symbolic', 'Configurar dispositivos Bluetooth'],
+    ['Pantalla y brillo', 'pantalla monitor brillo display', 'gnome-control-center display', 'display-brightness-symbolic', 'Configurar monitores y brillo'],
+    ['Fondo de escritorio', 'fondo wallpaper escritorio apariencia background', 'gnome-control-center background', 'preferences-desktop-wallpaper-symbolic', 'Cambiar el fondo de escritorio'],
+    ['Archivos', 'archivos carpetas home documentos nautilus', 'nautilus', 'system-file-manager-symbolic', 'Abrir el gestor de archivos'],
+    ['Papelera', 'papelera basura trash reciclaje', 'gio open trash:///', 'user-trash-symbolic', 'Abrir la papelera del sistema'],
+    ['Configuración', 'configuracion ajustes settings', 'gnome-control-center', 'preferences-system-symbolic', 'Abrir la configuración de GNOME'],
+    ['Aplicaciones ocultas', 'ocultas restaurar recuperar aplicaciones escondidas', '', 'view-reveal-symbolic', 'Restaurar aplicaciones ocultas'],
+    ['Suspender', 'suspender suspensión sleep', 'systemctl suspend', 'media-playback-pause-symbolic', 'Suspender la sesión'],
+    ['Cerrar sesión', 'cerrar sesion logout salir', 'gnome-session-quit --logout', 'system-log-out-symbolic', 'Cerrar la sesión actual'],
+    ['Reiniciar', 'reiniciar reboot reinicio', 'gnome-session-quit --reboot', 'system-reboot-symbolic', 'Reiniciar el sistema'],
+    ['Apagar', 'apagar shutdown poweroff apagar equipo', 'gnome-session-quit --power-off', 'system-shutdown-symbolic', 'Apagar el sistema'],
+];
+
+function safeActions(query) {
+    const q = String(query ?? '').trim().toLowerCase();
+    return SAFE_ACTIONS
+        .filter(a => !q || (a[0] + ' ' + a[1] + ' ' + a[4]).toLowerCase().includes(q))
+        .map(a => ({
+            nombre: a[0],
+            exec: a[2],
+            icono: new Gio.ThemedIcon({name: a[3]}),
+            desc: a[4],
+            accion: true,
+            destructiva: a[2].startsWith('gnome-session-quit'),
+            ocultas: a[0] === 'Aplicaciones ocultas',
+        }));
+}
 
 export class NebulaLauncher {
     constructor(extension, leftInset, onClose, getGuardActor, unredirect) {
@@ -49,6 +88,9 @@ export class NebulaLauncher {
         this._lastMonitorLabel = 'n/a';
         this._toggleIdleId = 0;             // BUG-25: hide()+show() diferido de _present()
         this._togglingVisibility = false;   // true durante ese hide()+show()
+        this._fileSearchProcess = null;
+        this._fileSearchSerial = 0;
+        this._fileResults = [];
 
         this._build();
     }
@@ -101,7 +143,12 @@ export class NebulaLauncher {
         this._connect(ct, 'text-changed', () => this._rebuild());
         this._connect(ct, 'activate', () => {
             if (this._firstApp) {
-                launch(this._firstApp.exec);
+                if (this._firstApp.archivo)
+                    this._openUri(this._firstApp.uri);
+                else if (this._firstApp.ocultas)
+                    this._openHiddenAppsMenu(this._entry);
+                else
+                    launch(this._firstApp.exec);
                 this.close('app-launch-enter');
             }
         });
@@ -324,63 +371,278 @@ export class NebulaLauncher {
         return this._flat;
     }
 
-    _rebuild() {
+    _cancelFileSearch() {
+        this._fileSearchSerial++;
+        if (this._fileSearchProcess) {
+            try { this._fileSearchProcess.force_exit(); } catch (_e) {}
+            this._fileSearchProcess = null;
+        }
+    }
+
+    _fileEntries(uris) {
+        return uris.map(uri => {
+            let nombre = uri;
+            let icono = new Gio.ThemedIcon({name: 'text-x-generic-symbolic'});
+            try {
+                const file = Gio.File.new_for_uri(uri);
+                nombre = file.get_basename() || uri;
+                const info = file.query_info('standard::type,standard::content-type', Gio.FileQueryInfoFlags.NONE, null);
+                if (info.get_file_type() === Gio.FileType.DIRECTORY)
+                    icono = new Gio.ThemedIcon({name: 'folder-symbolic'});
+                else
+                    icono = new Gio.ThemedIcon({name: 'text-x-generic-symbolic'});
+            } catch (_e) {}
+            return {
+                nombre,
+                exec: '',
+                uri,
+                icono,
+                desc: uri,
+                archivo: true,
+                categoria: 'Archivos',
+            };
+        });
+    }
+
+    _openUri(uri) {
+        if (!uri)
+            return;
+        try {
+            Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
+        } catch (e) {
+            console.error(`Nebula Shell: no se pudo abrir ${uri}: ${e}`);
+        }
+    }
+
+    _openHiddenAppsMenu(source) {
+        const menu = new PopupMenu.PopupMenu(source, 0.5, St.Side.TOP);
+        Main.uiGroup.add_child(menu.actor);
+        menu.actor.hide();
+        Main.panel.menuManager.addMenu(menu);
+
+        const apps = hiddenApps(this._ext.path);
+        if (apps.length === 0) {
+            const empty = new PopupMenu.PopupMenuItem('No hay aplicaciones ocultas');
+            empty.setSensitive(false);
+            menu.addMenuItem(empty);
+        } else {
+            for (const app of apps) {
+                const item = new PopupMenu.PopupImageMenuItem(app.nombre, app.icono);
+                item.connect('activate', () => {
+                    setHidden(app.exec, false);
+                    this.setModel(buildModel(this._ext.path));
+                });
+                menu.addMenuItem(item);
+            }
+        }
+        menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (!isOpen)
+                menu.destroy();
+        });
+        menu.open(BoxPointer.PopupAnimation.FULL);
+    }
+
+    _rebuild(fromFileCallback = false) {
+        if (!fromFileCallback) {
+            this._cancelFileSearch();
+            this._fileResults = [];
+        }
         this._results.destroy_all_children();
         this._rows = [];
         this._firstApp = null;
 
-        const list = filterApps(this._baseList(), this._entry.get_text());
+        const query = this._entry.get_text();
+        const appResults = filterApps(this._baseList(), query);
+        const actionResults = this._filterIndex < 0 ? safeActions(query) : [];
+        const list = [...actionResults, ...this._fileResults, ...appResults];
         if (list.length === 0) {
             this._results.add_child(new St.Label({
-                text: 'Sin resultados',
+                text: query.trim().length >= 2 ? 'Sin resultados' : 'Sin resultados',
                 style_class: 'nebula-result-empty',
             }));
-            return;
-        }
-        this._firstApp = list[0];
-
-        for (const app of list) {
-            const btn = new St.Button({
-                style_class: 'nebula-result',
-                can_focus: true,
-                x_expand: true,
-            });
-            const box = new St.BoxLayout({style_class: 'nebula-result-box'});
-            // width fijo por CSS (.nebula-result-icon): icon_size es solo una
-            // sugerencia de tamaño, no reserva columna -- un icono resuelto
-            // mas chico (o el fallback simbolico, con mucho padding interno)
-            // angosta la columna y descoloca el texto de esa fila respecto a
-            // las demas ("tabulacion irregular").
-            box.add_child(new St.Icon({
-                gicon: app.icono,
-                icon_size: 28,
-                style_class: 'nebula-result-icon',
-            }));
-            const txt = new St.BoxLayout({
-                vertical: true,
-                y_align: Clutter.ActorAlign.CENTER,
-                x_expand: true,
-            });
-            txt.add_child(new St.Label({text: app.nombre, style_class: 'nebula-result-name'}));
-            if (app.desc) {
-                txt.add_child(new St.Label({
-                    text: app.desc,
-                    style_class: 'nebula-result-desc',
+        } else {
+            this._firstApp = list[0];
+            for (const app of list) {
+                const btn = new St.Button({
+                    style_class: 'nebula-result',
+                    can_focus: true,
+                    x_expand: true,
+                });
+                const box = new St.BoxLayout({style_class: 'nebula-result-box'});
+                box.add_child(new St.Icon({
+                    gicon: app.icono,
+                    icon_size: 28,
+                    style_class: 'nebula-result-icon',
                 }));
+                const txt = new St.BoxLayout({
+                    vertical: true,
+                    y_align: Clutter.ActorAlign.CENTER,
+                    x_expand: true,
+                });
+                txt.add_child(new St.Label({text: app.nombre, style_class: 'nebula-result-name'}));
+                if (app.desc) {
+                    txt.add_child(new St.Label({
+                        text: app.desc,
+                        style_class: 'nebula-result-desc',
+                    }));
+                }
+                box.add_child(txt);
+                btn.set_child(box);
+                btn.connect('clicked', () => {
+                    if (app.archivo)
+                        this._openUri(app.uri);
+                    else if (app.ocultas)
+                        this._openHiddenAppsMenu(btn);
+                    else if (app.accion)
+                        runWithConfirmation(app.nombre, app.exec);
+                    else
+                        launch(app.exec);
+                    this.close(app.archivo ? 'file-open' : 'app-launch');
+                });
+                btn.connect('button-press-event', (_actor, event) => {
+                    if (app.accion || app.archivo || app.ocultas || event.get_button() !== 3)
+                        return Clutter.EVENT_PROPAGATE;
+                    this._openAppMenu(btn, app);
+                    return Clutter.EVENT_STOP;
+                });
+                this._results.add_child(btn);
+                this._rows.push(btn);
             }
-            box.add_child(txt);
-            btn.set_child(box);
-            // La conexion pertenece al ciclo de vida del boton: cuando
-            // _rebuild() hace destroy_all_children() (o el panel se destruye),
-            // GObject la desconecta sola. NO va a this._signalIds, que queda
-            // reservado para conexiones que viven tanto como el NebulaLauncher.
-            btn.connect('clicked', () => {
-                launch(app.exec);
-                this.close('app-launch');
-            });
-            this._results.add_child(btn);
-            this._rows.push(btn);
         }
+
+        // Solo el modo global consulta archivos. Las categorias siguen siendo
+        // rapidas y deterministas, sin disparar consultas al indice por cada
+        // submenu abierto.
+        if (!fromFileCallback && this._filterIndex < 0 && query.trim().length >= 2) {
+            const serial = this._fileSearchSerial;
+            this._fileSearchProcess = searchFiles(query, uris => {
+                this._fileSearchProcess = null;
+                if (serial !== this._fileSearchSerial || !this._isOpen)
+                    return;
+                this._fileResults = this._fileEntries(uris);
+                this._rebuild(true);
+            });
+        }
+    }
+
+    _openAppMenu(source, app) {
+        const menu = new PopupMenu.PopupMenu(source, 0.5, St.Side.TOP);
+        Main.uiGroup.add_child(menu.actor);
+        menu.actor.hide();
+        Main.panel.menuManager.addMenu(menu);
+        const favorite = new PopupMenu.PopupMenuItem(
+            isFavorite(app.exec) ? 'Quitar de favoritos' : 'Agregar a favoritos',
+        );
+        favorite.connect('activate', () => {
+            toggleFavorite(app.exec);
+            this.setModel(buildModel(this._ext.path));
+        });
+        menu.addMenuItem(favorite);
+
+        const move = new PopupMenu.PopupSubMenuMenuItem('Mover a categoría', false);
+        const dynamicCategories = new Set(['Favoritos', 'Recientes', 'Mis discos y nubes', 'Accesos rapidos']);
+        for (const category of this._model) {
+            if (dynamicCategories.has(category.nombre))
+                continue;
+            const item = new PopupMenu.PopupMenuItem(category.nombre);
+            if (app.categoria === category.nombre)
+                item.setOrnament(PopupMenu.Ornament.CHECK);
+            item.connect('activate', () => {
+                setCategoryOverride(app.exec, category.nombre);
+                this.setModel(buildModel(this._ext.path));
+            });
+            move.menu.addMenuItem(item);
+        }
+        if (categoryOverride(app.exec)) {
+            const restore = new PopupMenu.PopupMenuItem('Restaurar categoría original');
+            restore.connect('activate', () => {
+                setCategoryOverride(app.exec, null);
+                this.setModel(buildModel(this._ext.path));
+            });
+            move.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+            move.menu.addMenuItem(restore);
+        }
+        if (!move.menu.isEmpty())
+            menu.addMenuItem(move);
+
+        const hide = new PopupMenu.PopupMenuItem('Ocultar aplicación');
+        hide.connect('activate', () => {
+            setHidden(app.exec, true);
+            this.setModel(buildModel(this._ext.path));
+            if (this._isOpen)
+                this._rebuild();
+        });
+        menu.addMenuItem(hide);
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        const launchItem = new PopupMenu.PopupMenuItem('Abrir nueva ventana');
+        launchItem.connect('activate', () => launch(app.exec));
+        menu.addMenuItem(launchItem);
+
+        if (app.categoria && !['Favoritos','Recientes'].includes(app.categoria)) {
+            const up = new PopupMenu.PopupMenuItem('Subir en la categoría');
+            up.connect('activate', () => {
+                moveApp(app.categoria, app.exec, -1);
+                this.setModel(buildModel(this._ext.path));
+            });
+            menu.addMenuItem(up);
+            const down = new PopupMenu.PopupMenuItem('Bajar en la categoría');
+            down.connect('activate', () => {
+                moveApp(app.categoria, app.exec, 1);
+                this.setModel(buildModel(this._ext.path));
+            });
+            menu.addMenuItem(down);
+        }
+
+        const pin = new PopupMenu.PopupMenuItem(
+            isTaskbarPinned(app.exec) ? 'Quitar de la taskbar' : 'Anclar a la taskbar',
+        );
+        pin.connect('activate', () => toggleTaskbarPinned(app.exec));
+        menu.addMenuItem(pin);
+
+        const renameRow = new PopupMenu.PopupBaseMenuItem({activate: false});
+        const renameEntry = new St.Entry({
+            text: displayName(app.exec) ?? app.nombre,
+            hint_text: 'Nombre visual',
+            can_focus: true,
+            x_expand: true,
+        });
+        const saveName = new St.Button({
+            label: 'Guardar',
+            can_focus: true,
+            style_class: 'nebula-rename-save',
+        });
+        renameRow.add_child(renameEntry);
+        renameRow.add_child(saveName);
+        const save = () => {
+            const value = renameEntry.get_text().trim();
+            if (value) {
+                setDisplayName(app.exec, value);
+                this.setModel(buildModel(this._ext.path));
+            }
+            menu.close();
+        };
+        saveName.connect('clicked', save);
+        renameEntry.clutter_text.connect('activate', save);
+        menu.addMenuItem(renameRow);
+
+        const rename = new PopupMenu.PopupMenuItem('Restaurar nombre original');
+        rename.setSensitive(Boolean(displayName(app.exec)));
+        rename.connect('activate', () => {
+            setDisplayName(app.exec, null);
+            this.setModel(buildModel(this._ext.path));
+        });
+        menu.addMenuItem(rename);
+
+        const shortcut = new PopupMenu.PopupMenuItem('Crear acceso directo en el escritorio');
+        shortcut.connect('activate', () => {
+            createDesktopShortcut(app.exec);
+        });
+        menu.addMenuItem(shortcut);
+        menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (!isOpen)
+                menu.destroy();
+        });
+        menu.open(BoxPointer.PopupAnimation.FULL);
     }
 
     _connect(target, signal, cb) {
@@ -391,6 +653,8 @@ export class NebulaLauncher {
 
     destroy() {
         this._isOpen = false;
+        this._cancelFileSearch();
+        this._fileResults = [];
         if (this._toggleIdleId) {
             GLib.source_remove(this._toggleIdleId);
             this._toggleIdleId = 0;

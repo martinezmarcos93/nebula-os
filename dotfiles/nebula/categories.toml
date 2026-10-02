@@ -14,7 +14,7 @@
 #   - categoria sin ninguna app instalada -> no se dibuja
 # Los `nebula-*` se asumen siempre disponibles (los instala 50-funciones.sh).
 #
-# Orden y nombres alineados con la imagen objetivo (13 categorias). "Favoritos"
+# Orden y nombres alineados con la imagen objetivo, mas categorias dinamicas de escritorio. "Favoritos"
 # es provisional (sera una lista de pins del usuario) y "Configuracion" abre los
 # ajustes del sistema.
 #
@@ -376,6 +376,17 @@ icono  = "rocket"
 
 
 [[categoria]]
+nombre = "Mis discos y nubes"
+icono  = "drive"
+tipo   = "ubicaciones"
+
+[[categoria]]
+nombre = "Accesos rapidos"
+icono  = "folder"
+tipo   = "accesos"
+
+
+[[categoria]]
 nombre = "Sistema"
 icono  = "cog"
 
@@ -413,6 +424,11 @@ icono  = "wifi"
 nombre = "Captura de pantalla"
 exec   = "nebula-screenshot region"
 icono  = "camera"
+
+[[categoria.app]]
+nombre = "Grabacion de pantalla"
+exec   = "nebula-screenrecord"
+icono  = "video"
 
 [[categoria.app]]
 nombre = "Portapapeles"

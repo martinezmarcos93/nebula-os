@@ -6,6 +6,6 @@
 
 export const FEATURES = {
     launcher: true,      // incremento 2: panel "Buscar aplicaciones..."
-    meters: false,       // incremento 3: bloque SISTEMA en la sidebar
-    bottombar: false,    // incremento 5: barra inferior
+    meters: true,       // incremento 3: bloque SISTEMA en la sidebar
+    bottombar: true,    // incremento 5: barra inferior
 };
