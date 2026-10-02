@@ -45,9 +45,9 @@ command -v python3 >/dev/null || { echo "falta python3" >&2; exit 1; }
 
 echo "[1/3] categories.toml -> categories.json"
 # Mismo lector (y misma validacion) que eww/rofi: bin/nebula-categories.
-"$REPO/bin/nebula-categories" json --toml "$TOML" > "$EXT/categories.json.tmp"
+python3 "$REPO/bin/nebula-categories" json --toml "$TOML" > "$EXT/categories.json.tmp"
 mv "$EXT/categories.json.tmp" "$EXT/categories.json"
-echo "      $("$REPO/bin/nebula-categories" check --toml "$TOML" 2>/dev/null)"
+echo "      $(python3 "$REPO/bin/nebula-categories" check --toml "$TOML" 2>/dev/null)"
 
 echo "[2/3] iconos de categoria -> extension/icons/"
 mkdir -p "$EXT/icons"
