@@ -380,7 +380,19 @@ export function buildModel(extensionPath) {
         rawCats.push(locationsCategory);
         knownNames.add(locationsCategory.nombre);
     }
-    buckets.set(locationsCategory.nombre, mountedLocations());
+    // La categoria debe existir incluso cuando no haya unidades montadas.
+    // Incluye siempre el gestor de discos para acceder tambien a unidades fisicas
+    // desmontadas; las ubicaciones montadas se agregan dinamicamente debajo.
+    buckets.set(locationsCategory.nombre, [
+        {
+            nombre: 'Administrar discos y particiones',
+            exec: 'gnome-disks',
+            icono: new Gio.ThemedIcon({name: 'drive-harddisk-symbolic'}),
+            desc: 'Ver discos fisicos, particiones y unidades desmontadas',
+            categoria: locationsCategory.nombre,
+        },
+        ...mountedLocations(),
+    ]);
 
     const quickCategory = quickCat ?? {
         nombre: 'Accesos rapidos',
@@ -458,7 +470,9 @@ export function buildModel(extensionPath) {
     for (const cat of rawCats) {
         const catName = cat.nombre ?? '?';
         const apps = buckets.get(catName) ?? [];
-        if (apps.length === 0)
+        // Las categorias dinamicas deben permanecer visibles aunque no haya
+        // montajes (p. ej. una unidad externa desconectada).
+        if (apps.length === 0 && !['Mis discos y nubes', 'Accesos rapidos'].includes(catName))
             continue;
         const order = appOrder(catName);
         if (order.length) {
