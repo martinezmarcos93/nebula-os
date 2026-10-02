@@ -468,16 +468,33 @@ export class NebulaLauncher {
                     can_focus: true,
                     x_expand: true,
                 });
-                const box = new St.BoxLayout({style_class: 'nebula-result-box'});
-                box.add_child(new St.Icon({
+                const box = new St.BoxLayout({
+                    style_class: 'nebula-result-box',
+                    x_expand: true,
+                    x_align: Clutter.ActorAlign.FILL,
+                });
+                // Columna fija para todos los iconos: no dejar que el tamano
+                // natural del GIcon desplace el inicio del texto de cada fila.
+                const iconSlot = new St.Widget({
+                    style_class: 'nebula-result-icon-slot',
+                    width: 36,
+                    x_expand: false,
+                    y_expand: false,
+                    layout_manager: new Clutter.BinLayout(),
+                });
+                iconSlot.add_child(new St.Icon({
                     gicon: app.icono,
                     icon_size: 28,
                     style_class: 'nebula-result-icon',
+                    x_align: Clutter.ActorAlign.CENTER,
+                    y_align: Clutter.ActorAlign.CENTER,
                 }));
+                box.add_child(iconSlot);
                 const txt = new St.BoxLayout({
                     vertical: true,
                     y_align: Clutter.ActorAlign.CENTER,
                     x_expand: true,
+                    x_align: Clutter.ActorAlign.FILL,
                 });
                 txt.add_child(new St.Label({text: app.nombre, style_class: 'nebula-result-name'}));
                 if (app.desc) {
