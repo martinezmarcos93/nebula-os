@@ -63,7 +63,11 @@ sleep .2
 check 'extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"
 check 'sidebar creada' "!!S && !!S._sidebar && S._model.length > 0"
 check 'launcher creado' "!!L && !!L._panel"
-check 'sidebar visible al iniciar' "S._sidebar.visible"
+# La sidebar arranca desplegada y se retrae sola a los 350 ms si el puntero no
+# esta encima: segun cuanto tarde el Shell en responder ya puede estar
+# colapsada. Lo que no puede pasar es que el actor y el estado no coincidan.
+check 'estado inicial coherente (visible <=> no colapsada)' "S._sidebar.visible === !S._collapsed"
+e "$X S._expand(); 1" >/dev/null; sleep .6
 # BUG-33: desplegar/colapsar no debe tocar el area de trabajo (DING reubica los
 # iconos y las ventanas maximizadas se redimensionan en cada workareas-changed).
 check 'la sidebar no reserva struts (BUG-33)' "!Main.layoutManager._trackedActors.some(t => t.affectsStruts && (t.actor === S._sidebar || t.actor === S._hotEdge || t.actor === L._panel))"
