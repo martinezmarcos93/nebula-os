@@ -86,8 +86,7 @@ export class NebulaLauncher {
         this._stageCaptureId = 0;
         this._isOpen = false;   // estado explicito: NO depender de this._panel.visible
         this._lastMonitorLabel = 'n/a';
-        this._toggleIdleId = 0;             // BUG-25: hide()+show() diferido de _present()
-        this._togglingVisibility = false;   // true durante ese hide()+show()
+        this._toggleIdleId = 0;             // BUG-26: hide()+show() diferido de _present()
         this._fileSearchProcess = null;
         this._fileSearchSerial = 0;
         this._fileResults = [];
@@ -274,7 +273,7 @@ export class NebulaLauncher {
         // recalcular la region (no alcanza con _queueUpdateRegions sola en
         // ciclos repetidos de abrir/cerrar).
         //
-        // BUG-25 (docs/CRASH-BUG25.md): este hide()+show() causo un segfault
+        // BUG-26 (docs/BUGS.md): este hide()+show() causo un segfault
         // nativo real en mutter cuando corria sincronicamente desde un
         // contexto de evento/frame nativo (confirmado con gdb sobre el
         // coredump). Diferido a GLib.idle_add corre ya fuera de ese contexto.
@@ -284,10 +283,8 @@ export class NebulaLauncher {
             this._toggleIdleId = 0;
             if (!this._isOpen || !this._panel)
                 return GLib.SOURCE_REMOVE;
-            this._togglingVisibility = true;
             this._panel.hide();
             this._panel.show();
-            this._togglingVisibility = false;
             return GLib.SOURCE_REMOVE;
         });
     }
@@ -592,7 +589,7 @@ export class NebulaLauncher {
         menu.addMenuItem(hide);
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         const launchItem = new PopupMenu.PopupMenuItem('Abrir nueva ventana');
-        launchItem.connect('activate', () => launch(app.exec));
+        launchItem.connect('activate', () => launch(app.exec, true));
         menu.addMenuItem(launchItem);
 
         if (app.categoria && !['Favoritos','Recientes'].includes(app.categoria)) {

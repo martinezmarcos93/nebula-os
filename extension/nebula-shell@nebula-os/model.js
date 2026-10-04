@@ -107,9 +107,11 @@ export function isInstalled(exec) {
  *      argumentos -> AppInfo desde la linea de comandos, lanzado con el
  *      contexto del Shell (notificacion de arranque, espacio de trabajo).
  *   3. Si todo falla, spawn_command_line_async como antes.
+ * Con newWindow = true (accion "Abrir nueva ventana" del menu contextual) el
+ * paso 1 usa open_new_window(): abre otra ventana aunque la app ya tenga una.
  * Devuelve el camino usado ('app' | 'appinfo' | 'spawn') o null si fallo.
  */
-export function launch(exec) {
+export function launch(exec, newWindow = false) {
     const appSystem = Shell.AppSystem.get_default();
     let argv = [];
     try {
@@ -128,7 +130,10 @@ export function launch(exec) {
             // Sin evento en curso (p. ej. llamada diferida) get_current_time()
             // es 0 y mutter no le da el foco: queda "pidiendo atencion".
             const time = global.get_current_time() || global.display.get_current_time_roundtrip();
-            app.activate_full(-1, time);
+            if (newWindow && app.get_n_windows() > 0 && app.can_open_new_window())
+                app.open_new_window(-1);
+            else
+                app.activate_full(-1, time);
             recordRecent(exec);
             return 'app';
         } catch (e) {

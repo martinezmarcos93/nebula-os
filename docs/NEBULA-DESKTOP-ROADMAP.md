@@ -1,7 +1,7 @@
 # Nebula OS — Roadmap Maestro de Escritorio
 
 **Estado:** aprobado para implementación  
-**Rama de trabajo:** `feature/nebula-desktop-amalgama`  
+**Rama de trabajo:** `main` (la rama `feature/nebula-desktop-amalgama` se fusionó el 2026-10-02 y se eliminó)  
 **Objetivo:** transformar Nebula Shell en una capa de escritorio completa y utilizable a diario, manteniendo su identidad como barra lateral de categorías y reutilizando GNOME/Linux en lugar de reinventarlos.
 
 ---
@@ -46,9 +46,11 @@ Esta decisión queda formalizada como comportamiento transversal.
 
 El launcher representa **aplicaciones disponibles**.
 
-- Clic izquierdo sobre una aplicación: **abrir una nueva ventana/instancia**.
-- No debe convertirse en un selector ambiguo de ventanas existentes.
-- Si Chrome ya está abierto, volver a pulsar Chrome desde la categoría sigue pudiendo abrir otra ventana.
+- Clic izquierdo sobre una aplicación: **abrirla**. Si no tiene ventanas, se lanza; si ya tiene una, se trae al frente la más reciente (mismo comportamiento que el dock de GNOME).
+- Abrir **otra** ventana de una aplicación ya abierta es una acción explícita: clic derecho → **Abrir nueva ventana**.
+- El launcher no se convierte en un selector de ventanas: para elegir entre varias ventanas de la misma aplicación está la taskbar.
+
+> **Decisión (2026-10-03):** la redacción original de esta sección ("el clic izquierdo abre siempre una nueva ventana") contradecía el BUG-34, reportado en uso real el 2026-09-28: cada clic en Chrome abría otra ventana. Se mantiene la corrección de BUG-34, cubierta por el gate de CI, y la nueva ventana pasa al menú contextual, que antes repetía la misma acción que el clic.
 
 ### 3.2 Barra superior / taskbar
 
@@ -70,7 +72,7 @@ El clic derecho sobre una aplicación puede ofrecer acciones adicionales, entre 
 
 Principio:
 
-> **El launcher abre; la barra superior activa.**
+> **El launcher abre (o trae al frente); la taskbar elige la ventana concreta.**
 
 El comportamiento no debe depender de un caso especial para Chrome. Debe existir una abstracción genérica de activación de aplicaciones/ventanas que funcione también para Firefox, Nautilus, terminales, GIMP, VS Code, etc.
 
