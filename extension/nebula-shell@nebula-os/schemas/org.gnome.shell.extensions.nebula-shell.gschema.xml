@@ -7,5 +7,30 @@
       <summary>Mostrar u ocultar el drawer del sidebar de Nebula</summary>
       <description>Atajo global. Formato de gsettings (lista de strings).</description>
     </key>
+    <key name="enable-launcher" type="b">
+      <default>true</default>
+      <summary>Panel "Buscar aplicaciones..."</summary>
+      <description>Si es false, el clic en una categoria solo la marca.</description>
+    </key>
+    <key name="enable-meters" type="b">
+      <default>true</default>
+      <summary>Bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red) en la sidebar</summary>
+      <description>Los meters solo sondean mientras la sidebar esta desplegada.</description>
+    </key>
+    <key name="enable-bottombar" type="b">
+      <default>true</default>
+      <summary>Barra inferior (taskbar, escritorios, MPRIS, accesos)</summary>
+      <description>Se aplica en vivo, sin reiniciar el Shell.</description>
+    </key>
+    <key name="debug" type="b">
+      <default>false</default>
+      <summary>Logs de diagnostico [Nebula] en el journal</summary>
+      <description>Apagado por defecto para no ensuciar el journal en uso normal.</description>
+    </key>
+    <key name="saved-dock-position" type="s">
+      <default>''</default>
+      <summary>Posicion del Ubuntu Dock antes de habilitar Nebula</summary>
+      <description>Uso interno: se restaura al deshabilitar la extension.</description>
+    </key>
   </schema>
 </schemalist>

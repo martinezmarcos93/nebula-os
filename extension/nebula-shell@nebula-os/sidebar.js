@@ -31,7 +31,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
-import {FEATURES} from './config.js';
+import {debug} from './debug.js';
 import {buildModel, invalidateIconCache} from './model.js';
 import {NebulaLauncher} from './launcher.js';
 import {runWithConfirmation} from './system-actions.js';
@@ -76,7 +76,7 @@ export class NebulaSidebar {
         this._autoCollapseId = 0;
         this._hotEdge = null;
 
-        this._launcher = FEATURES.launcher
+        this._launcher = this._settings.get_boolean('enable-launcher')
             ? new NebulaLauncher(
                 extension,
                 SIDEBAR_WIDTH,
@@ -89,7 +89,7 @@ export class NebulaSidebar {
                 unredirect,
             )
             : null;
-        this._meters = FEATURES.meters ? new NebulaMeters() : null;
+        this._meters = this._settings.get_boolean('enable-meters') ? new NebulaMeters() : null;
         this._battery = new NebulaBattery(St, Clutter);
 
         this._buildActors();
@@ -405,7 +405,7 @@ export class NebulaSidebar {
     // --- categorias / lanzador -----------------------------------
 
     _onCategory(index) {
-        console.log(`[Nebula] CATEGORY CLICK index=${index} active=${this._activeIndex} ` +
+        debug(`CATEGORY CLICK index=${index} active=${this._activeIndex} ` +
             `launcherOpen=${this._launcher?.visible} collapsed=${this._collapsed}`);
         if (!this._launcher) {
             // Sin lanzador (incremento 1): el clic solo marca la categoria.
@@ -479,6 +479,7 @@ export class NebulaSidebar {
         if (!this._collapsed || this._inFullscreen)
             return;
         this._collapsed = false;
+        this._meters?.start();
         this._sidebar.show();
         // BUG-24 (docs/BUGS.md): show() no siempre alcanza para que el motor
         // de layout recalcule la region de input a tiempo -- un clic que
@@ -523,6 +524,7 @@ export class NebulaSidebar {
         if (this._collapsed)
             return;
         this._collapsed = true;
+        this._meters?.stop();   // R-305: sin sondeo (ni nvidia-smi) mientras no se ve
         this._launcher?.close('sidebar-collapse');
         this._sidebar.ease({
             translation_x: -SIDEBAR_WIDTH,

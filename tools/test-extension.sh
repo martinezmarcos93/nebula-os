@@ -101,7 +101,7 @@ check "la extension quedo ACTIVA"                "Main.extensionManager.lookup('
 DOCK="new Gio.Settings({schema_id: 'org.gnome.shell.extensions.dash-to-dock'}).get_string('dock-position')"
 HAS_DOCK="$(e "Gio.SettingsSchemaSource.get_default().lookup('org.gnome.shell.extensions.dash-to-dock', true) ? 'SI' : 'NO'")"
 if [[ "$HAS_DOCK" == *SI* ]]; then
-    check "Ubuntu Dock: pasa de la izquierda (default de Ubuntu) a abajo" "$DOCK === 'BOTTOM'"
+    check "Ubuntu Dock: deja el borde izquierdo (a la derecha: abajo esta la barra de Nebula)" "$DOCK === 'RIGHT'"
 fi
 
 # R-304/R-305: meters encendidos por defecto (BUG-005), en pausa si la

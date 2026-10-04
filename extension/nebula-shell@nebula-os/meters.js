@@ -93,7 +93,20 @@ export class NebulaMeters {
         return this._widget;
     }
 
+    /** Deja de sondear (sidebar colapsada, R-305). start() lo reanuda. */
+    stop() {
+        if (this._pollId) {
+            GLib.source_remove(this._pollId);
+            this._pollId = 0;
+        }
+        // La proxima muestra de red/CPU arranca de cero: sin esto el primer
+        // sondeo tras la pausa promediaria todo el tiempo que estuvo oculta.
+        this._prevT = 0;
+    }
+
     start() {
+        if (this._pollId)
+            return;
         this._poll();
         this._pollId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, POLL_S, () => {
             this._poll();

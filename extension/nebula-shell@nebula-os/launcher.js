@@ -27,6 +27,7 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 import {flatApps, filterApps, launch, hiddenApps, createDesktopShortcut} from './model.js';
 import {runWithConfirmation} from './system-actions.js';
+import {debug} from './debug.js';
 import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride, isTaskbarPinned, toggleTaskbarPinned, displayName, setDisplayName, moveApp} from './state.js';
 import {buildModel} from './model.js';
 import {searchFiles} from './file-search.js';
@@ -202,7 +203,7 @@ export class NebulaLauncher {
         this._rebuild();
         this._present();
         // this._installStageCapture();   // PRUEBA DE AISLAMIENTO: captura global desactivada
-        console.log(`[Nebula] SWITCH category=${categoryIndex} ` +
+        debug(`SWITCH category=${categoryIndex} ` +
             `isOpen=${this._isOpen} visible=${this._panel?.visible} mapped=${this._panel?.mapped} ` +
             `pos=${JSON.stringify(this._panel?.get_position())} size=${JSON.stringify(this._panel?.get_size())} ` +
             `mon=${this._lastMonitorLabel}`);
@@ -217,8 +218,8 @@ export class NebulaLauncher {
         this._rebuild();
         this._entry.grab_key_focus();
         // this._installStageCapture();   // PRUEBA DE AISLAMIENTO: captura global del stage desactivada
-        console.log(
-            `[Nebula] OPEN category=${categoryIndex} ` +
+        debug(
+            `OPEN category=${categoryIndex} ` +
             `isOpen=${this._isOpen} ` +
             `visible=${this._panel?.visible} mapped=${this._panel?.mapped} ` +
             `parent=${!!this._panel?.get_parent()} ` +
@@ -229,8 +230,8 @@ export class NebulaLauncher {
     }
 
     close(reason = 'unknown') {
-        console.log(
-            `[Nebula] CLOSE reason=${reason} ` +
+        debug(
+            `CLOSE reason=${reason} ` +
             `isOpen=${this._isOpen} ` +
             `filter=${this._filterIndex} ` +
             `visible=${this._panel?.visible}`

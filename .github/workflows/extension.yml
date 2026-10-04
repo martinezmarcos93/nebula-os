@@ -55,3 +55,6 @@ jobs:
 
       - name: tools/test-sidebar-core.sh (Producto 1)
         run: bash tools/test-sidebar-core.sh
+
+      - name: tools/test-extension.sh (flags, meters, dock, barra inferior)
+        run: bash tools/test-extension.sh
