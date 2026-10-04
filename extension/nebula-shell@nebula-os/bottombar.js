@@ -30,6 +30,8 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import {MODES, currentMode, setMode} from './modes.js';
 import {THEMES, currentTheme, setTheme} from './theme.js';
+import {taskbarPinnedApps, launch} from './model.js';
+import {applyAppearance} from './appearance.js';
 
 const BAR_HEIGHT = 34;
 const CLOCK_TICK_S = 15;
@@ -154,7 +156,7 @@ export class NebulaBottomBar {
             style_class: 'nebula-tray-btn',
             child: new St.Icon({icon_name: 'preferences-system-notifications-symbolic', icon_size: 15}),
             can_focus: true,
-            tooltip_text: 'Notificaciones',
+            accessible_name: 'Notificaciones',
         });
         this._connect(this._notificationButton, 'clicked', () => {
             try {
@@ -169,7 +171,7 @@ export class NebulaBottomBar {
             style_class: 'nebula-tray-btn',
             child: new St.Icon({icon_name: 'notifications-disabled-symbolic', icon_size: 15}),
             can_focus: true,
-            tooltip_text: 'No molestar',
+            accessible_name: 'No molestar',
         });
         this._connect(this._dndButton, 'clicked', () => this._toggleDnd());
         right.add_child(this._dndButton);
@@ -177,7 +179,7 @@ export class NebulaBottomBar {
             style_class: 'nebula-tray-btn',
             child: new St.Icon({icon_name: 'preferences-desktop-symbolic', icon_size: 15}),
             can_focus: true,
-            tooltip_text: 'Modo y tema',
+            accessible_name: 'Modo y tema',
         });
         this._connect(modeButton, 'clicked', () => this._openAppearanceMenu(modeButton));
         right.add_child(modeButton);
@@ -208,8 +210,7 @@ export class NebulaBottomBar {
                 item.setOrnament(PopupMenu.Ornament.CHECK);
             item.connect('activate', () => {
                 setMode(id);
-                for (const modeId of Object.keys(MODES)) global.stage.remove_style_class_name('nebula-mode-' + modeId);
-                global.stage.add_style_class_name('nebula-mode-' + id);
+                applyAppearance();
             });
             modes.menu.addMenuItem(item);
         }
@@ -222,8 +223,7 @@ export class NebulaBottomBar {
                 item.setOrnament(PopupMenu.Ornament.CHECK);
             item.connect('activate', () => {
                 setTheme(id);
-                for (const themeId of Object.keys(THEMES)) global.stage.remove_style_class_name('nebula-theme-' + themeId);
-                global.stage.add_style_class_name('nebula-theme-' + id);
+                applyAppearance();
             });
             themes.menu.addMenuItem(item);
         }
@@ -275,7 +275,7 @@ export class NebulaBottomBar {
             : 'notifications-symbolic';
         this._dndButton.set_style_class_name(
             dnd ? 'nebula-tray-btn nebula-tray-btn-active' : 'nebula-tray-btn');
-        this._dndButton.tooltip_text = dnd ? 'No molestar: activado' : 'No molestar: desactivado';
+        this._dndButton.accessible_name = dnd ? 'No molestar: activado' : 'No molestar: desactivado';
     }
 
     _toggleDnd() {
@@ -330,7 +330,7 @@ export class NebulaBottomBar {
             const b = new St.Button({
                 style_class: 'nebula-pinned-btn',
                 can_focus: true,
-                tooltip_text: app.nombre,
+                accessible_name: app.nombre,
                 child: new St.Icon({gicon: app.icono, icon_size: 16}),
             });
             this._connect(b, 'clicked', () => launch(app.exec));

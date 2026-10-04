@@ -20,8 +20,7 @@ import {NebulaBottomBar} from './bottombar.js';
 import {UnredirectGuard} from './unredirect.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import GLib from 'gi://GLib';
-import {currentTheme} from './theme.js';
-import {currentMode} from './modes.js';
+import {applyAppearance, clearAppearance} from './appearance.js';
 
 export default class NebulaShellExtension extends Extension {
     enable() {
@@ -29,7 +28,7 @@ export default class NebulaShellExtension extends Extension {
         // de mutter mientras la sidebar y/o el lanzador esten visibles, para
         // que no queden tapados con el escritorio sin ventanas o en grabacion.
         this._unredirect = new UnredirectGuard();
-        this._applyGlobalAppearance();
+        applyAppearance();
         this._sidebars = [];
         this._bottomBars = [];
         this._monitorSignalId = Main.layoutManager.connect('monitors-changed', () => {
@@ -41,16 +40,6 @@ export default class NebulaShellExtension extends Extension {
         });
         this._enabled = true;
         this._rebuildSurfaces();
-    }
-
-    _applyGlobalAppearance() {
-        const stage = global.stage;
-        for (const id of ['cosmic','monochrome'])
-            stage.remove_style_class_name('nebula-theme-' + id);
-        for (const id of ['normal','focus','development','gaming','streaming','ai'])
-            stage.remove_style_class_name('nebula-mode-' + id);
-        stage.add_style_class_name('nebula-theme-' + currentTheme());
-        stage.add_style_class_name('nebula-mode-' + currentMode());
     }
 
     _rebuildSurfaces() {
@@ -70,10 +59,7 @@ export default class NebulaShellExtension extends Extension {
 
     disable() {
         this._enabled = false;
-        for (const id of ['cosmic','monochrome'])
-            global.stage.remove_style_class_name('nebula-theme-' + id);
-        for (const id of ['normal','focus','development','gaming','streaming','ai'])
-            global.stage.remove_style_class_name('nebula-mode-' + id);
+        clearAppearance();
         if (this._monitorSignalId) {
             Main.layoutManager.disconnect(this._monitorSignalId);
             this._monitorSignalId = 0;
