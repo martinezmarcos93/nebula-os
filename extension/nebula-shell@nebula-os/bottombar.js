@@ -16,6 +16,7 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 import {
@@ -49,6 +50,7 @@ export class NebulaBottomBar {
     constructor(monitorIndex = 0, extensionPath = null, atTop = false, settings = null) {
         this._settings = settings;
         this._meters = null;
+        this._metersLogo = null;
         this._metersMenu = null;
         this._metersClosedAt = 0;
         this._monitorIndex = monitorIndex;
@@ -204,7 +206,20 @@ export class NebulaBottomBar {
         menu.actor.hide();
         Main.panel.menuManager.addMenu(menu);
         const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+        // Como un "fetch" de terminal: el logo ASCII de Nebula a la izquierda
+        // y los datos del sistema a la derecha.
+        const logo = this._asciiLogo();
+        if (logo) {
+            this._metersLogo = new St.Label({
+                text: logo,
+                style_class: 'nebula-ascii-logo',
+                y_align: Clutter.ActorAlign.CENTER,
+            });
+            this._metersLogo.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+            item.add_child(this._metersLogo);
+        }
         this._meters.actor.x_expand = true;
+        this._meters.actor.y_align = Clutter.ActorAlign.CENTER;
         item.add_child(this._meters.actor);
         menu.addMenuItem(item);
         // R-305: sin sondeo (ni nvidia-smi) mientras el bloque no se ve.
@@ -220,6 +235,20 @@ export class NebulaBottomBar {
 
         this._connect(this._metersButton, 'clicked', () => this._toggleMeters());
         return this._metersButton;
+    }
+
+    /** Logo ASCII generado por build.sh; null si la copia instalada no lo trae. */
+    _asciiLogo() {
+        if (!this._extensionPath)
+            return null;
+        try {
+            const path = GLib.build_filenamev([this._extensionPath, 'nebula-logo.txt']);
+            const [ok, bytes] = GLib.file_get_contents(path);
+            const text = ok ? new TextDecoder().decode(bytes).replace(/\s+$/, '') : '';
+            return text || null;
+        } catch (_e) {
+            return null;   // sin logo el bloque se muestra igual
+        }
     }
 
     _toggleMeters() {

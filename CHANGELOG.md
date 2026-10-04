@@ -34,6 +34,9 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
   configuracion de fastfetch con la paleta violeta. Por ahora se copia a mano
   a `~/.config/fastfetch/`; el instalador todavia no lo despliega ni instala
   fastfetch.
+- El bloque SISTEMA de la barra muestra el logo ASCII de Nebula a su
+  izquierda, como en el concepto original (`build.sh` lo genera desde
+  `dotfiles/fastfetch/nebula.txt`).
 
 ### Cambiado
 - El bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red) sale de la sidebar y se

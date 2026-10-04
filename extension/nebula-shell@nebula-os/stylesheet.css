@@ -166,6 +166,20 @@
     min-width: 230px;
 }
 
+/* Logo ASCII a la izquierda del bloque: 18 lineas que ocupan mas o menos el
+ * alto de los meters. Monoespaciada obligatoria o el dibujo se deforma. */
+.nebula-ascii-logo {
+    font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace;
+    font-size: 7pt;
+    font-weight: 700;
+    color: #a855f7;
+    padding-right: 14px;
+}
+
+.nebula-meters-popup .nebula-meters {
+    min-width: 230px;
+}
+
 .nebula-meter {
     spacing: 3px;
 }

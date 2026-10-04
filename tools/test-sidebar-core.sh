@@ -177,6 +177,7 @@ check 'barra: el Overview no resucita la barra de GNOME' "!$PB.visible"
 check 'barra: solo meters, sistema y reloj, sin accesos duplicados ni modo/tema' "(() => { $B return !!B._metersButton && !!B._systemButton && !!B._clockButton && B._clockButton.get_parent().get_n_children() === 3; })()"
 e "$X $B B._toggleMeters(); 1" >/dev/null; sleep 1.2
 check 'barra: el boton de meters despliega el bloque SISTEMA debajo de la barra' "(() => { $B const [, y] = B._metersMenu.actor.get_transformed_position(); return B._metersMenu.isOpen && B._meters.actor.mapped && y >= B._bar.y + B._bar.height - 1; })()"
+check 'barra: el logo ASCII de Nebula va a la izquierda de los meters, con su mismo alto aproximado' "(() => { $B const L = B._metersLogo; const M = B._meters.actor; const [lx] = L.get_transformed_position(); const [mx] = M.get_transformed_position(); return L.mapped && L.text.split(String.fromCharCode(10)).length === 18 && lx + L.width <= mx + 1 && L.height > M.height * 0.6 && L.height < M.height * 1.4; })()"
 e "$X $B B._toggleMeters(); 1" >/dev/null; sleep 1.2
 check 'barra: al cerrarlo los meters dejan de sondear' "(() => { $B return !B._metersMenu.isOpen && B._meters._pollId === 0; })()"
 check 'barra: el reloj muestra el dia ademas de la hora' "(() => { $B const p = B._clockLabel.text.split(' ').filter(Boolean); return p.length === 4 && p[0].length >= 3 && Number(p[1]) >= 1 && p[2].length >= 3 && p[3].length === 5 && p[3][2] === ':'; })()"

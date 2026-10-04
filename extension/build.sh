@@ -58,6 +58,15 @@ else
     echo "      (aviso: $ICONS_SRC no existe, se usaran iconos simbolicos)"
 fi
 
+# Logo ASCII de Nebula para el bloque SISTEMA: misma fuente que fastfetch
+# (dotfiles/fastfetch/nebula.txt), sin sus marcas de color ($1) ni el escape $$.
+LOGO_SRC="$REPO/dotfiles/fastfetch/nebula.txt"
+if [ -f "$LOGO_SRC" ]; then
+    # shellcheck disable=SC2016  # $1 y $$ son texto literal del logo, no variables
+    sed -e 's/^\$1//' -e 's/\$\$/$/g' "$LOGO_SRC" > "$EXT/nebula-logo.txt"
+    echo "      logo ASCII -> nebula-logo.txt"
+fi
+
 echo "[3/3] compilando gschema"
 if command -v glib-compile-schemas >/dev/null; then
     glib-compile-schemas "$EXT/schemas"
