@@ -1,0 +1,35 @@
+name: e2e
+
+# Instalacion limpia de punta a punta en un contenedor ubuntu:24.04 (R-403):
+# usuario sin privilegios, sin NVIDIA, sin GNOME. Tarda varios minutos, por eso
+# corre solo cuando cambia el instalador (o lo que despliega) y una vez por
+# semana, para detectar roturas que vienen de afuera (paquetes, descargas).
+on:
+  push:
+    branches: [main]
+    paths:
+      - install.sh
+      - install/**
+      - lib/**
+      - bin/**
+      - dotfiles/**
+      - tools/test-e2e.sh
+      - .github/workflows/e2e.yml
+  pull_request:
+    paths:
+      - install.sh
+      - install/**
+      - lib/**
+      - tools/test-e2e.sh
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  clean-install:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: tools/test-e2e.sh (install.sh --yes en ubuntu:24.04)
+        run: bash tools/test-e2e.sh
