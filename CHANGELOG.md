@@ -29,6 +29,12 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Agregado
+- `dotfiles/fastfetch/`: logo ASCII de Nebula (anillo + espiral) y
+  configuracion de fastfetch con la paleta violeta. Por ahora se copia a mano
+  a `~/.config/fastfetch/`; el instalador todavia no lo despliega ni instala
+  fastfetch.
+
 ### Cambiado
 - El bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red) sale de la sidebar y se
   despliega desde un boton nuevo de la barra de Nebula; solo sondea mientras

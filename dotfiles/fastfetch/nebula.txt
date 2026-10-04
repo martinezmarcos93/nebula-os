@@ -1,0 +1,19 @@
+$1
+$1            :+oossssso+:
+$1        :os$$$$Sso+::  :+os$$
+$1     :+s$$$$s+:
+$1   :+s$$Ss+
+$1  :oS$$so:.o                     .
+$1 :oS$$s+ .os:                     .
+$1:os$$So: +$$:        ...           +$$:
+$1+oS$$s+ .ss.       $$o+o$$o.        :So
+$1+sS$$s+  os.      $$$$$$$$ .so.       :Ss
+$1+sS$$so: :$$o            os.       +Ss
+$1:oS$$So+  :so:         +$$+        s$$o
+$1 +sS$$So+   +sso:...:o$$s:        o$$s:
+$1 :+sS$$Ss+:   .:+ooo+:         +s$$s+
+$1  :+oS$$$$So+:                +oS$$s:
+$1    :osS$$$$Sso++::      ::+os$$$$s+
+$1      :+osS$$$$$$SSsssssssSS$$$$So+
+$1        ::+ossSSSS$$SSSSsso+:
+$1             :::+++++::
