@@ -37,8 +37,12 @@ gnome-extensions info "$UUID" || true
 cat <<'EOF'
 
 Actualizacion instalada.
-IMPORTANTE: para cargar el codigo nuevo, cerra la sesion de Ubuntu y volve a entrar
-en tu sesion habitual de GNOME. No selecciones una sesion llamada Nebula.
+IMPORTANTE: GNOME Shell mantiene en memoria el codigo anterior de la extension.
+En esta maquina ni Alt+F2 -> r ni cerrar sesion reinician el proceso de
+gnome-shell (BUG-24, docs/BUGS.md): para cargar el codigo nuevo hay que
+REINICIAR EL EQUIPO. No uses `gnome-shell --replace` con la extension en uso
+(BUG-26). Al volver, entra en tu sesion habitual de GNOME, no en una llamada
+Nebula.
 Luego comproba:
   gnome-extensions info nebula-shell@nebula-os
 
