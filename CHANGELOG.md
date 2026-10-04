@@ -29,6 +29,11 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.2.0] - 2026-10-04
+
+Primer tag del proyecto: punto de retorno con CI en verde (lint, estatico,
+extension en GNOME Shell 46 Wayland+X11 y E2E de instalacion limpia).
+
 ### Corregido (2026-10-03, auditoria de estado — la extension no se activaba)
 - BUG-35/36/37: `enable()` fallaba en cadena (tema/modo sobre `global.stage`,
   `tooltip_text` en `St.Button`, imports faltantes en `bottombar.js`) y la
