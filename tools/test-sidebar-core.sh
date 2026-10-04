@@ -110,8 +110,38 @@ e "$LW" >/dev/null; sleep 3
 check 'launch: relanzar una app abierta no abre otra ventana (BUG-34)' "$NW === 1"
 check 'launch: relanzar la trae al frente (des-minimizada y con foco)' "global.display.focus_window?.get_title() === 'nebula-testwin' && !global.display.focus_window.minimized"
 [[ "$(grep -c x "$T/activations.txt" 2>/dev/null)" == 1 ]] && ok 'launch: la app se activo una sola vez' || bad "launch: la app se activo $(grep -c x "$T/activations.txt" 2>/dev/null) veces"
+# --- Escritorio (docs/NEBULA-DESKTOP-ROADMAP.md): taskbar, escritorios,
+# temas, accesos rapidos, acciones del buscador, favoritos y No molestar.
+B="const B=X?._bottomBars?.[0]; const TW=global.get_window_actors().find(a => a.meta_window.get_title() === 'nebula-testwin')?.meta_window; const TB=B?._windowButtons.find(b => b.child.get_children()[1].text.includes('nebula-testwin'));"
+EXT="'file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path"
+check 'taskbar: barra inferior creada' "(() => { $B return !!B && !!B._bar; })()"
+check 'taskbar: la ventana abierta tiene su boton' "(() => { $B return !!TW && !!TB; })()"
+check 'taskbar: un boton por escritorio' "(() => { $B return B._wsButtons.length === global.workspace_manager.n_workspaces; })()"
+e "$X $B TB.emit('clicked', 1); 1" >/dev/null; sleep .8
+check 'taskbar: clic en la ventana con foco la minimiza' "(() => { $B return TW.minimized; })()"
+e "$X $B TB.emit('clicked', 1); 1" >/dev/null; sleep .8
+check 'taskbar: clic en una ventana minimizada la restaura con foco' "(() => { $B return !TW.minimized && global.display.focus_window === TW; })()"
+check 'archivos: Accesos rapidos lista ubicaciones del usuario' "S._model.some(c => c.nombre === 'Accesos rapidos' && c.apps.length > 0)"
+check 'archivos: Mis discos y nubes siempre presente' "S._model.some(c => c.nombre === 'Mis discos y nubes')"
+e "$X L.open(-1); L._entry.set_text('reiniciar'); L._rebuild(); 1" >/dev/null; sleep .5
+check 'buscador global: encuentra acciones del sistema' "L._rows.length > 0"
+e "$X L.close('desktop-test'); 1" >/dev/null; sleep .3
+e "Promise.all([import($EXT + '/theme.js'), import($EXT + '/appearance.js')]).then(([t, a]) => { t.setTheme('monochrome'); a.applyAppearance(); }); 1" >/dev/null; sleep .5
+check 'temas: el tema elegido se aplica como clase global' "Main.uiGroup.has_style_class_name('nebula-theme-monochrome') && !Main.uiGroup.has_style_class_name('nebula-theme-cosmic')"
+e "Promise.all([import($EXT + '/theme.js'), import($EXT + '/appearance.js')]).then(([t, a]) => { t.setTheme('cosmic'); a.applyAppearance(); }); 1" >/dev/null; sleep .5
+check 'temas: volver a Cosmic Dark' "Main.uiGroup.has_style_class_name('nebula-theme-cosmic')"
+FAV="S._model.find(c => !['Favoritos','Recientes','Accesos rapidos','Mis discos y nubes'].includes(c.nombre))?.apps[0]?.exec"
+e "$X globalThis.__fav = $FAV; import($EXT + '/state.js').then(m => { globalThis.__favOn = m.toggleFavorite(globalThis.__fav); S._populate(); }); 1" >/dev/null; sleep .5
+check 'favoritos: marcar una app la suma a Favoritos' "globalThis.__favOn === true && S._model.find(c => c.nombre === 'Favoritos')?.apps.some(a => a.exec === globalThis.__fav)"
+e "$X import($EXT + '/state.js').then(m => { m.toggleFavorite(globalThis.__fav); S._populate(); }); 1" >/dev/null; sleep .5
+DND="new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'}).get_boolean('show-banners')"
+e "$X $B B._toggleDnd(); 1" >/dev/null; sleep .5
+check 'No molestar: el conmutador apaga los banners de GNOME' "$DND === false"
+e "$X $B B._toggleDnd(); 1" >/dev/null; sleep .5
+check 'No molestar: vuelve a encenderlos' "$DND === true"
 e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep .3
 check 'disable no deja extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
+check 'disable no deja clases de tema/modo en el Shell' "!/nebula-/.test(Main.uiGroup.get_style_class_name() ?? '')"
 check 'disable libera la sidebar' "!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebars?.[0]"
 e "Main.extensionManager.enableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 1
 check 're-enable recupera la extension' "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"

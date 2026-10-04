@@ -589,14 +589,14 @@ Nebula 1.0 requiere como mínimo:
 
 ### Ventanas
 
-- [~] Taskbar/lista de ventanas.
-- [~] Activación.
-- [~] Minimizar.
-- [~] Restaurar.
+- [x] Taskbar/lista de ventanas (gate `tools/test-sidebar-core.sh`).
+- [x] Activación.
+- [x] Minimizar.
+- [x] Restaurar.
 - [~] Maximizar.
 - [~] Cerrar.
 - [~] Alt+Tab (delegado al comportamiento nativo de GNOME).
-- [~] Workspaces.
+- [x] Workspaces (un botón por escritorio).
 - [~] Multi-monitor (superficies por monitor implementadas; validación GNOME 46 pendiente).
 - [~] Múltiples ventanas por aplicación.
 
@@ -620,7 +620,7 @@ Nebula 1.0 requiere como mínimo:
 - [~] Brillo (acceso al panel nativo de pantalla/brillo).
 - [~] Batería (estado dinámico vía UPower; acceso al panel nativo de energía).
 - [~] Notificaciones (acceso al panel nativo de GNOME).
-- [~] No molestar (conmutación mediante GSettings nativo de GNOME).
+- [x] No molestar (conmutación mediante GSettings nativo de GNOME).
 - [~] Captura.
 - [ ] Grabación.
 - [x] Bloqueo.
@@ -636,7 +636,7 @@ Nebula 1.0 requiere como mínimo:
 - [~] Unidades externas (montajes detectados dinámicamente).
 - [~] GOA/Drive (cuando está montado por GVfs/GNOME Online Accounts).
 - [~] Papelera.
-- [~] Accesos rápidos.
+- [x] Accesos rápidos.
 
 ### Personalización
 
@@ -644,7 +644,7 @@ Nebula 1.0 requiere como mínimo:
 - [x] Recientes.
 - [x] Orden personalizado.
 - [x] Preferencias persistentes.
-- [~] Temas (Theme Engine base; validación visual GNOME pendiente).
+- [x] Temas (Theme Engine base; aplicación cubierta por el gate, validación visual pendiente).
 
 ### Robustez
 
