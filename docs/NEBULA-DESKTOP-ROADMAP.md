@@ -577,6 +577,14 @@ Nebula 1.0 requiere como mínimo:
 > así que todo lo agregado por las Etapas 1-10 que no tenga un test propio
 > está en `[~]`. Un ítem pasa a `[x]` cuando se lo recorre en una sesión real
 > y se anota en el handoff.
+>
+> **Actualización 2026-10-04 (`v0.3.0`).** Primera sesión real del autor con
+> la extensión activa (`docs/handoffs/2026-10-04.md`). Cambió el diseño del
+> bloque Sistema: la barra de Nebula pasó arriba, en el lugar de la barra
+> superior de GNOME (que queda oculta), y ya no tiene accesos propios a
+> Configuración: abre los **menús nativos de GNOME** (Quick Settings y
+> calendario) anclados a ella. Los ítems marcados `[x]` con fecha 2026-10-04
+> son los que el autor vio funcionando ese día.
 
 ### Navegación
 
@@ -596,7 +604,7 @@ Nebula 1.0 requiere como mínimo:
 - [~] Maximizar.
 - [~] Cerrar.
 - [~] Alt+Tab (delegado al comportamiento nativo de GNOME).
-- [x] Workspaces (un botón por escritorio).
+- [x] Workspaces (un botón por escritorio en la barra de Nebula; separan ventanas, los iconos de DING son los mismos en todos).
 - [~] Multi-monitor (superficies por monitor implementadas; validación GNOME 46 pendiente).
 - [~] Múltiples ventanas por aplicación.
 
@@ -612,15 +620,15 @@ Nebula 1.0 requiere como mínimo:
 
 ### Sistema
 
-- [x] Reloj.
-- [~] Calendario (acceso directo desde el reloj; utiliza GNOME Calendar/Settings).
-- [~] Audio (acceso al panel nativo de GNOME Settings).
-- [~] Red.
-- [~] Bluetooth.
-- [~] Brillo (acceso al panel nativo de pantalla/brillo).
-- [~] Batería (estado dinámico vía UPower; acceso al panel nativo de energía).
-- [~] Notificaciones (acceso al panel nativo de GNOME).
-- [x] No molestar (conmutación mediante GSettings nativo de GNOME).
+- [x] Reloj (día y hora en la barra de Nebula; 2026-10-04).
+- [x] Calendario (clic en el reloj: menú de calendario nativo de GNOME anclado a la barra; gate + 2026-10-04).
+- [x] Audio (menú Quick Settings nativo de GNOME desde el botón de sistema; gate + 2026-10-04).
+- [x] Red (ídem, Quick Settings).
+- [x] Bluetooth (ídem, Quick Settings).
+- [x] Brillo (ídem, Quick Settings).
+- [~] Batería (estado dinámico vía UPower; la máquina de referencia no tiene batería: sin validar).
+- [x] Notificaciones (lista nativa de GNOME dentro del menú del calendario).
+- [x] No molestar (interruptor nativo de GNOME en el menú del calendario; se quitó el conmutador propio de la barra).
 - [~] Captura.
 - [ ] Grabación.
 - [x] Bloqueo.
@@ -632,9 +640,9 @@ Nebula 1.0 requiere como mínimo:
 ### Archivos
 
 - [~] Home.
-- [~] Discos.
+- [x] Discos (2026-10-04).
 - [~] Unidades externas (montajes detectados dinámicamente).
-- [~] GOA/Drive (cuando está montado por GVfs/GNOME Online Accounts).
+- [x] GOA/Drive (las cuentas aparecen aunque no estén montadas y se montan al primer clic, BUG-41; 2026-10-04).
 - [~] Papelera.
 - [x] Accesos rápidos.
 
@@ -644,14 +652,15 @@ Nebula 1.0 requiere como mínimo:
 - [x] Recientes.
 - [x] Orden personalizado.
 - [x] Preferencias persistentes.
-- [x] Temas (Theme Engine base; aplicación cubierta por el gate, validación visual pendiente).
+- [x] Temas (Theme Engine base; aplicación cubierta por el gate). **Sin acceso desde la interfaz desde el 2026-10-04**: se quitó el botón de modo/tema de la barra por pedido del autor; `theme.js`/`modes.js` siguen en el código.
+- [x] Barra superior con la estética de Nebula y acento violeta del Shell en lugar del naranja de Ubuntu (`violet-accent`; 2026-10-04).
 
 ### Robustez
 
 - [x] Instalación limpia (E2E en contenedor Ubuntu 24.04 sin NVIDIA ni GNOME; falta la máquina de referencia y una VM Desktop).
-- [~] Recuperación ante fallo de extensión (procedimiento en `docs/ROLLBACK.md`; falta ensayarlo).
+- [~] Recuperación ante fallo de extensión (`tools/nebula-gnome-emergency.sh` + `docs/ROLLBACK.md`; el nivel básico está cubierto por el gate headless, falta ensayarlo en la sesión real y desde un TTY; `--full` solo se corrió en `--dry-run`).
 - [x] Validación estática automatizada (CI GitHub: sintaxis JS/bash, ESLint `no-undef`, JSON y categories.toml).
-- [ ] Validación en uso real.
+- [~] Validación en uso real (primera sesión real del autor el 2026-10-04, a simple vista; falta la semana de uso sin crash de BUG-26 y recorrer los ítems `[~]`).
 - [x] CI estático inicial.
 - [x] Documentación de rollback (`docs/ROLLBACK.md`).
 

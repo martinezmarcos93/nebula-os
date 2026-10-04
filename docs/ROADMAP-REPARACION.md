@@ -59,6 +59,9 @@ para que se pueda revisar después con criterio, no por gusto.
 Ubuntu 24.04 Desktop sin NVIDIA, (b) Ubuntu 24.04 minimal, (c) la máquina de
 referencia.
 
+Las filas R-101…R-112 no llevan ✅ individual: el estado de arriba vale para
+todas.
+
 | ID | Tarea | Archivos | Aceptación |
 |---|---|---|---|
 | R-101 | NVIDIA opcional (D3). **Agregado:** GPUs anteriores a Turing (tu GTX 1060, Pascal) solo tienen soporte hasta el driver **580**: FAIL si el driver es > 580, WARN con `apt-mark hold nvidia-driver-580` si no está retenido: FAIL→WARN; `gpu.sh`, eww y la extensión ocultan GPU si no hay `nvidia-smi` | `install/00-preflight.sh`, `dotfiles/eww/eww.yuck`, `dotfiles/polybar/*` | Preflight OK en VM sin GPU |
@@ -86,7 +89,8 @@ real (ventanas abiertas, strut medido con xprop) y bspwm real bajo Xvfb.
 Hallazgos al ejecutar: el eww.yuck versionado ya estaba sincronizado (BUG-001
 se había cerrado a mano; ahora lo garantiza CI), `.monocle` no existe como
 modificador en bspwm 0.9.10, y el test del HUD destapó que contar procesos
-por nombre confunde subshells con loops.
+por nombre confunde subshells con loops. Las filas R-201…R-210 no llevan ✅
+individual: el estado de arriba vale para todas.
 
 | ID | Tarea | Archivos | Aceptación |
 |---|---|---|---|
@@ -110,20 +114,29 @@ Protocolo obligatorio en cada tarea marcada 🔬: `build.sh --install`, luego
 BUG-26 (abrir/cerrar sidebar y lanzador ×3, alternar, lanzar apps, dejar en
 reposo 10 min). Sin warnings nuevos en `journalctl`.
 
+**Estado (2026-10-04, revisado contra el código):** quedan abiertas solo
+**R-302** (BUG-26, necesita una semana de uso real) y **R-311** (la extensión
+declara únicamente GNOME 46). El resto está implementado y cubierto por los
+gates (`tools/test-sidebar-core.sh`, `tools/test-extension.sh`) en Wayland y
+X11. `v0.3.0` se cortó el 2026-10-04 por decisión del autor como segunda
+versión estable, validada a simple vista en sesión real; el criterio de salida
+de abajo (checklist del README tildado ítem por ítem) no se recorrió
+formalmente y R-302/R-311 pasan a la siguiente versión.
+
 | ID | Tarea | Aceptación |
 |---|---|---|
-| R-301 🔬 | **Quitar `trackFullscreen` de la sidebar y del lanzador** (FS-20). Escuchar `global.display` `in-fullscreen-changed` y ocultar a mano, **respetando `_isOpen`/`_collapsed`** | Cerrar el lanzador → Super, Super → no reaparece. Colapsar sidebar → Overview → `UnredirectGuard._count === 0` |
-| R-302 🔬 | Cerrar BUG-26 con el protocolo de su criterio de aceptación. Si el crash nativo reaparece: reportarlo a mutter con la traza (no se puede corregir desde la extensión) y documentar el flujo seguro de recarga | Una semana de uso sin `signal 11` en el journal |
-| R-303 🔬 | Reactivar "clic afuera cierra" (`_installStageCapture`, BUG-004/KNOWN-04) **después** de R-301 (probable causa común) | Ciclo de BUG-24 ×5 sin click-through |
-| R-304 ✅ | Pasar `FEATURES` de `config.js` a claves gsettings (`enable-launcher`, `enable-meters`, `enable-bottombar`) con reacción en vivo. Default: launcher ✔, **meters ✔**, bottombar ✘ hasta validarla (BUG-005) | Cambiar la clave sin tocar código |
+| R-301 ✅ | **Quitar `trackFullscreen` de la sidebar y del lanzador** (FS-20). Escuchar `global.display` `in-fullscreen-changed` y ocultar a mano, **respetando `_isOpen`/`_collapsed`** | Cerrar el lanzador → Super, Super → no reaparece. Colapsar sidebar → Overview → `UnredirectGuard._count === 0`. Hecho: `sidebar.js#_syncFullscreen()`, BUG-27 |
+| R-302 🔬 ⏳ | Cerrar BUG-26 con el protocolo de su criterio de aceptación. Si el crash nativo reaparece: reportarlo a mutter con la traza (no se puede corregir desde la extensión) y documentar el flujo seguro de recarga | Una semana de uso sin `signal 11` en el journal. **Abierta** |
+| R-303 ✅ | Reactivar "clic afuera cierra" (`_installStageCapture`, BUG-004/KNOWN-04) **después** de R-301 (probable causa común) | Ciclo de BUG-24 ×5 sin click-through. Hecho: `launcher.js#_installOutsideWatch()`, verificado con clics reales en X11 (BUG-28) |
+| R-304 ✅ | Pasar `FEATURES` de `config.js` a claves gsettings (`enable-launcher`, `enable-meters`, `enable-bottombar`) con reacción en vivo. Default: launcher ✔, **meters ✔**, bottombar ✘ hasta validarla (BUG-005). **Desde 2026-10-04** la barra viene encendida y arriba (`bar-position`), en el lugar de la barra de GNOME | Cambiar la clave sin tocar código |
 | R-305 ✅ | Meters en pausa mientras la sidebar está colapsada (FS-25) | 0 procesos `nvidia-smi` con la sidebar colapsada |
 | R-306 ✅ | Logs de diagnóstico detrás de una clave `debug` (AUD-003); borrar `_togglingVisibility`; renombrar "BUG-25"→"BUG-26" en comentarios (FS-28) | `journalctl` limpio en uso normal |
-| R-307 ✅ | Conflicto con `ubuntu-dock` (FS-24): al habilitar, si el dock está a la izquierda, se mueve abajo (`dash-to-dock dock-position BOTTOM`), guardando el valor anterior y restaurándolo en `disable()` | Sidebar y dock no se superponen; `disable()` restaura |
+| R-307 ✅ | Conflicto con `ubuntu-dock` (FS-24): al habilitar, si el dock está a la izquierda, se mueve abajo (`dash-to-dock dock-position BOTTOM`), guardando el valor anterior y restaurándolo en `disable()`. Con la barra de Nebula al pie (`bar-position bottom`) va a la derecha | Sidebar y dock no se superponen; `disable()` restaura |
 | R-308 ✅ | `bottombar.js`: `Gio.Cancellable` en las llamadas D-Bus asíncronas (ListNames, DBusProxy.new) para que un callback no toque actores destruidos | Deshabilitar con un reproductor MPRIS abierto no deja warnings |
-| R-309 | Launch con `Gio.AppInfo`/`Shell.App` cuando existe `.desktop` (startup notification, scope de systemd); `spawn_command_line_async` queda solo como fallback | Las apps lanzadas aparecen en el dock como "en ejecución" |
-| R-310 | `state.js`: validar el tipo de cada campo al cargar (un JSON con `favoritos` que no sea array hoy rompe `.includes`) | Test gjs con JSON corrupto |
-| R-311 | `metadata.json`: `shell-version` 46 + **47/48** después de validar en esas versiones (Ubuntu 24.10/25.04), o documentar "solo 46" | CI ESLint + matriz documentada |
-| R-312 | Instalación de la extensión desde `install.sh` (stage opcional `70-extension.sh`, `NEBULA_EXTENSION=1`), que hoy es 100 % manual | `./install.sh --only 70` deja la extensión habilitada tras re-login |
+| R-309 ✅ | Launch con `Gio.AppInfo`/`Shell.App` cuando existe `.desktop` (startup notification, scope de systemd); `spawn_command_line_async` queda solo como fallback | Las apps lanzadas aparecen en el dock como "en ejecución". Hecho: `model.js#launch()` (BUG-34) |
+| R-310 ✅ | `state.js`: validar el tipo de cada campo al cargar (un JSON con `favoritos` que no sea array hoy rompe `.includes`) | Test gjs con JSON corrupto. Hecho: `state.js#sanitize()` (BUG-29) |
+| R-311 ⏳ | `metadata.json`: `shell-version` 46 + **47/48** después de validar en esas versiones (Ubuntu 24.10/25.04), o documentar "solo 46" | CI ESLint + matriz documentada. **Abierta**: hoy `shell-version: ["46"]`, sin validar en 47/48 |
+| R-312 ✅ | Instalación de la extensión desde `install.sh` (stage opcional `70-extension.sh`, `NEBULA_EXTENSION=1`), que hoy es 100 % manual | `./install.sh --only 70` deja la extensión habilitada tras re-login |
 
 **Criterio de salida (v0.3.0):** el checklist de `extension/README.md` queda
 100 % tildado en una sesión real, con fecha y commit.
@@ -138,19 +151,23 @@ reposo 10 min). Sin warnings nuevos en `journalctl`.
 | R-402 ✅ | **ESLint** con la config oficial de GNOME Shell sobre `extension/` | CI verde |
 | R-403 ✅ | **E2E:** job en contenedor `ubuntu:24.04` con usuario no-root y sudo sin contraseña: `install.sh --yes` (`NEBULA_PANEL=polybar` para no compilar), después Xvfb + `nebula-session` y `60-postcheck.sh` **dentro** de la sesión | Postcheck FAIL=0 en CI |
 | R-404 ✅ | Job **semanal** (`schedule`) que compila eww con el mismo comando que `20-panel.sh` | Aviso automático si upstream rompe la compilación |
-| R-405 | Hook `pre-commit` (opcional, documentado): shellcheck + `nebula-categories check` + diff de `eww.yuck` | `CONTRIBUTING.md` lo explica |
-| R-406 | Branch protection en `main`: CI obligatorio antes de mergear | Configuración del repo (acción del autor) |
+| R-405 ⏳ | Hook `pre-commit` (opcional, documentado): shellcheck + `nebula-categories check` + diff de `eww.yuck` | `CONTRIBUTING.md` lo explica. **Abierta** |
+| R-406 ⏳ | Branch protection en `main`: CI obligatorio antes de mergear | Configuración del repo (acción del autor). **Abierta**: hoy se pushea directo a `main`; activarla obliga a pasar a PRs |
 
 ---
 
 ## 6. Fase 5 — Rendimiento, pulido y deuda
 
+**Estado (2026-10-04):** las cuatro abiertas. R-501, R-503 y R-504 son de la
+sesión bspwm, congelada (D1) mientras la extensión GNOME sea el producto
+principal.
+
 | ID | Tarea | Aceptación |
 |---|---|---|
-| R-501 | **`nebula-edged` en Rust (D15):** sustituye a `nebula-edge-sidebar` y `nebula-taskbar`. Puntero por XInput2 (eventos, no polling), taskbar por `bspc subscribe` nativo (socket), salida JSON para eww | CPU del daemon < 0,1 % en reposo; mismas features |
-| R-502 | Consolidación documental (D12): hallazgos abiertos → `BUGS.md`; auditorías → `docs/archive/`; `README` "Estado" con la matriz real | Una sola lista de bugs abiertos |
-| R-503 | Descongelar la sesión bspwm (D1): atajos coherentes con modo flotante (FS-27): `super+flechas` mueve ventanas flotantes, `super+m` pasa a maximizar | Matriz de atajos del README verificada con test |
-| R-504 | `nebula-ai-chat`: guardar la conversación (hoy el historial solo registra el encabezado) y elegir modelo según la VRAM disponible | Historial completo en `ai-history/` |
+| R-501 ⏳ | **`nebula-edged` en Rust (D15):** sustituye a `nebula-edge-sidebar` y `nebula-taskbar`. Puntero por XInput2 (eventos, no polling), taskbar por `bspc subscribe` nativo (socket), salida JSON para eww | CPU del daemon < 0,1 % en reposo; mismas features |
+| R-502 ⏳ | Consolidación documental (D12): hallazgos abiertos → `BUGS.md`; auditorías → `docs/archive/`; `README` "Estado" con la matriz real | Una sola lista de bugs abiertos |
+| R-503 ⏳ | Descongelar la sesión bspwm (D1): atajos coherentes con modo flotante (FS-27): `super+flechas` mueve ventanas flotantes, `super+m` pasa a maximizar | Matriz de atajos del README verificada con test |
+| R-504 ⏳ | `nebula-ai-chat`: guardar la conversación (hoy el historial solo registra el encabezado) y elegir modelo según la VRAM disponible | Historial completo en `ai-history/` |
 
 ---
 
@@ -189,6 +206,12 @@ menú contextual, lista de ventanas, tecla Super) **recién con v1.0 publicada**
 Cada feature entra con: test automatizado, entrada en el checklist y
 validación en vivo con el protocolo de la Fase 3.
 
+**Estado (2026-10-04):** esa regla no se cumplió; el autor adelantó las
+features. Las Fases 3-6 de `EXTENSION-ROADMAP.md` ya están en `main` con sus
+tests: "Mis discos y nubes" (incluido Drive sin montar, BUG-41), menú
+contextual, lista de ventanas y la decisión sobre la tecla Super. El detalle
+por capacidad está en `NEBULA-DESKTOP-ROADMAP.md`, sección 8.
+
 ---
 
 ## 8. Definición de "funciona al 100%" (criterio de v1.0.0)
@@ -218,6 +241,11 @@ F4 R-401/R-402 ────┘          │
 (tests en paralelo            └─► F3 ─► v0.3.0 ─► F4 R-403..406 ─► F5 ─► v1.0.0 ─► F6
  desde el día 1)
 ```
+
+**Dónde estamos (2026-10-04):** `v0.3.0` cortada. Para `v1.0.0` faltan R-302
+(BUG-26), R-311, R-405, R-406, R-502, el pedido a GitHub Support de R-004, la
+instalación limpia en una VM Desktop y en la máquina de referencia (punto 2 de
+la sección 8) y la semana de uso real (punto 5).
 
 Regla de trabajo para todas las fases: **commits atómicos, un ID `R-xxx` por
 commit**, lint y tests en verde antes de cada push, y ninguna tarea 🔬 se da

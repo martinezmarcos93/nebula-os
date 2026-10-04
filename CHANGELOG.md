@@ -29,6 +29,13 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.3.0] - 2026-10-04
+
+Segunda version estable: primera validada por el autor en una sesion real de
+GNOME Shell 46. La barra de Nebula reemplaza a la barra superior de GNOME y
+abre sus menus nativos; el Shell toma el acento violeta. Quedan para la
+siguiente version BUG-26 (R-302) y la compatibilidad con GNOME 47/48 (R-311).
+
 ### Agregado
 - La barra superior de GNOME toma la estetica de Nebula (fondo, borde violeta,
   tipografia y resaltados iguales a la barra inferior). Es solo una clase CSS
