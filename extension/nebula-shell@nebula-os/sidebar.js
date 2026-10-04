@@ -207,14 +207,17 @@ export class NebulaSidebar {
             }
             return;
         }
-        // Con la barra inferior activa la sidebar termina donde ella empieza:
-        // si no, la barra tapaba la fila de energia del pie.
-        const height = m.height - (this._settings.get_boolean('enable-bottombar') ? BAR_HEIGHT : 0);
-        this._sidebar.set_position(m.x, m.y);
+        // La sidebar no se pisa con la barra de Nebula: al pie termina donde
+        // ella empieza (si no, la barra tapaba la fila de energia).
+        // Arriba (bar-position 'top') la sidebar empieza debajo de ella.
+        const bar = this._settings.get_boolean('enable-bottombar') ? BAR_HEIGHT : 0;
+        const top = m.y + (bar && this._settings.get_string('bar-position') === 'top' ? bar : 0);
+        const height = m.height - bar;
+        this._sidebar.set_position(m.x, top);
         this._sidebar.set_size(SIDEBAR_WIDTH, height);
         this._sidebar.translation_x = this._collapsed ? -SIDEBAR_WIDTH : 0;
 
-        this._hotEdge?.set_position(m.x, m.y);
+        this._hotEdge?.set_position(m.x, top);
         this._hotEdge?.set_size(HOT_EDGE_W, height);
     }
 

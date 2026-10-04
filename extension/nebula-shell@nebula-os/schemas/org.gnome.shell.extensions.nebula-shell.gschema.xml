@@ -19,8 +19,17 @@
     </key>
     <key name="enable-bottombar" type="b">
       <default>true</default>
-      <summary>Barra inferior (escritorios, taskbar, MPRIS, menu de sistema)</summary>
+      <summary>Barra de Nebula (escritorios, taskbar, MPRIS, menu de sistema, calendario)</summary>
       <description>Se aplica en vivo, sin reiniciar el Shell.</description>
+    </key>
+    <key name="bar-position" type="s">
+      <choices>
+        <choice value="top"/>
+        <choice value="bottom"/>
+      </choices>
+      <default>'top'</default>
+      <summary>Borde de la barra de Nebula</summary>
+      <description>Con 'top' ocupa el lugar de la barra superior de GNOME, que se oculta mientras tanto. Con 'bottom' va al pie y la barra de GNOME queda a la vista. Se aplica en vivo.</description>
     </key>
     <key name="style-top-panel" type="b">
       <default>true</default>

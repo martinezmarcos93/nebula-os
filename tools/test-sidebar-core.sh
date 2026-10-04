@@ -8,7 +8,7 @@ set -uo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 T="$(mktemp -d)"
 PASS=0; FAIL=0
-export T
+export T REPO
 ok(){ PASS=$((PASS+1)); printf '  OK   %s\n' "$*"; }
 bad(){ FAIL=$((FAIL+1)); printf '  FAIL %s\n' "$*"; }
 trap 'rm -rf "$T"' EXIT
@@ -154,22 +154,44 @@ e "$X X._settings.set_boolean('style-top-panel', false); 1" >/dev/null; sleep .4
 check 'panel: apagar la clave devuelve el aspecto de GNOME en vivo' "!Main.panel.has_style_class_name('nebula-panel') && $PBG !== '8,8,16'"
 e "$X X._settings.set_boolean('style-top-panel', true); 1" >/dev/null; sleep .4
 check 'panel: volver a encenderla lo re-aplica' "Main.panel.has_style_class_name('nebula-panel')"
-# Barra inferior sin accesos duplicados: un solo boton abre el menu de Quick
-# Settings de GNOME anclado sobre la barra de Nebula.
+# Barra de Nebula: por defecto arriba, en el lugar de la barra de GNOME (que
+# se oculta). Sin accesos duplicados: el boton de sistema y el reloj abren los
+# menus nativos de GNOME anclados a la barra de Nebula.
 QS="const QS=Main.panel.statusArea.quickSettings.menu; const QP=QS._boxPointer;"
-check 'barra: no quedan accesos que dupliquen los indicadores de GNOME' "(() => { $B return !!B._systemButton && !B._dndButton && !B._notificationButton; })()"
+DM="const DM=Main.panel.statusArea.dateMenu.menu; const DP=DM._boxPointer;"
+PB="Main.layoutManager.panelBox"
+check 'barra: va arriba, en el lugar de la barra de GNOME' "(() => { $B return B._bar.y === Main.layoutManager.primaryMonitor.y; })()"
+check 'barra: la barra superior de GNOME queda oculta' "!$PB.visible"
+e "Main.overview.show(); 1" >/dev/null; sleep 1.5; e "Main.overview.hide(); 1" >/dev/null; sleep 1.5
+check 'barra: el Overview no resucita la barra de GNOME' "!$PB.visible"
+check 'barra: solo sistema y reloj, sin accesos duplicados ni modo/tema' "(() => { $B return !!B._systemButton && !!B._clockButton && B._clockButton.get_parent().get_n_children() === 2; })()"
+check 'barra: el reloj muestra el dia ademas de la hora' "(() => { $B const p = B._clockLabel.text.split(' ').filter(Boolean); return p.length === 4 && p[0].length >= 3 && Number(p[1]) >= 1 && p[2].length >= 3 && p[3].length === 5 && p[3][2] === ':'; })()"
 e "$X $B B._toggleSystemMenu(); 1" >/dev/null; sleep 1.2
 check 'barra: el boton de sistema abre el menu de Quick Settings de GNOME' "(() => { $QS return QS.isOpen; })()"
-check 'barra: el menu se despliega hacia arriba, pegado a la barra de Nebula' "(() => { $B $QS const [, y] = QP.get_transformed_position(); const bottom = y + QP.height; return QP._arrowSide === 2 && bottom <= B._bar.y + 1 && bottom > B._bar.y - 60; })()"
+check 'barra: el menu se despliega debajo de la barra de Nebula' "(() => { $B $QS const [x, y] = QP.get_transformed_position(); const edge = B._bar.y + B._bar.height; const [bx] = B._systemButton.get_transformed_position(); return QP._arrowSide === 0 && y >= edge - 1 && y < edge + 60 && x + QP.width > bx; })()"
 e "$X $B B._toggleSystemMenu(); 1" >/dev/null; sleep 1.2
-check 'barra: el segundo clic lo cierra y devuelve el menu al panel superior' "(() => { $B $QS return !QS.isOpen && QP._userArrowSide === 0 && QP._arrowSide === 0 && !B._restoreSystemMenu; })()"
-e "$QS QS.open(); 1" >/dev/null; sleep 1
-check 'barra: desde el indicador de GNOME el menu sigue abriendo arriba' "(() => { $QS const [, y] = QP.get_transformed_position(); return QS.isOpen && QP._arrowSide === 0 && y < 100; })()"
-e "$QS QS.close(); 1" >/dev/null; sleep .8
-# La sidebar termina donde empieza la barra inferior y su fila de energia entra completa.
+check 'barra: el segundo clic lo cierra' "(() => { $B $QS return !QS.isOpen && !B._restorePanelMenu; })()"
+e "$X $B B._toggleCalendar(); 1" >/dev/null; sleep 1.2
+check 'barra: el clic en el reloj despliega el calendario de GNOME' "(() => { $B $DM const [, y] = DP.get_transformed_position(); const edge = B._bar.y + B._bar.height; return DM.isOpen && y >= edge - 1 && y < edge + 60; })()"
+e "$X $B B._toggleCalendar(); 1" >/dev/null; sleep 1.2
+check 'barra: el segundo clic cierra el calendario' "(() => { $B $DM return !DM.isOpen && !B._restorePanelMenu; })()"
 e "$X S._expand(); 1" >/dev/null; sleep .8
-check 'sidebar: no queda tapada por la barra inferior' "(() => { $B return S._sidebar.y + S._sidebar.height <= B._bar.y; })()"
+check 'sidebar: empieza debajo de la barra de Nebula y no se sale de la pantalla' "(() => { $B const m = Main.layoutManager.primaryMonitor; return S._sidebar.y >= B._bar.y + B._bar.height && S._sidebar.y + S._sidebar.height <= m.y + m.height; })()"
 check 'sidebar: el ultimo boton de energia entra completo' "(() => { const row = S._sidebar.get_last_child(); const last = row.get_last_child(); const [x] = last.get_transformed_position(); const [sx] = S._sidebar.get_transformed_position(); return row.get_n_children() === 5 && last.width > 0 && x + last.width <= sx + S._sidebar.width; })()"
+# bar-position=bottom: la barra baja y la de GNOME vuelve.
+e "$X X._settings.set_string('bar-position', 'bottom'); 1" >/dev/null; sleep 1.5
+check 'barra al pie: la barra de GNOME vuelve a verse' "(() => { $B const m = Main.layoutManager.primaryMonitor; return $PB.visible && B._bar.y + B._bar.height === m.y + m.height; })()"
+e "$X $B B._toggleSystemMenu(); 1" >/dev/null; sleep 1.2
+check 'barra al pie: el menu se despliega hacia arriba, pegado a la barra' "(() => { $B $QS const [, y] = QP.get_transformed_position(); const bottom = y + QP.height; return QS.isOpen && QP._arrowSide === 2 && bottom <= B._bar.y + 1 && bottom > B._bar.y - 60; })()"
+e "$X $B B._toggleSystemMenu(); 1" >/dev/null; sleep 1.2
+check 'barra al pie: al cerrarlo el menu vuelve al panel superior' "(() => { $B $QS return !QS.isOpen && QP._userArrowSide === 0 && QP._arrowSide === 0; })()"
+e "$QS QS.open(); 1" >/dev/null; sleep 1
+check 'barra al pie: desde el indicador de GNOME el menu sigue abriendo arriba' "(() => { $QS const [, y] = QP.get_transformed_position(); return QS.isOpen && QP._arrowSide === 0 && y < 100; })()"
+e "$QS QS.close(); 1" >/dev/null; sleep .8
+e "$X S._expand(); 1" >/dev/null; sleep .8
+check 'barra al pie: la sidebar no queda tapada por la barra' "(() => { $B return S._sidebar.y + S._sidebar.height <= B._bar.y; })()"
+e "$X X._settings.set_string('bar-position', 'top'); 1" >/dev/null; sleep 1.5
+check 'barra: volver a top oculta otra vez la barra de GNOME' "!$PB.visible"
 # Acento violeta del Shell (clave violet-accent): variante Yaru-purple.
 if ls /usr/share/gnome-shell/theme/Yaru-purple*/gnome-shell.css >/dev/null 2>&1; then
     ACC="(Main.getThemeStylesheet()?.get_path() ?? '')"
@@ -180,11 +202,21 @@ if ls /usr/share/gnome-shell/theme/Yaru-purple*/gnome-shell.css >/dev/null 2>&1;
     e "$X X._settings.set_boolean('violet-accent', true); 1" >/dev/null; sleep .6
     check 'acento: volver a encenderla lo re-aplica' "/Yaru-purple/.test($ACC)"
 fi
+# Herramienta de emergencia: deja GNOME con su configuracion base aunque
+# Nebula tenga oculta la barra superior. Corre contra el HOME temporal.
+EMERG="$(bash "$REPO/tools/nebula-gnome-emergency.sh" 2>&1)"; sleep 1.5
+check 'emergencia: desactiva la extension' "Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
+check 'emergencia: vuelve la barra superior de GNOME' "Main.layoutManager.panelBox.visible && !Main.panel.has_style_class_name('nebula-panel')"
+check 'emergencia: vuelve el tema del Shell original' "!Main.getThemeStylesheet()"
+[[ "$EMERG" == *"dconf load / <"* ]] && ok 'emergencia: guarda una copia y dice como deshacer' || bad "emergencia: sin copia de seguridad ($EMERG)"
+e "Main.extensionManager.enableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 2
+check 'emergencia: Nebula se puede reactivar despues' "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1 && !Main.layoutManager.panelBox.visible"
 e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep .3
 check 'disable no deja extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
 check 'disable no deja clases de tema/modo en el Shell' "!/nebula-/.test(Main.uiGroup.get_style_class_name() ?? '')"
 check 'disable devuelve el panel de GNOME a su aspecto original' "!Main.panel.has_style_class_name('nebula-panel')"
 check 'disable quita el acento violeta del Shell' "!Main.getThemeStylesheet()"
+check 'disable vuelve a mostrar la barra superior de GNOME' "Main.layoutManager.panelBox.visible"
 check 'disable libera la sidebar' "!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebars?.[0]"
 e "Main.extensionManager.enableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 1
 check 're-enable recupera la extension' "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"

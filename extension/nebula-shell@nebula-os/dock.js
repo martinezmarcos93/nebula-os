@@ -17,9 +17,11 @@ function dockSettings() {
     return schema ? new Gio.Settings({settings_schema: schema}) : null;
 }
 
-/** Borde libre: abajo, salvo que ahi este la barra inferior de Nebula. */
+/** Borde libre: abajo, salvo que ahi este la barra de Nebula. */
 function freeEdge(settings) {
-    return settings.get_boolean('enable-bottombar') ? 'RIGHT' : 'BOTTOM';
+    const barAtBottom = settings.get_boolean('enable-bottombar') &&
+        settings.get_string('bar-position') !== 'top';
+    return barAtBottom ? 'RIGHT' : 'BOTTOM';
 }
 
 export function moveDockAway(settings) {

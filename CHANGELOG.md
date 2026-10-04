@@ -43,7 +43,20 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
   variante `Yaru-purple` que ya trae el sistema. Se apaga en vivo con
   `gsettings set org.gnome.shell.extensions.nebula-shell violet-accent false`.
 
+- La barra de Nebula pasa **arriba**, al lugar de la barra superior de GNOME,
+  que queda oculta mientras tanto (clave `bar-position`: `top` por defecto,
+  `bottom` la devuelve al pie y vuelve a mostrar la de GNOME). El Ubuntu Dock
+  queda abajo.
+- El reloj de la barra muestra tambien el dia ("dom 4 oct  21:37") y al clic
+  despliega el calendario de GNOME (con notificaciones y No molestar).
+- `tools/nebula-gnome-emergency.sh`: herramienta de emergencia que devuelve
+  GNOME a su configuracion base (nivel 1: desactiva Nebula; `--full`: tema,
+  iconos, cursor, fuentes y dock de fabrica). Corre desde un TTY, guarda copia
+  de la configuracion y dice como deshacer. `build.sh --install` la copia a
+  `~/.local/bin/nebula-gnome-emergency`.
+
 ### Quitado
+- Boton de modo/tema de la barra.
 - Accesos de la barra inferior que solo abrian paneles de Configuracion y
   duplicaban los indicadores de GNOME: volumen, red, bluetooth, brillo,
   notificaciones y No molestar.

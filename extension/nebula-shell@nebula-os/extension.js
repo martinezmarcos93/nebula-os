@@ -5,7 +5,8 @@
 //   sidebar.js    - la sidebar ancha (cabecera, reloj, categorias, meters, energia)
 //   launcher.js   - el panel "Buscar aplicaciones..."
 //   meters.js     - el bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red + sparkline)
-//   bottombar.js  - la barra inferior (escritorios, taskbar, MPRIS, menu de sistema, reloj)
+//   bottombar.js  - la barra de Nebula, arriba o al pie (escritorios, taskbar, MPRIS,
+//                   menu de sistema y calendario de GNOME)
 //   accent.js     - acento violeta del propio Shell (variante Yaru-purple)
 //   model.js      - categorias + apps desde categories.json
 //
@@ -41,7 +42,7 @@ export default class NebulaShellExtension extends Extension {
                 () => setDebug(this._settings.get_boolean('debug'))),
             this._settings.connect('changed::style-top-panel', () => this._syncPanelStyle()),
             this._settings.connect('changed::violet-accent', () => this._syncAccent()),
-            ...['enable-launcher', 'enable-meters', 'enable-bottombar', 'disk-path'].map(key =>
+            ...['enable-launcher', 'enable-meters', 'enable-bottombar', 'bar-position', 'disk-path'].map(key =>
                 this._settings.connect(`changed::${key}`, () => {
                     if (!this._enabled)
                         return;
@@ -79,7 +80,41 @@ export default class NebulaShellExtension extends Extension {
         for (let i = 0; i < count; i++) {
             this._sidebars.push(new NebulaSidebar(this, this._unredirect, i, i === 0));
             if (this._settings.get_boolean('enable-bottombar'))
-                this._bottomBars.push(new NebulaBottomBar(i, this.path));
+                this._bottomBars.push(new NebulaBottomBar(i, this.path, this._barAtTop()));
+        }
+        this._syncGnomePanel();
+    }
+
+    _barAtTop() {
+        return this._settings.get_boolean('enable-bottombar') &&
+            this._settings.get_string('bar-position') === 'top';
+    }
+
+    // Con la barra de Nebula arriba, la barra superior de GNOME se oculta (no
+    // se destruye): sus menus siguen vivos y los abre la barra de Nebula.
+    // Volver a 'bottom', apagar la barra o deshabilitar la extension la
+    // muestran otra vez.
+    _syncGnomePanel() {
+        const hide = this._enabled && this._barAtTop();
+        if (hide === !!this._panelHidden)
+            return;
+        this._panelHidden = hide;
+        const box = Main.layoutManager.panelBox;
+        if (hide) {
+            // LayoutManager la vuelve a mostrar por su cuenta al salir de
+            // pantalla completa o al cambiar el modo de sesion (trackFullscreen):
+            // mientras la barra de Nebula ocupe su lugar, se re-oculta.
+            this._panelVisibleId = box.connect('notify::visible', () => {
+                if (this._panelHidden && box.visible)
+                    box.hide();
+            });
+            box.hide();
+        } else {
+            if (this._panelVisibleId) {
+                box.disconnect(this._panelVisibleId);
+                this._panelVisibleId = 0;
+            }
+            box.show();
         }
     }
 
@@ -117,6 +152,7 @@ export default class NebulaShellExtension extends Extension {
         setDebug(false);
         clearAppearance();
         Main.panel.remove_style_class_name('nebula-panel');
+        this._syncGnomePanel();   // _enabled ya es false: vuelve a mostrarla
         if (this._colorSchemeId) {
             St.Settings.get().disconnect(this._colorSchemeId);
             this._colorSchemeId = 0;

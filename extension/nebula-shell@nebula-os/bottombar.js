@@ -1,13 +1,15 @@
-// Nebula Shell - barra inferior (incremento 5). Franja full-width al pie:
+// Nebula Shell - la barra de Nebula (incremento 5). Franja full-width:
 //
-//   [1 2 3 4 5] [ventanas...]   Artista - Titulo |< >|| >|      🔊⏻ ⚙  21:37
-//   escritorios  taskbar        now-playing (MPRIS)             sistema reloj
+//   [1 2 3 4 5] [ventanas...]   Artista - Titulo |< >|| >|    🔊⏻  dom 4 oct 21:37
+//   escritorios  taskbar        now-playing (MPRIS)           sistema  fecha y hora
 //
-// Reserva su alto via struts. GNOME Shell 46 / GJS 1.80.
+// Clave bar-position: 'top' la pone en el lugar de la barra superior de GNOME
+// (que se oculta mientras tanto, ver extension.js) y 'bottom' al pie, con la
+// barra de GNOME a la vista. Reserva su alto via struts. GNOME Shell 46.
 //
-// No duplica los indicadores de GNOME: el boton "sistema" abre el MISMO menu
-// de Quick Settings de la barra superior (wifi, bluetooth, volumen, apagar),
-// anclado sobre esta barra. La bandeja (StatusNotifier) sigue arriba.
+// No duplica los indicadores de GNOME: el boton "sistema" y el reloj abren
+// los MISMOS menus del panel nativo (Quick Settings y calendario con
+// notificaciones), anclados a esta barra.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -29,10 +31,7 @@ import {
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
-import {MODES, currentMode, setMode} from './modes.js';
-import {THEMES, currentTheme, setTheme} from './theme.js';
 import {taskbarPinnedApps, launchEntry} from './model.js';
-import {applyAppearance} from './appearance.js';
 
 export const BAR_HEIGHT = 34;
 const CLOCK_TICK_S = 15;
@@ -41,11 +40,12 @@ const MPRIS_PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
 
 // Un clic sobre el boton con el menu abierto primero lo cierra (el gestor de
 // menus de GNOME cierra en el press): sin esta gracia, el release lo reabria.
-const SYSTEM_MENU_REOPEN_GRACE_US = 300 * 1000;
+const PANEL_MENU_REOPEN_GRACE_US = 300 * 1000;
 
 export class NebulaBottomBar {
-    constructor(monitorIndex = 0, extensionPath = null) {
+    constructor(monitorIndex = 0, extensionPath = null, atTop = false) {
         this._monitorIndex = monitorIndex;
+        this._atTop = atTop;
         this._extensionPath = extensionPath;
         this._signalIds = [];
         this._clockId = 0;
@@ -54,11 +54,12 @@ export class NebulaBottomBar {
         this._windowButtons = [];
         this._windowTracker = null;
         this._windowMenu = null;
+        this._openPanelMenu = null;
         this._mprisName = null;
         this._mprisProxy = null;
         this._nameWatchId = 0;
-        this._restoreSystemMenu = null;
-        this._systemMenuClosedAt = 0;
+        this._restorePanelMenu = null;
+        this._panelMenuClosed = {menu: null, at: 0};
         this._cancellable = new Gio.Cancellable();
 
         this._build();
@@ -78,7 +79,7 @@ export class NebulaBottomBar {
 
     _build() {
         this._bar = new St.BoxLayout({
-            style_class: 'nebula-bottombar',
+            style_class: this._atTop ? 'nebula-bottombar nebula-bar-top' : 'nebula-bottombar',
             reactive: true,
             height: BAR_HEIGHT,
         });
@@ -132,7 +133,7 @@ export class NebulaBottomBar {
 
         this._bar.add_child(new St.Widget({x_expand: true}));
 
-        // Derecha: menu de sistema de GNOME + modo/tema + reloj
+        // Derecha: menu de sistema de GNOME + fecha y hora (calendario de GNOME)
         const right = new St.BoxLayout({style_class: 'nebula-tray'});
         const systemIcons = new St.BoxLayout({style_class: 'nebula-system-icons'});
         for (const icon of ['audio-volume-high-symbolic', 'system-shutdown-symbolic'])
@@ -146,19 +147,17 @@ export class NebulaBottomBar {
         this._connect(this._systemButton, 'clicked', () => this._toggleSystemMenu());
         right.add_child(this._systemButton);
 
-        const modeButton = new St.Button({
-            style_class: 'nebula-tray-btn',
-            child: new St.Icon({icon_name: 'preferences-desktop-symbolic', icon_size: 16}),
-            can_focus: true,
-            accessible_name: 'Modo y tema',
-        });
-        this._connect(modeButton, 'clicked', () => this._openAppearanceMenu(modeButton));
-        right.add_child(modeButton);
-
         this._clockLabel = new St.Label({
             text: '', style_class: 'nebula-bottom-clock', y_align: Clutter.ActorAlign.CENTER,
         });
-        right.add_child(this._clockLabel);
+        this._clockButton = new St.Button({
+            style_class: 'nebula-tray-btn nebula-clock-btn',
+            child: this._clockLabel,
+            can_focus: true,
+            accessible_name: 'Fecha y hora: abre el calendario',
+        });
+        this._connect(this._clockButton, 'clicked', () => this._toggleCalendar());
+        right.add_child(this._clockButton);
         this._bar.add_child(right);
 
         Main.layoutManager.addChrome(this._bar, {
@@ -168,85 +167,62 @@ export class NebulaBottomBar {
         });
     }
 
-    _openAppearanceMenu(source) {
-        const menu = new PopupMenu.PopupMenu(source, 0.5, St.Side.TOP);
-        Main.uiGroup.add_child(menu.actor);
-        menu.actor.hide();
-        Main.panel.menuManager.addMenu(menu);
-
-        const modes = new PopupMenu.PopupSubMenuMenuItem('Modo: ' + (MODES[currentMode()]?.nombre ?? 'Normal'), false);
-        for (const [id, info] of Object.entries(MODES)) {
-            const item = new PopupMenu.PopupMenuItem(info.nombre);
-            if (id === currentMode())
-                item.setOrnament(PopupMenu.Ornament.CHECK);
-            item.connect('activate', () => {
-                setMode(id);
-                applyAppearance();
-            });
-            modes.menu.addMenuItem(item);
-        }
-        menu.addMenuItem(modes);
-
-        const themes = new PopupMenu.PopupSubMenuMenuItem('Tema: ' + (THEMES[currentTheme()]?.nombre ?? 'Cosmic Dark'), false);
-        for (const [id, info] of Object.entries(THEMES)) {
-            const item = new PopupMenu.PopupMenuItem(info.nombre);
-            if (id === currentTheme())
-                item.setOrnament(PopupMenu.Ornament.CHECK);
-            item.connect('activate', () => {
-                setTheme(id);
-                applyAppearance();
-            });
-            themes.menu.addMenuItem(item);
-        }
-        menu.addMenuItem(themes);
-        menu.connect('open-state-changed', (_menu, isOpen) => {
-            if (!isOpen)
-                menu.destroy();
-        });
-        menu.open(BoxPointer.PopupAnimation.FULL);
-    }
-
     _place() {
         const m = Main.layoutManager.monitors?.[this._monitorIndex]
             ?? (this._monitorIndex === 0 ? Main.layoutManager.primaryMonitor : null);
         if (!m)
             return;
-        this._bar.set_position(m.x, m.y + m.height - BAR_HEIGHT);
+        this._bar.set_position(m.x, this._atTop ? m.y : m.y + m.height - BAR_HEIGHT);
         this._bar.set_width(m.width);
     }
 
-    // --- menu de sistema (Quick Settings de GNOME) ---------------
+    // --- menus del panel de GNOME anclados a esta barra ----------
 
-    // Abre el menu de Quick Settings del panel nativo anclado a esta barra.
-    // No se clona ni se mueve nada: es el mismo menu, solo que mientras esta
-    // abierto desde aca apunta a nuestro boton y se despliega hacia arriba.
-    // Al cerrarse vuelve a su flecha original, asi el indicador de la barra
-    // superior lo sigue abriendo en su lugar de siempre.
     _toggleSystemMenu() {
-        const menu = Main.panel.statusArea.quickSettings?.menu;
+        this._togglePanelMenu(Main.panel.statusArea.quickSettings?.menu, this._systemButton);
+    }
+
+    // Calendario + notificaciones + No molestar: el menu del reloj de GNOME.
+    _toggleCalendar() {
+        this._togglePanelMenu(Main.panel.statusArea.dateMenu?.menu, this._clockButton);
+    }
+
+    // Abre un menu del panel nativo anclado a un boton de esta barra. No se
+    // clona ni se mueve nada: es el mismo menu, solo que mientras esta abierto
+    // desde aca apunta a nuestro boton (y, con la barra al pie, se despliega
+    // hacia arriba). Al cerrarse vuelve a su flecha original, asi el panel de
+    // GNOME lo sigue abriendo en su lugar de siempre.
+    _togglePanelMenu(menu, source) {
         const pointer = menu?._boxPointer;
-        if (!menu || !pointer?.setPosition || !pointer.updateArrowSide)
+        if (!menu || !source || !pointer?.setPosition || !pointer.updateArrowSide)
             return;
         if (menu.isOpen) {
             menu.close(BoxPointer.PopupAnimation.FULL);
             return;
         }
-        if (GLib.get_monotonic_time() - this._systemMenuClosedAt < SYSTEM_MENU_REOPEN_GRACE_US)
+        if (this._panelMenuClosed.menu === menu &&
+            GLib.get_monotonic_time() - this._panelMenuClosed.at < PANEL_MENU_REOPEN_GRACE_US)
             return;
 
-        this._restoreSystemMenu?.();
+        this._restorePanelMenu?.();
+        const side = this._atTop ? St.Side.TOP : St.Side.BOTTOM;
         const originalSide = pointer._userArrowSide ?? St.Side.TOP;
-        pointer._userArrowSide = St.Side.BOTTOM;
-        pointer.updateArrowSide(St.Side.BOTTOM);
+        pointer._userArrowSide = side;
+        pointer.updateArrowSide(side);
         const openId = menu.connect('open-state-changed', (_menu, isOpen) => {
             if (!isOpen)
-                this._systemMenuClosedAt = GLib.get_monotonic_time();
+                this._panelMenuClosed = {menu, at: GLib.get_monotonic_time()};
         });
         // 'menu-closed' llega al terminar la animacion de cierre: restaurar
-        // antes haria saltar el menu al borde superior mientras se desvanece.
-        const closedId = menu.connect('menu-closed', () => this._restoreSystemMenu?.());
-        this._restoreSystemMenu = () => {
-            this._restoreSystemMenu = null;
+        // antes haria saltar el menu de borde mientras se desvanece.
+        const closedId = menu.connect('menu-closed', () => {
+            if (this._openPanelMenu === menu)
+                this._restorePanelMenu?.();
+        });
+        this._openPanelMenu = menu;
+        this._restorePanelMenu = () => {
+            this._restorePanelMenu = null;
+            this._openPanelMenu = null;
             menu.disconnect(openId);
             menu.disconnect(closedId);
             pointer._userArrowSide = originalSide;
@@ -254,7 +230,7 @@ export class NebulaBottomBar {
         };
 
         menu.open(BoxPointer.PopupAnimation.FULL);
-        pointer.setPosition(this._systemButton, 0.5);
+        pointer.setPosition(source, 0.5);
     }
 
     // --- escritorios --------------------------------------------
@@ -422,9 +398,14 @@ export class NebulaBottomBar {
     }
 
     _updateClock() {
-        this._clockLabel?.set_text(new Date().toLocaleTimeString('es-ES', {
+        const now = new Date();
+        const day = now.toLocaleDateString('es-ES', {
+            weekday: 'short', day: 'numeric', month: 'short',
+        }).replace(',', '');
+        const time = now.toLocaleTimeString('es-ES', {
             hour: '2-digit', minute: '2-digit', hour12: false,
-        }));
+        });
+        this._clockLabel?.set_text(`${day}  ${time}`);
     }
 
     // --- MPRIS ------------------------------------------------
@@ -545,11 +526,10 @@ export class NebulaBottomBar {
         // callbacks no toquen actores ya destruidos.
         this._cancellable?.cancel();
         this._cancellable = null;
-        if (this._restoreSystemMenu) {
-            const menu = Main.panel.statusArea.quickSettings?.menu;
-            if (menu?.isOpen)
-                menu.close(BoxPointer.PopupAnimation.NONE);
-            this._restoreSystemMenu?.();
+        if (this._restorePanelMenu) {
+            if (this._openPanelMenu?.isOpen)
+                this._openPanelMenu.close(BoxPointer.PopupAnimation.NONE);
+            this._restorePanelMenu?.();
         }
         this._windowTracker?.destroy();
         if (this._windowMenu) {

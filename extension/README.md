@@ -50,11 +50,13 @@ Hace:
   (sin consumirlo: llega a la ventana de atrás) o abrir el Overview (R-303,
   `_installOutsideWatch()` en `launcher.js`). La descripción sale de
   `Gio.AppInfo` cuando se puede resolver el `exec`.
-- **Barra inferior** (`bottombar.js`), franja full-width al pie (reserva su alto
+- **Barra de Nebula** (`bottombar.js`), franja full-width **arriba**, en el lugar
+  de la barra superior de GNOME, que se oculta (clave `bar-position`; `bottom`
+  la manda al pie y vuelve a mostrar la de GNOME). Reserva su alto
   con struts): indicador de escritorios (`global.workspace_manager`, clic para
   cambiar), now-playing MPRIS (título + artista + `Previous`/`PlayPause`/`Next`
-  vía DBus `org.mpris.MediaPlayer2.Player`), botón de **sistema**, modo/tema y
-  reloj. El botón de sistema no duplica nada: abre el **mismo menú de Quick
+  vía DBus `org.mpris.MediaPlayer2.Player`), botón de **sistema** y reloj con
+  el día, que al clic despliega el calendario de GNOME. El botón de sistema no duplica nada: abre el **mismo menú de Quick
   Settings de GNOME** (wifi, bluetooth, volumen, brillo, apagar) anclado sobre
   esta barra; desde el indicador de la barra superior sigue abriendo arriba.
   Los escritorios de GNOME separan **ventanas**, no iconos: los iconos del
@@ -124,6 +126,7 @@ S="gsettings --schemadir $HOME/.local/share/gnome-shell/extensions/nebula-shell@
 $S set org.gnome.shell.extensions.nebula-shell enable-meters false     # bloque SISTEMA (def. true)
 $S set org.gnome.shell.extensions.nebula-shell enable-launcher true    # lanzador (def. true)
 $S set org.gnome.shell.extensions.nebula-shell enable-bottombar false  # barra inferior (def. true)
+$S set org.gnome.shell.extensions.nebula-shell bar-position bottom     # barra al pie + barra de GNOME visible (def. top)
 $S set org.gnome.shell.extensions.nebula-shell violet-accent false     # acento violeta del Shell (def. true)
 $S set org.gnome.shell.extensions.nebula-shell debug true              # logs de diagnostico (def. false)
 ```

@@ -388,6 +388,12 @@
     color: #d1d5db;
 }
 
+/* Arriba (bar-position 'top') el borde violeta va por debajo. */
+.nebula-bottombar.nebula-bar-top {
+    border-top-width: 0;
+    border-bottom: 1px solid rgba(124, 58, 237, 0.45);
+}
+
 .nebula-ws {
     spacing: 3px;
 }
@@ -454,7 +460,10 @@
     font-size: 9pt;
     font-weight: 600;
     color: #e5e7eb;
-    padding-left: 4px;
+}
+
+.nebula-clock-btn {
+    padding: 4px 8px;
 }
 
 
