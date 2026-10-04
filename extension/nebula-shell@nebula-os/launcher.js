@@ -24,11 +24,11 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
-import {flatApps, filterApps, launch, hiddenApps, createDesktopShortcut} from './model.js';
+import {flatApps, filterApps, hiddenApps, createDesktopShortcut} from './model.js';
 import {runWithConfirmation} from './system-actions.js';
 import {debug} from './debug.js';
 import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride, isTaskbarPinned, toggleTaskbarPinned, displayName, setDisplayName, moveApp} from './state.js';
-import {buildModel} from './model.js';
+import {buildModel, launchEntry} from './model.js';
 import {searchFiles} from './file-search.js';
 
 const PANEL_WIDTH = 380;
@@ -152,7 +152,7 @@ export class NebulaLauncher {
                 else if (this._firstApp.ocultas)
                     this._openHiddenAppsMenu(this._entry);
                 else
-                    launch(this._firstApp.exec);
+                    launchEntry(this._firstApp);
                 this.close('app-launch-enter');
             }
         });
@@ -567,7 +567,7 @@ export class NebulaLauncher {
                     else if (app.accion)
                         runWithConfirmation(app.nombre, app.exec);
                     else
-                        launch(app.exec);
+                        launchEntry(app);
                     this.close(app.archivo ? 'file-open' : 'app-launch');
                 });
                 btn.connect('button-press-event', (_actor, event) => {
@@ -646,7 +646,7 @@ export class NebulaLauncher {
         menu.addMenuItem(hide);
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         const launchItem = new PopupMenu.PopupMenuItem('Abrir nueva ventana');
-        launchItem.connect('activate', () => launch(app.exec, true));
+        launchItem.connect('activate', () => launchEntry(app, true));
         menu.addMenuItem(launchItem);
 
         if (app.categoria && !['Favoritos','Recientes'].includes(app.categoria)) {

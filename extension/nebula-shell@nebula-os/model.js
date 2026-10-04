@@ -279,12 +279,6 @@ export function symbolicForCategory(nombre) {
  */
 
 /**
- * Construye entradas dinamicas para ubicaciones montadas. Gio.VolumeMonitor
- * ve tanto montajes locales como GVfs (incluyendo Google Drive configurado en
- * Cuentas en linea). No se fija ningun /dev/sdX: la etiqueta y URI vienen del
- * sistema en tiempo de ejecucion.
- */
-/**
  * Construye accesos rapidos usando los directorios XDG del usuario. No se
  * hardcodean rutas: GLib resuelve la configuracion local de cada usuario.
  * Los directorios que no existen se omiten. Home y Papelera son estables.
@@ -331,13 +325,37 @@ export function quickLocations() {
     add('Papelera', Gio.File.new_for_uri('trash:///'), 'user-trash-symbolic');
     return out;
 }
-export function mountedLocations() {
-    const monitor = Gio.VolumeMonitor.get();
-    const mounts = monitor.get_mounts?.() ?? [];
+/** Entrada de "Mis discos y nubes" para una ubicacion ya montada. */
+function locationEntry(name, uri, extra = {}) {
+    const cloud = !uri.startsWith('file://');
+    return {
+        nombre: cloud ? `Nube: ${name}` : name,
+        exec: `gio open ${GLib.shell_quote(uri)}`,
+        icono: new Gio.ThemedIcon({
+            name: cloud ? 'folder-remote-symbolic' : 'drive-harddisk-symbolic',
+        }),
+        desc: uri,
+        categoria: 'Mis discos y nubes',
+        ...extra,
+    };
+}
+
+/**
+ * Ubicaciones montadas + volumenes conocidos todavia SIN montar.
+ *
+ * Las cuentas de Google de "Cuentas en linea" (GOA) existen como GVolume
+ * desde el inicio de sesion, pero no como GMount hasta que alguien las abre
+ * (Nautilus las monta al primer clic). Listar solo get_mounts() las dejaba
+ * afuera: "Mis discos y nubes" nunca mostraba Drive. Los volumenes sin montar
+ * llevan `volume`, y launchEntry() los monta antes de abrirlos. El `exec` es
+ * el mismo que tendra la entrada una vez montada, asi favoritos, recientes y
+ * orden sobreviven al cambio de estado.
+ */
+export function mountedLocations(monitor = Gio.VolumeMonitor.get()) {
     const out = [];
     const seen = new Set();
 
-    for (const mount of mounts) {
+    for (const mount of monitor.get_mounts?.() ?? []) {
         try {
             const root = mount.get_root?.();
             const uri = root?.get_uri?.();
@@ -349,24 +367,82 @@ export function mountedLocations() {
             if (uri === 'file:///' || uri === 'file:///boot' || uri === 'file:///boot/efi')
                 continue;
 
-            const name = mount.get_name?.() || root.get_parse_name?.() || uri;
-            const cloud = !uri.startsWith('file://');
-            out.push({
-                nombre: cloud ? `Nube: ${name}` : name,
-                exec: `gio open ${GLib.shell_quote(uri)}`,
-                icono: new Gio.ThemedIcon({
-                    name: cloud ? 'folder-remote-symbolic' : 'drive-harddisk-symbolic',
-                }),
-                desc: uri,
-                categoria: 'Mis discos y nubes',
-            });
+            out.push(locationEntry(mount.get_name?.() || root.get_parse_name?.() || uri, uri));
             seen.add(uri);
         } catch (e) {
             console.debug?.(`Nebula: no se pudo leer un montaje: ${e}`);
         }
     }
 
+    for (const volume of monitor.get_volumes?.() ?? []) {
+        try {
+            if (volume.get_mount?.() || !volume.can_mount?.())
+                continue;
+            // Sin activation root (particion local sin montar) no se conoce
+            // la URI final: se usa una clave estable por UUID.
+            const uri = volume.get_activation_root?.()?.get_uri?.()
+                ?? `volume://${volume.get_uuid?.() ?? volume.get_name?.()}`;
+            if (seen.has(uri))
+                continue;
+            out.push(locationEntry(volume.get_name?.() || uri, uri, {
+                desc: 'Sin conectar: clic para montar y abrir',
+                volume,
+            }));
+            seen.add(uri);
+        } catch (e) {
+            console.debug?.(`Nebula: no se pudo leer un volumen: ${e}`);
+        }
+    }
+
     return out;
+}
+
+/** Abre una URI con su aplicacion predeterminada (Archivos para carpetas). */
+function openUri(uri) {
+    try {
+        Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
+        return true;
+    } catch (e) {
+        console.error(`Nebula Shell: no se pudo abrir ${uri}: ${e}`);
+        return false;
+    }
+}
+
+/**
+ * Monta el volumen de una entrada sin montar y abre su raiz. Si otro proceso
+ * lo monto entretanto, lo abre directamente.
+ */
+export function openLocation(entry) {
+    const volume = entry.volume;
+    const openMounted = () => {
+        const uri = volume.get_mount?.()?.get_root?.()?.get_uri?.();
+        if (!uri)
+            return false;
+        recordRecent(entry.exec);
+        return openUri(uri);
+    };
+    if (openMounted())
+        return;
+    volume.mount(Gio.MountMountFlags.NONE, null, null, (_vol, res) => {
+        try {
+            volume.mount_finish(res);
+        } catch (e) {
+            if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.ALREADY_MOUNTED)) {
+                console.error(`Nebula Shell: no se pudo montar "${entry.nombre}": ${e}`);
+                return;
+            }
+        }
+        openMounted();
+    });
+}
+
+/** Lanza una entrada del modelo: monta primero si es un volumen sin montar. */
+export function launchEntry(entry, newWindow = false) {
+    if (entry.volume) {
+        openLocation(entry);
+        return 'location';
+    }
+    return launch(entry.exec, newWindow);
 }
 export function buildModel(extensionPath) {
     const rawCats = loadCategories(extensionPath);

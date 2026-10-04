@@ -1182,6 +1182,32 @@ actualizado.
 
 ---
 
+## 3e. Uso real tras la primera versión estable (2026-10-04)
+
+### BUG-41 — "Mis discos y nubes" no mostraba las cuentas de Google Drive
+- **Componente:** `model.js` (`mountedLocations`), `sidebar.js`.
+- **Cómo se encontró:** recorrida del autor en la sesión real: la categoría
+  solo mostraba "Administrar discos y particiones" y el disco de datos, con
+  cuatro cuentas de Google configuradas en Cuentas en línea.
+- **Causa / variable:** `gio mount -l` muestra las cuentas como `Volume` de
+  `GProxyVolumeMonitorGoa` **sin `Mount`**. GOA crea el volumen al iniciar
+  sesión, pero el montaje recién existe cuando alguien lo abre (Nautilus lo
+  monta al primer clic). El código solo recorría `get_mounts()`. La variable
+  es **si el volumen está montado**, no si la cuenta existe.
+- **Segundo defecto:** la sidebar solo reconstruía el modelo ante
+  `installed-changed`; montar, desmontar o enchufar una unidad no actualizaba
+  la categoría hasta reiniciar la extensión.
+- **Corrección:** `mountedLocations()` suma los volúmenes montables sin
+  montar; `launchEntry()` los monta (`Gio.Volume.mount`) y abre la raíz. El
+  `exec` es el mismo antes y después de montar, para que favoritos y
+  recientes no se pierdan. La sidebar escucha `mount-added/removed` y
+  `volume-added/removed` de `Gio.VolumeMonitor`.
+- **Estado:** ✅ Corregido y cubierto por `tools/test-sidebar-core.sh` con un
+  monitor simulado (en el gate no hay Cuentas en línea). ⏳ Falta verlo en la
+  sesión real tras reiniciar la sesión.
+
+---
+
 ## 4. Sin verificar
 
 Riesgos que el propio checklist de la extensión (`extension/README.md`,

@@ -107,6 +107,11 @@ export class NebulaSidebar {
         });
         this._connect(Shell.AppSystem.get_default(), 'installed-changed', () =>
             this._scheduleRepopulate());
+        // Discos y nubes: montar/desmontar o enchufar una unidad cambia la
+        // categoria "Mis discos y nubes" sin que cambie ninguna app instalada.
+        this._volumeMonitor = Gio.VolumeMonitor.get();
+        for (const sig of ['mount-added', 'mount-removed', 'volume-added', 'volume-removed'])
+            this._connect(this._volumeMonitor, sig, () => this._scheduleRepopulate());
         this._connect(global.display, 'in-fullscreen-changed', () =>
             this._addIdle(() => this._syncFullscreen()));
 

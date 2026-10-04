@@ -29,6 +29,11 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido
+- BUG-41: "Mis discos y nubes" lista las cuentas de Google Drive de Cuentas en
+  linea aunque todavia no esten montadas (las monta al primer clic) y se
+  actualiza sola al montar, desmontar o enchufar una unidad.
+
 ## [0.2.0] - 2026-10-04
 
 Primer tag del proyecto: punto de retorno con CI en verde (lint, estatico,

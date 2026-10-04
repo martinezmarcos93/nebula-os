@@ -127,6 +127,13 @@ e "$X $B TB.emit('clicked', 1); 1" >/dev/null; sleep .8
 check 'taskbar: clic en una ventana minimizada la restaura con foco' "(() => { $B return !TW.minimized && global.display.focus_window === TW; })()"
 check 'archivos: Accesos rapidos lista ubicaciones del usuario' "S._model.some(c => c.nombre === 'Accesos rapidos' && c.apps.length > 0)"
 check 'archivos: Mis discos y nubes siempre presente' "S._model.some(c => c.nombre === 'Mis discos y nubes')"
+# Cuentas de Drive (GOA): son volumenes SIN montar hasta el primer clic. Se
+# simula el monitor porque en el gate no hay Cuentas en linea.
+e "import($EXT + '/model.js').then(m => { const root = {get_uri: () => 'google-drive://cuenta@test/'}; const vol = {mounted: false, get_mount() { return this.mounted ? {get_root: () => root} : null; }, can_mount: () => true, get_activation_root: () => root, get_name: () => 'cuenta@test', mount(_f, _o, _c, cb) { this.mounted = true; cb(this, null); }, mount_finish: () => true}; const mon = {get_mounts: () => [], get_volumes: () => [vol]}; const l = m.mountedLocations(mon); m.launchEntry(l[0]); globalThis._nebVol = {l, mounted: vol.mounted, after: m.mountedLocations(mon)}; }).catch(err => { globalThis._nebVol = {err: String(err)}; }); 1" >/dev/null; sleep .8
+check 'archivos: una cuenta de Drive sin montar aparece en Mis discos y nubes' "globalThis._nebVol?.l?.length === 1 && globalThis._nebVol.l[0].nombre === 'Nube: cuenta@test' && !!globalThis._nebVol.l[0].volume"
+check 'archivos: el clic monta el volumen antes de abrirlo' "globalThis._nebVol?.mounted === true"
+check 'archivos: un volumen ya montado no se duplica como pendiente' "globalThis._nebVol?.after?.length === 0"
+check 'archivos: la sidebar escucha montajes y desmontajes' "!!S._volumeMonitor"
 e "$X L.open(-1); L._entry.set_text('reiniciar'); L._rebuild(); 1" >/dev/null; sleep .5
 check 'buscador global: encuentra acciones del sistema' "L._rows.length > 0"
 e "$X L.close('desktop-test'); 1" >/dev/null; sleep .3

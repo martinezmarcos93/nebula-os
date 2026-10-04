@@ -30,7 +30,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import {MODES, currentMode, setMode} from './modes.js';
 import {THEMES, currentTheme, setTheme} from './theme.js';
-import {taskbarPinnedApps, launch} from './model.js';
+import {taskbarPinnedApps, launchEntry} from './model.js';
 import {applyAppearance} from './appearance.js';
 
 const BAR_HEIGHT = 34;
@@ -334,7 +334,7 @@ export class NebulaBottomBar {
                 accessible_name: app.nombre,
                 child: new St.Icon({gicon: app.icono, icon_size: 16}),
             });
-            this._connect(b, 'clicked', () => launch(app.exec));
+            this._connect(b, 'clicked', () => launchEntry(app));
             this._pinnedBox.add_child(b);
             this._pinnedButtons.push(b);
         }
