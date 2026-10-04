@@ -55,19 +55,27 @@ export function windowIcon(window) {
     }
 }
 
-/** Activa una ventana, cambiando de workspace si hace falta. */
+/**
+ * Trae la ventana al escritorio activo si esta en otro. Regla de producto:
+ * pedir una ventana desde Nebula la trae adonde esta el usuario; nunca lo
+ * lleva a el a otro escritorio. Para ir a otro escritorio estan los botones
+ * numerados de la barra.
+ */
+export function bringToActiveWorkspace(window) {
+    const active = global.workspace_manager.get_active_workspace();
+    if (window?.located_on_workspace && !window.located_on_workspace(active))
+        window.change_workspace(active);
+}
+
+/** Activa una ventana, trayendola al escritorio activo si hace falta. */
 export function activateWindow(window) {
     if (!window)
         return;
     try {
         if (window.minimized)
             window.unminimize();
-        const workspace = window.get_workspace?.();
-        const active = global.workspace_manager.get_active_workspace();
-        if (workspace && active !== workspace)
-            window.activate_with_workspace(global.get_current_time());
-        else
-            window.activate(global.get_current_time());
+        bringToActiveWorkspace(window);
+        window.activate(global.get_current_time());
     } catch (e) {
         console.error(`Nebula Shell: no se pudo activar ventana: ${e}`);
     }

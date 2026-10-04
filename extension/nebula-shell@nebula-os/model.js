@@ -20,6 +20,8 @@ import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
+import {bringToActiveWorkspace} from './window-manager.js';
+
 import {isHidden, categoryOverride, favoriteExecutions, recentExecutions, recordRecent, hiddenExecutions, displayName, taskbarPinnedExecutions, appOrder} from './state.js';
 
 /** Lee y parsea categories.json. Devuelve [] si falta o esta corrupto. */
@@ -130,10 +132,17 @@ export function launch(exec, newWindow = false) {
             // Sin evento en curso (p. ej. llamada diferida) get_current_time()
             // es 0 y mutter no le da el foco: queda "pidiendo atencion".
             const time = global.get_current_time() || global.display.get_current_time_roundtrip();
-            if (newWindow && app.get_n_windows() > 0 && app.can_open_new_window())
+            if (newWindow && app.get_n_windows() > 0 && app.can_open_new_window()) {
                 app.open_new_window(-1);
-            else
+            } else {
+                // Si la app ya tiene ventanas pero ninguna en este escritorio,
+                // activate() cambiaria de escritorio: se trae la mas reciente.
+                const windows = app.get_windows();
+                const active = global.workspace_manager.get_active_workspace();
+                if (windows.length > 0 && !windows.some(w => w.located_on_workspace(active)))
+                    bringToActiveWorkspace(windows[0]);
                 app.activate_full(-1, time);
+            }
             recordRecent(exec);
             return 'app';
         } catch (e) {

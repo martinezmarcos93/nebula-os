@@ -125,6 +125,16 @@ e "$X $B TB.emit('clicked', 1); 1" >/dev/null; sleep .8
 check 'taskbar: clic en la ventana con foco la minimiza' "(() => { $B return TW.minimized; })()"
 e "$X $B TB.emit('clicked', 1); 1" >/dev/null; sleep .8
 check 'taskbar: clic en una ventana minimizada la restaura con foco' "(() => { $B return !TW.minimized && global.display.focus_window === TW; })()"
+# Una ventana que esta en otro escritorio se trae al actual: pedirla desde
+# Nebula nunca lleva al usuario a otro escritorio.
+WSI="global.workspace_manager.get_active_workspace_index()"
+e "$X $B TW.change_workspace_by_index(1, true); 1" >/dev/null; sleep .8
+check 'taskbar: (preparacion) la ventana quedo en otro escritorio' "(() => { $B return TW.get_workspace().index() === 1 && $WSI === 0; })()"
+e "$X $B B._windowButtons.find(b => b.child.get_children()[1].text.includes('nebula-testwin')).emit('clicked', 1); 1" >/dev/null; sleep .8
+check 'taskbar: clic en una ventana de otro escritorio la trae al actual, sin cambiar de escritorio' "(() => { $B return $WSI === 0 && TW.get_workspace().index() === 0 && global.display.focus_window === TW; })()"
+e "$X $B TW.change_workspace_by_index(1, true); 1" >/dev/null; sleep .8
+e "$LW" >/dev/null; sleep 2
+check 'launch: relanzar una app cuya ventana esta en otro escritorio la trae al actual' "(() => { $B return $WSI === 0 && TW.get_workspace().index() === 0; })()"
 check 'archivos: Accesos rapidos lista ubicaciones del usuario' "S._model.some(c => c.nombre === 'Accesos rapidos' && c.apps.length > 0)"
 check 'archivos: Mis discos y nubes siempre presente' "S._model.some(c => c.nombre === 'Mis discos y nubes')"
 # Cuentas de Drive (GOA): son volumenes SIN montar hasta el primer clic. Se
