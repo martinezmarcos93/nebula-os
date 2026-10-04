@@ -29,6 +29,11 @@ jobs:
             node --check "$file"
           done < <(find extension/nebula-shell@nebula-os -type f -name '*.js' -print0)
 
+      - name: ESLint (identificadores sin definir, R-402)
+        shell: bash
+        working-directory: extension
+        run: npx --yes eslint@10 --max-warnings 0 .
+
       - name: Validate JSON
         shell: bash
         run: |

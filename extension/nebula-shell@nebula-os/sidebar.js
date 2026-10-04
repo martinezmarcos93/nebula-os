@@ -319,7 +319,7 @@ export class NebulaSidebar {
     _openCalendar() {
         try {
             GLib.spawn_command_line_async('gnome-calendar');
-        } catch (e) {
+        } catch (_e) {
             try {
                 GLib.spawn_command_line_async('gnome-control-center datetime');
             } catch (fallbackError) {
