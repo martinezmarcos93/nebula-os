@@ -181,4 +181,22 @@ export function setDisplayName(exec,name){const s=loadState();if(name&&name.trim
 export function taskbarPinnedExecutions(){return [...loadState().anclados_taskbar];}
 
 export function appOrder(category){return [...(loadState().orden[category]??[])];}
-export function moveApp(category,exec,direction){const s=loadState();const arr=s.orden[category]??[];if(!arr.includes(exec))arr.push(exec);const i=arr.indexOf(exec);const j=i+direction;if(j<0||j>=arr.length)return false;[arr[i],arr[j]]=[arr[j],arr[i]];s.orden[category]=arr;saveState(s);return true;}
+/** Sube/baja una app dentro de su categoria. `visible` es el orden que el
+ * usuario esta viendo ([exec, ...]): siembra el orden persistido la primera
+ * vez (y agrega apps nuevas al final), para que el movimiento sea relativo a
+ * lo que hay en pantalla y no a una lista vacia. */
+export function moveApp(category, exec, direction, visible = []) {
+    const s = loadState();
+    const stored = s.orden[category] ?? [];
+    const arr = [...stored.filter(x => visible.length === 0 || visible.includes(x)),
+        ...visible.filter(x => !stored.includes(x))];
+    if (!arr.includes(exec))
+        arr.push(exec);
+    const i = arr.indexOf(exec);
+    const j = i + direction;
+    s.orden[category] = arr;
+    if (j >= 0 && j < arr.length)
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    saveState(s);
+    return j >= 0 && j < arr.length;
+}

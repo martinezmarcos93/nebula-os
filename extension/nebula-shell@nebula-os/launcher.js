@@ -596,15 +596,16 @@ export class NebulaLauncher {
         menu.addMenuItem(launchItem);
 
         if (app.categoria && !['Favoritos','Recientes'].includes(app.categoria)) {
+            const visible = () => (this._model.find(c => c.nombre === app.categoria)?.apps ?? []).map(a => a.exec);
             const up = new PopupMenu.PopupMenuItem('Subir en la categoría');
             up.connect('activate', () => {
-                moveApp(app.categoria, app.exec, -1);
+                moveApp(app.categoria, app.exec, -1, visible());
                 this.setModel(buildModel(this._ext.path));
             });
             menu.addMenuItem(up);
             const down = new PopupMenu.PopupMenuItem('Bajar en la categoría');
             down.connect('activate', () => {
-                moveApp(app.categoria, app.exec, 1);
+                moveApp(app.categoria, app.exec, 1, visible());
                 this.setModel(buildModel(this._ext.path));
             });
             menu.addMenuItem(down);
