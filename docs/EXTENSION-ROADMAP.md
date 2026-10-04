@@ -170,6 +170,17 @@ mpv/cmus). Lo que **sí** conviene resolver siempre:
 
 ## 2. Tecla Super/Windows para desplegar la sidebar
 
+> ✅ **Decidido (2026-10-04): Opción B, convivir.** La tecla Super sola sigue
+> abriendo Activities de GNOME; Nebula conserva un atajo propio y
+> configurable (clave gsettings `toggle-sidebar`, hoy `Super+B`), además del
+> borde izquierdo de la pantalla. No se engancha `overlay-key` ni se toca
+> `org.gnome.mutter overlay-key`. Motivos: no cambiar una tecla de toda la
+> sesión, no chocar con otras extensiones y que siempre haya un camino a
+> Activities y a la configuración aunque Nebula falle. Reemplazar Super queda
+> fuera de alcance; si se retoma, será como preferencia explícita y apagada
+> por defecto. La recomendación de más abajo (Opción A) queda como registro
+> histórico del análisis, no como plan.
+
 **Estado actual:** el atajo es `Super+B` (`extension/.../schemas/org.gnome.shell.extensions.nebula-shell.gschema.xml`,
 clave `toggle-sidebar`), un *keybinding* normal via `Main.wm.addKeybinding()`.
 
@@ -395,7 +406,7 @@ primero, lo que toca comportamiento global de todo el escritorio al final):
 | **3** | Panel de accesos a discos/unidades (Google Drive vía GOA + disco NTFS) | Componente nuevo pero aislado, no modifica nada existente. |
 | **4** | Menú contextual (clic derecho): favoritos, mover, accesos directos, resto de opciones que confirmes | Depende de la Fase 0. Requiere resolver antes la pregunta de "subcategoría". |
 | **5** | Barra de tareas / lista de ventanas en `bottombar.js` (activar el incremento 5 + agregar el bloque nuevo) | Prepara el terreno para la Fase 6 (compensa perder Activities con un solo atajo). |
-| **6** | Tecla Super/Windows para la sidebar | Al final: es lo que más impacto tiene fuera de Nebula (cambia comportamiento global de GNOME), conviene hacerlo con todo lo demás ya estable y con la Fase 5 como red de contención. |
+| **6** ✅ | Tecla Super/Windows para la sidebar — cerrada por decisión (2026-10-04): Super queda para Activities, Nebula usa su atajo configurable (`toggle-sidebar`). Sin cambios de código | Al final: es lo que más impacto tiene fuera de Nebula (cambia comportamiento global de GNOME), conviene hacerlo con todo lo demás ya estable y con la Fase 5 como red de contención. |
 
 Cada fase se valida en vivo (con el aprendizaje de esta sesión:
 `gnome-shell --replace &` para confirmar cualquier cambio, nunca solo
@@ -405,7 +416,8 @@ Cada fase se valida en vivo (con el aprendizaje de esta sesión:
 
 ## Preguntas abiertas — necesito que las confirmes antes de programar
 
-1. **Tecla Super (punto 2):** ¿Opción A (Super reemplaza Activities por
+1. ✅ *Respondida el 2026-10-04: Opción B (ver sección 2).*
+   **Tecla Super (punto 2):** ¿Opción A (Super reemplaza Activities por
    completo) u Opción B (se mantiene Activities, se busca otra tecla/atajo
    para Nebula)? Ver la sección 2 arriba.
 2. **"Subcategoría" (punto 4):** ¿es un nivel nuevo de verdad (agrupar apps
