@@ -1150,6 +1150,29 @@ tareas de la Fase 3 que el merge del Producto 1 había dejado sin implementar.
   `destroy()`.
 - **KNOWN-03:** resuelto con la clave `disk-path`.
 
+### BUG-40 — El instalador abortaba en una máquina limpia (dos causas)
+- **Componente:** `install/10-base.sh`, `install/40-tema.sh`.
+- **Cómo se encontró:** primera corrida del E2E (`tools/test-e2e.sh`, R-403):
+  `install.sh --yes` en un contenedor `ubuntu:24.04` recién creado, con un
+  usuario sin privilegios. Nunca se había ejecutado el instalador completo
+  fuera de la máquina de referencia.
+- **Causas / variables:**
+  1. `systemctl daemon-reload` tras escribir el override de autologin fallaba
+     sin systemd como PID 1 (contenedor, chroot de instalación) y cortaba el
+     stage 10. La variable es **si systemd está corriendo** en el momento de
+     instalar.
+  2. `tar -xJf` del cursor Bibata necesita `xz`, que no estaba en
+     `PKGS_BASE` (misma clase que BUG-10: en Ubuntu Desktop viene de
+     arrastre, en una instalación mínima no). Además el fallo de extracción
+     abortaba todo el stage 40, aunque el cursor es opcional y BUG-17 ya
+     preveía caer a `Adwaita`.
+- **Corrección:** `daemon-reload` solo si existe `/run/systemd/system` (si
+  no, WARN: el override se lee en el próximo arranque); `xz-utils` en
+  `PKGS_BASE`; un fallo al extraer el cursor pasa a WARN.
+- **Estado:** ✅ Resuelto. El E2E pasa (postcheck `FAIL: 0`, segunda corrida
+  idempotente) y corre en CI (`.github/workflows/e2e.yml`) ante cambios del
+  instalador y una vez por semana.
+
 ### Decisión: BUG-34 frente al roadmap de escritorio §3.1
 El roadmap decía "clic izquierdo = siempre nueva ventana", lo contrario de
 BUG-34 (reportado en uso real). Se mantiene BUG-34: el clic trae al frente la

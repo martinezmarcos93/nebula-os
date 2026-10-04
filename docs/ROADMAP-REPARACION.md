@@ -136,7 +136,7 @@ reposo 10 min). Sin warnings nuevos en `journalctl`.
 |---|---|---|
 | R-401 ✅ | **bats-core** para `lib/common.sh` (run/dry-run, confirm sin TTY, backup_path, ensure_line) y para cada `bin/nebula-*` con stubs de `bspc`/`eww`/`notify-send`/`nvidia-smi` en `PATH` | ≥ 1 test por script; CI verde |
 | R-402 ✅ | **ESLint** con la config oficial de GNOME Shell sobre `extension/` | CI verde |
-| R-403 | **E2E:** job en contenedor `ubuntu:24.04` con usuario no-root y sudo sin contraseña: `install.sh --yes` (`NEBULA_PANEL=polybar` para no compilar), después Xvfb + `nebula-session` y `60-postcheck.sh` **dentro** de la sesión | Postcheck FAIL=0 en CI |
+| R-403 ✅ | **E2E:** job en contenedor `ubuntu:24.04` con usuario no-root y sudo sin contraseña: `install.sh --yes` (`NEBULA_PANEL=polybar` para no compilar), después Xvfb + `nebula-session` y `60-postcheck.sh` **dentro** de la sesión | Postcheck FAIL=0 en CI |
 | R-404 ✅ | Job **semanal** (`schedule`) que compila eww con el mismo comando que `20-panel.sh` | Aviso automático si upstream rompe la compilación |
 | R-405 | Hook `pre-commit` (opcional, documentado): shellcheck + `nebula-categories check` + diff de `eww.yuck` | `CONTRIBUTING.md` lo explica |
 | R-406 | Branch protection en `main`: CI obligatorio antes de mergear | Configuración del repo (acción del autor) |

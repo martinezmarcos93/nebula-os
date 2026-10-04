@@ -37,6 +37,14 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 - BUG-38: "Subir/Bajar en la categoria" no hacia nada la primera vez.
 - BUG-39: CI de `main` en verde por primera vez en mas de 100 corridas
   (`categories.json` generado, `eww.yuck` regenerado, gates al dia).
+- BUG-40: el instalador abortaba en una maquina limpia (`systemctl
+  daemon-reload` sin systemd; `xz-utils` sin declarar). Encontrado por el
+  nuevo E2E en contenedor (`tools/test-e2e.sh`, R-403).
+- R-303/BUG-28 (regresion): clic afuera, Esc y Overview vuelven a cerrar el
+  lanzador y lo tipeado llega al buscador en X11.
+- R-308: llamadas D-Bus de la barra inferior cancelables; el cierre de un
+  reproductor MPRIS ya no corta la sincronizacion de No molestar.
+- KNOWN-03: el meter de disco se puede apuntar a otro montaje (`disk-path`).
 - `update-nebula.sh` avisa que hace falta reiniciar el equipo para cargar el
   codigo nuevo (BUG-24), no solo cerrar sesion.
 - Comentarios "BUG-25"/`CRASH-BUG25.md` corregidos a BUG-26.

@@ -46,12 +46,10 @@ Hace:
   sidebar (no reserva espacio): campo "Buscar aplicaciones..." + lista de apps
   (icono + nombre + descripción). Clic en categoría → filtrado a esa categoría;
   escribir → filtra sobre todas las apps; `Enter` lanza la primera; `Esc` (con
-  foco en el panel) o `Super+B` cierra. **Cerrar haciendo clic afuera del panel
-  todavía no está activo**: el código que lo implementa (`_installStageCapture()`
-  en `launcher.js`) existe completo pero quedó deshabilitado a mitad de la
-  investigación de BUG-24 (`docs/BUGS.md`) y no se reactivó — reactivarlo
-  requiere confirmar en una sesión GNOME real que no reintroduce ese bug. La
-  descripción sale de `Gio.AppInfo` cuando se puede resolver el `exec`.
+  foco en el panel) o `Super+B` cierra, igual que **un clic afuera del panel**
+  (sin consumirlo: llega a la ventana de atrás) o abrir el Overview (R-303,
+  `_installOutsideWatch()` en `launcher.js`). La descripción sale de
+  `Gio.AppInfo` cuando se puede resolver el `exec`.
 - **Barra inferior** (`bottombar.js`), franja full-width al pie (reserva su alto
   con struts): indicador de escritorios (`global.workspace_manager`, clic para
   cambiar), now-playing MPRIS (título + artista + `Previous`/`PlayPause`/`Next`
@@ -165,29 +163,36 @@ falló la descarga por red). Variables de control:
 `NEBULA_THEME=nordic|fluent`, `NEBULA_CURSOR=0|1` (ver tabla en el
 [`README.md`](../README.md) raíz, sección "Variables de entorno de control").
 
-## Checklist (incrementos 1-3, 5)
+## Checklist
 
-En una sesión GNOME normal:
+`[x]` = cubierto por un gate automático en GNOME Shell 46 (`tools/test-sidebar-core.sh`
+y `tools/test-extension.sh`, en CI desde `f3656d6`, 2026-10-04). `[ ]` = solo
+se puede confirmar mirando una sesión real; ver el último handoff en
+`docs/handoffs/`.
 
 - [ ] la sidebar se ve con la estética Cosmic Dark, borde izquierdo, altura completa;
 - [ ] cabecera (marca + textos) y reloj en vivo (fecha en español + hora) correctos;
-- [ ] las 13 categorías se listan; cada una muestra **solo** apps instaladas;
-- [ ] clic en una categoría abre el lanzador filtrado a esa categoría;
-- [ ] escribir en "Buscar aplicaciones..." filtra sobre todas las apps; `Enter` lanza la primera;
-- [ ] clic en una fila lanza la app y el lanzador se cierra;
-- [ ] `Super+B` abre (todas las apps) / cierra el lanzador; `Esc` lo cierra;
+- [ ] las categorías se listan; cada una muestra **solo** apps instaladas;
+- [x] clic en una categoría abre el lanzador filtrado a esa categoría;
+- [x] escribir en "Buscar aplicaciones..." filtra sobre todas las apps (y en X11 lo tipeado llega al buscador);
+- [ ] `Enter` lanza la primera; clic en una fila lanza la app y el lanzador se cierra;
+- [x] `Esc`, un clic afuera o el Overview cierran el lanzador;
+- [ ] `Super+B` abre (todas las apps) / cierra el lanzador;
+- [x] los meters sondean solo con la sidebar desplegada;
 - [ ] bloque SISTEMA: CPU/RAM/SWAP/Disco se mueven; GPU aparece con nombre y %
       (o no aparece si no hay `nvidia-smi`); Red muestra ↓/↑ y la sparkline dibuja;
 - [ ] los 3 botones del pie: apagar y reiniciar muestran el diálogo de GNOME; bloquear bloquea;
-- [ ] barra inferior: los números de escritorio reflejan los reales y cambian de
-      workspace al clic; con música sonando aparece "Artista - Título" y los
-      controles |< >|| >| funcionan; volumen abre pavucontrol, red abre el editor;
+- [x] barra inferior: un botón por escritorio y uno por ventana; clic en una
+      ventana la minimiza/restaura; se engancha al reproductor MPRIS;
+- [ ] con música sonando aparece "Artista - Título" y los controles funcionan;
       reloj al día; una ventana maximizada no queda debajo de la barra;
-- [ ] una ventana maximizada respeta el ancho de la sidebar (no queda debajo);
+- [x] la sidebar se **superpone** (sin struts): desplegarla o colapsarla no
+      cambia el área de trabajo, así que ni los iconos del escritorio ni las
+      ventanas maximizadas se mueven (BUG-33);
+- [x] el Ubuntu Dock deja el borde izquierdo y vuelve al deshabilitar; no salta al bloquear;
 - [ ] red, audio, Bluetooth, discos, notificaciones y bloqueo siguen 100% normales;
-- [ ] `gnome-extensions disable` + bloquear/desbloquear la pantalla no deja
-      artefactos ni errores en el journal (`disable()` limpio: sin timeouts,
-      sin señales, sin chrome huérfano).
+- [x] `gnome-extensions disable` + bloquear/desbloquear no deja actores, clases
+      CSS ni errores JS en el journal.
 
 ## Puntos sensibles a versión de GNOME
 

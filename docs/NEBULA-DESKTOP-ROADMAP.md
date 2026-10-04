@@ -648,7 +648,7 @@ Nebula 1.0 requiere como mínimo:
 
 ### Robustez
 
-- [ ] Instalación limpia.
+- [x] Instalación limpia (E2E en contenedor Ubuntu 24.04 sin NVIDIA ni GNOME; falta la máquina de referencia y una VM Desktop).
 - [~] Recuperación ante fallo de extensión (procedimiento en `docs/ROLLBACK.md`; falta ensayarlo).
 - [x] Validación estática automatizada (CI GitHub: sintaxis JS/bash, ESLint `no-undef`, JSON y categories.toml).
 - [ ] Validación en uso real.
