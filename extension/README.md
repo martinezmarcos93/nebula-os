@@ -52,8 +52,8 @@ Hace:
   `Gio.AppInfo` cuando se puede resolver el `exec`.
 - **Barra de Nebula** (`bottombar.js`), franja full-width **arriba**, en el lugar
   de la barra superior de GNOME, que se oculta (clave `bar-position`; `bottom`
-  la manda al pie y vuelve a mostrar la de GNOME). Reserva su alto
-  con struts): indicador de escritorios (`global.workspace_manager`, clic para
+  la manda al pie y vuelve a mostrar la de GNOME). Reserva su alto con
+  struts. Contenido: indicador de escritorios (`global.workspace_manager`, clic para
   cambiar), now-playing MPRIS (título + artista + `Previous`/`PlayPause`/`Next`
   vía DBus `org.mpris.MediaPlayer2.Player`), botón de **sistema** y reloj con
   el día, que al clic despliega el calendario de GNOME. El botón de sistema no duplica nada: abre el **mismo menú de Quick
