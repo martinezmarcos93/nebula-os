@@ -72,6 +72,11 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 - La sidebar llegaba hasta el borde inferior y la barra inferior le tapaba la
   fila de energia; ahora termina donde empieza la barra. Ademas los cinco
   botones de energia no entraban en el ancho y el ultimo quedaba recortado.
+- En pantallas de 768 px de alto la ultima categoria de la sidebar
+  ("Configuracion") quedaba cortada por el borde. Se compacto el espacio entre
+  la cabecera, la hora y "CATEGORIAS" (48 px recuperados) y los bloques del pie
+  que no entran (meters, busqueda, fila de energia) ahora se ocultan enteros en
+  lugar de quedar cortados; los meters ocultos tampoco sondean.
 
 ## [0.2.0] - 2026-10-04
 

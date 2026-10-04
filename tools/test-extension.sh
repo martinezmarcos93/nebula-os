@@ -287,7 +287,7 @@ run_phase() {  # run_phase SCRIPT -> un GNOME Shell headless nuevo por fase
     dbus-run-session -- bash -c '
         gsettings set org.gnome.shell disable-user-extensions false
         gsettings set org.gnome.shell enabled-extensions "[\"nebula-harness@test\", \"nebula-shell@nebula-os\"]"
-        gnome-shell --headless --wayland --no-x11 --virtual-monitor 1280x800 >> "$T/shell.log" 2>&1 &
+        gnome-shell --headless --wayland --no-x11 --virtual-monitor 1920x1200 >> "$T/shell.log" 2>&1 &
         GS=$!
         source "$1" >> "$T/results.txt"
         kill $GS 2>/dev/null; wait $GS 2>/dev/null

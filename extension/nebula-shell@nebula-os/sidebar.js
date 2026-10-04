@@ -99,7 +99,7 @@ export class NebulaSidebar {
         this._place();
         this._populate();
         this._startClock();
-        this._meters?.start();
+        this._addIdle(() => this._fitToHeight());   // con los estilos ya resueltos
         this._addKeybinding();
 
         this._connect(Main.layoutManager, 'monitors-changed', () => {
@@ -149,7 +149,8 @@ export class NebulaSidebar {
         this._sidebar.add_child(this._battery.actor);
         if (this._launcher)
             this._sidebar.add_child(this._buildQuickSearch());
-        this._sidebar.add_child(this._buildPowerRow());
+        this._powerRow = this._buildPowerRow();
+        this._sidebar.add_child(this._powerRow);
 
         // SIN trackFullscreen (R-301, FS-20): con esa opcion LayoutManager
         // forzaba `visible = true` al cerrar el Overview o salir de pantalla
@@ -219,6 +220,40 @@ export class NebulaSidebar {
 
         this._hotEdge?.set_position(m.x, top);
         this._hotEdge?.set_size(HOT_EDGE_W, height);
+        this._fitToHeight();
+    }
+
+    // En pantallas bajas (768 px) las categorias ocupan casi todo el alto y
+    // los bloques del pie no entran. Un bloque cortado por el borde se ve
+    // roto: cada uno se muestra entero o no se muestra. Las categorias
+    // mandan; se sacrifican, en este orden, los meters, el recuadro de
+    // busqueda (el lanzador sigue con Super+B o una categoria) y la fila de
+    // energia (apagar sigue en el menu de sistema de la barra).
+    _fitToHeight() {
+        if (!this._sidebar)
+            return;
+        const blocks = [this._meters?.actor, this._quickSearch, this._powerRow].filter(Boolean);
+        blocks.forEach(b => b.show());
+        const available = this._sidebar.height;
+        // Con el alto fijado el actor informa ese alto, no el de su contenido.
+        this._sidebar.set_height(-1);
+        for (const block of blocks) {
+            const [, natural] = this._sidebar.get_preferred_height(SIDEBAR_WIDTH);
+            if (natural <= available)
+                break;
+            block.hide();
+        }
+        this._sidebar.set_height(available);
+        if (this._meters && !this._meters.actor.visible)
+            this._meters.stop();
+        else if (!this._collapsed)
+            this._startMeters();
+    }
+
+    // R-305: los meters solo sondean si se ven (sidebar desplegada y con lugar).
+    _startMeters() {
+        if (this._meters?.actor.visible)
+            this._meters.start();
     }
 
     // --- lista de categorias (se reconstruye) --------------------
@@ -273,6 +308,7 @@ export class NebulaSidebar {
                 style_class: 'nebula-cat-empty',
             }));
         }
+        this._fitToHeight();
     }
 
     _buildHead() {
@@ -493,8 +529,10 @@ export class NebulaSidebar {
         if (!this._collapsed || this._inFullscreen)
             return;
         this._collapsed = false;
-        this._meters?.start();
         this._sidebar.show();
+        // Recien al mostrarse los estilos estan resueltos del todo: las medidas
+        // tomadas al construir pueden quedar largas y ocultar bloques de mas.
+        this._fitToHeight();
         // BUG-24 (docs/BUGS.md): show() no siempre alcanza para que el motor
         // de layout recalcule la region de input a tiempo -- un clic que
         // llega justo cuando se revela (el gesto real: acercar el mouse al

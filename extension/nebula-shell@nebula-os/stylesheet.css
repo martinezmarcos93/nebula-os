@@ -12,8 +12,10 @@
 .nebula-sidebar {
     background-color: rgba(8, 8, 16, 0.90);
     border-right: 1px solid rgba(124, 58, 237, 0.55);
-    padding: 18px 14px 14px 16px;
-    spacing: 14px;
+    /* Compacto arriba: en 768 px de alto la lista de categorias (hasta 16
+     * filas) tiene que entrar completa debajo de la barra de Nebula. */
+    padding: 12px 14px 14px 16px;
+    spacing: 8px;
     font-family: "Inter", "Cantarell", sans-serif;
     color: #e5e7eb;
 }
@@ -73,8 +75,7 @@
 }
 
 .nebula-clock {
-    spacing: 2px;
-    padding-bottom: 4px;
+    spacing: 0;
 }
 
 .nebula-date {
@@ -93,11 +94,10 @@
     font-weight: 700;
     letter-spacing: 2px;
     color: #6b7280;
-    margin-top: 4px;
 }
 
 .nebula-cat-list {
-    spacing: 2px;
+    spacing: 1px;
 }
 
 .nebula-cat {
