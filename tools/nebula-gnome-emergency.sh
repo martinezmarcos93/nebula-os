@@ -62,21 +62,26 @@ if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
 fi
 
 # --- 0. copia de seguridad -------------------------------------------------
-backup="$STATE_DIR/gnome-antes-de-emergencia-$(date +%Y%m%d-%H%M%S).dconf"
-if command -v dconf >/dev/null 2>&1; then
-    if [[ "$dry" -eq 1 ]]; then
-        printf '  (dry-run) dconf dump / > %s\n' "$backup"
-    else
-        mkdir -p "$STATE_DIR"
-        if dconf dump / > "$backup" 2>/dev/null; then
-            say "copia de la configuracion actual: $backup"
-        else
-            say "aviso: no se pudo guardar la copia de seguridad"
-            backup=""
-        fi
+# Con `dconf` (dconf-cli) se guarda un volcado de texto; sin el, se copia la
+# base binaria de dconf tal cual. `undo` es el comando para deshacer.
+stamp="$(date +%Y%m%d-%H%M%S)"
+dconf_db="${XDG_CONFIG_HOME:-$HOME/.config}/dconf/user"
+undo=""
+if [[ "$dry" -eq 1 ]]; then
+    printf '  (dry-run) copia de la configuracion en %s/\n' "$STATE_DIR"
+elif mkdir -p "$STATE_DIR"; then
+    backup="$STATE_DIR/gnome-antes-de-emergencia-$stamp"
+    if command -v dconf >/dev/null 2>&1 && dconf dump / > "$backup.dconf" 2>/dev/null; then
+        undo="dconf load / < \"$backup.dconf\""
+    elif [[ -f "$dconf_db" ]] && cp -f "$dconf_db" "$backup.db"; then
+        rm -f "$backup.dconf"
+        undo="cp \"$backup.db\" \"$dconf_db\"   # y despues cerrar sesion y volver a entrar"
     fi
-else
-    backup=""
+    if [[ -n "$undo" ]]; then
+        say "copia de la configuracion actual en $STATE_DIR/"
+    else
+        say "aviso: no se pudo guardar la copia de seguridad"
+    fi
 fi
 
 # --- 1. desactivar Nebula Shell -------------------------------------------
@@ -145,9 +150,11 @@ if [[ "$full" -eq 1 ]]; then
         say "restableciendo el Ubuntu Dock..."
         run gsettings reset-recursively "$DOCK_SCHEMA"
     fi
+    say "borrando las claves propias de Nebula..."
     if command -v dconf >/dev/null 2>&1; then
-        say "borrando las claves propias de Nebula..."
         run dconf reset -f "$NEBULA_DCONF"
+    elif [[ -d "$EXT_DIR/schemas" ]]; then
+        run gsettings --schemadir "$EXT_DIR/schemas" reset-recursively "$NEBULA_SCHEMA"
     fi
 fi
 
@@ -162,10 +169,10 @@ responde:  sudo systemctl restart gdm   (cierra la sesion: se pierde lo no guard
 Para volver a Nebula:
   gnome-extensions enable $UUID
 EOF
-if [[ -n "$backup" && "$dry" -eq 0 ]]; then
+if [[ -n "$undo" ]]; then
     cat <<EOF
 
 Para deshacer TODO lo que hizo este script (vuelve la configuracion de antes):
-  dconf load / < "$backup"
+  $undo
 EOF
 fi

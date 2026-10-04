@@ -208,7 +208,7 @@ EMERG="$(bash "$REPO/tools/nebula-gnome-emergency.sh" 2>&1)"; sleep 1.5
 check 'emergencia: desactiva la extension' "Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
 check 'emergencia: vuelve la barra superior de GNOME' "Main.layoutManager.panelBox.visible && !Main.panel.has_style_class_name('nebula-panel')"
 check 'emergencia: vuelve el tema del Shell original' "!Main.getThemeStylesheet()"
-[[ "$EMERG" == *"dconf load / <"* ]] && ok 'emergencia: guarda una copia y dice como deshacer' || bad "emergencia: sin copia de seguridad ($EMERG)"
+[[ "$EMERG" == *"Para deshacer TODO"* ]] && ok 'emergencia: guarda una copia y dice como deshacer' || bad "emergencia: sin copia de seguridad ($EMERG)"
 e "Main.extensionManager.enableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 2
 check 'emergencia: Nebula se puede reactivar despues' "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1 && !Main.layoutManager.panelBox.visible"
 e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep .3
