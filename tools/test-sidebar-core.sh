@@ -181,7 +181,9 @@ check 'sidebar: empieza debajo de la barra de Nebula y no se sale de la pantalla
 # pie queda cortado por el borde: o entra entero o se oculta.
 check 'sidebar: todas las categorias entran completas' "(() => { const last = S._catButtons.at(-1); const [, y] = last.get_transformed_position(); return y + last.height <= S._sidebar.y + S._sidebar.height; })()"
 check 'sidebar: ningun bloque visible sobresale por abajo' "S._sidebar.get_children().every(c => !c.visible || c.y + c.height <= S._sidebar.height)"
-check 'sidebar: los meters que no entran se ocultan y no sondean' "!S._meters.actor.visible && S._meters._pollId === 0"
+# Cuantas categorias hay depende de las apps instaladas (en CI son menos y los
+# meters si entran): lo invariante es que unos meters ocultos no sondean.
+check 'sidebar: unos meters ocultos por falta de lugar no sondean' "S._meters.actor.visible || S._meters._pollId === 0"
 check 'sidebar: el ultimo boton de energia entra completo' "(() => { const row = S._sidebar.get_last_child(); const last = row.get_last_child(); const [x] = last.get_transformed_position(); const [sx] = S._sidebar.get_transformed_position(); return row.get_n_children() === 5 && last.width > 0 && x + last.width <= sx + S._sidebar.width; })()"
 # bar-position=bottom: la barra baja y la de GNOME vuelve.
 e "$X X._settings.set_string('bar-position', 'bottom'); 1" >/dev/null; sleep 1.5
