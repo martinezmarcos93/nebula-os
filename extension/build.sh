@@ -71,6 +71,11 @@ if [ "$do_install" -eq 1 ]; then
     mkdir -p "$(dirname "$DEST")"
     cp -r "$EXT" "$DEST"
     echo "copiada a: $DEST"
+    # Herramienta de emergencia fuera del repo: tiene que poder correrse desde
+    # un TTY aunque el disco del repo no este montado. --uninstall NO la borra.
+    mkdir -p "$HOME/.local/bin"
+    install -m 755 "$REPO/tools/nebula-gnome-emergency.sh" "$HOME/.local/bin/nebula-gnome-emergency"
+    echo "emergencia: $HOME/.local/bin/nebula-gnome-emergency"
     if [ "$do_enable" -eq 1 ] && command -v gnome-extensions >/dev/null; then
         gnome-extensions enable "$UUID" 2>/dev/null \
             && echo "habilitada (efectiva tras reiniciar el Shell)" \

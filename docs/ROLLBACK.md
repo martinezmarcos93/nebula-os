@@ -4,6 +4,22 @@ Nebula Shell es una extensión de GNOME: no reemplaza GNOME Shell, Mutter, GDM
 ni ningún servicio. Si algo falla, GNOME sigue ahí debajo. Esta guía va de lo
 menos a lo más drástico; en casi todos los casos alcanza con el paso 1.
 
+## 0. Emergencia: un solo comando
+
+```bash
+nebula-gnome-emergency            # o: bash tools/nebula-gnome-emergency.sh
+nebula-gnome-emergency --full     # además: tema, iconos, cursor, fuentes y dock de fábrica
+```
+
+`build.sh --install` deja una copia en `~/.local/bin/`, así funciona aunque el
+disco del repo no esté montado. Sirve desde la sesión gráfica o desde una
+consola de texto (`Ctrl+Alt+F3`, iniciar sesión, correrlo, `Ctrl+Alt+F2` para
+volver). Desactiva Nebula Shell sin depender de que el Shell responda: vuelven
+la barra superior de GNOME, el tema del Shell y el dock a su borde. Antes de
+tocar nada guarda una copia de la configuración en `~/.local/state/nebula/` y
+al terminar muestra el comando para deshacerlo. `--dry-run` solo lista lo que
+haría. Los pasos que siguen son lo mismo, a mano.
+
 ## 1. Desactivar la extensión
 
 ```bash
@@ -11,7 +27,7 @@ gnome-extensions disable nebula-shell@nebula-os
 ```
 
 Efecto inmediato, sin reiniciar: desaparecen la sidebar, el lanzador y la
-barra inferior; se libera el atajo `Super+B`; el Ubuntu Dock vuelve al borde
+barra de Nebula (y reaparece la barra superior de GNOME); se libera el atajo `Super+B`; el Ubuntu Dock vuelve al borde
 donde estaba antes de habilitar Nebula.
 
 ## 2. Si la sesión gráfica no responde
