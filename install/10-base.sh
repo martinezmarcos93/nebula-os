@@ -29,6 +29,9 @@ PKGS_BASE=(
     # dotfiles/bspwm/bspwmrc como residente.
     alttab
     feh brightnessctl playerctl lm-sensors
+    # xz-utils -> tar -xJf del cursor Bibata (40-tema). En Desktop viene de
+    # arrastre; en una instalacion minima o contenedor, no (misma clase que BUG-10).
+    xz-utils
     network-manager-gnome pavucontrol
     copyq
     # libnotify-bin -> notify-send. dunst es el servidor, pero el binario que
@@ -182,7 +185,13 @@ EOF
     else
         run_root mkdir -p "$override_dir"
         run_root install -m 644 "$tmp" "$override"
-        run_root systemctl daemon-reload
+        # Sin systemd como PID 1 (contenedor, chroot de instalacion) no hay a
+        # quien recargar: el override se lee solo en el proximo arranque.
+        if [[ -d /run/systemd/system ]]; then
+            run_root systemctl daemon-reload
+        else
+            warn "systemd no esta corriendo (contenedor/chroot): el autologin se aplicara en el proximo arranque."
+        fi
         ok "autologin tty1 configurado para $user"
     fi
     rm -f "$tmp"

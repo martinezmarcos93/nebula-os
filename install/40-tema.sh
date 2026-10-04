@@ -108,8 +108,14 @@ if [[ "$NEBULA_CURSOR" == "1" ]]; then
         tmp_tar="$(mktemp --suffix=.tar.xz)"
         if run curl -fsSL -o "$tmp_tar" "$bibata_url" \
             && { [[ "$NEBULA_DRY_RUN" == "1" ]] || printf '%s  %s\n' "$bibata_sha256" "$tmp_tar" | sha256sum -c --status; }; then
-            run tar -xJf "$tmp_tar" -C "$ICONS_DIR"
-            ok "cursor Bibata-Modern-Ice instalado en $ICONS_DIR"
+            # La extraccion puede fallar (sin xz, disco lleno): el cursor es
+            # opcional, asi que se cae al de por defecto en vez de abortar.
+            if run tar -xJf "$tmp_tar" -C "$ICONS_DIR"; then
+                ok "cursor Bibata-Modern-Ice instalado en $ICONS_DIR"
+            else
+                rm -rf "$ICONS_DIR/Bibata-Modern-Ice"
+                warn "no se pudo extraer el cursor Bibata (falta xz-utils?). Cursor por defecto."
+            fi
         else
             warn "no se pudo descargar el cursor Bibata o su SHA-256 no coincide ($bibata_url). Cursor por defecto."
         fi
