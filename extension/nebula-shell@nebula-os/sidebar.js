@@ -103,6 +103,14 @@ export class NebulaSidebar {
             this._connect(this._volumeMonitor, sig, () => this._scheduleRepopulate());
         this._connect(global.display, 'in-fullscreen-changed', () =>
             this._addIdle(() => this._syncFullscreen()));
+        // Sidebar fija (clave sidebar-pinned): al fijarla se despliega ya; al
+        // soltarla vuelve a retraerse si el puntero no esta encima.
+        this._connect(this._settings, 'changed::sidebar-pinned', () => {
+            if (this._pinned())
+                this._expand();
+            else if (!this._sidebar?.hover)
+                this._scheduleAutoCollapse();
+        });
 
         // Arranca visible unos segundos y luego se retrae sola (salvo que el
         // puntero ya este encima). A partir de ahi: revelar al acercar el mouse
@@ -520,9 +528,13 @@ export class NebulaSidebar {
         });
     }
 
+    _pinned() {
+        return !!this._settings?.get_boolean('sidebar-pinned');
+    }
+
     _collapse() {
         this._cancelAutoCollapse();
-        if (this._collapsed)
+        if (this._collapsed || this._pinned())
             return;
         this._collapsed = true;
         this._launcher?.close('sidebar-collapse');

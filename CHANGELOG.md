@@ -34,6 +34,8 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
   configuracion de fastfetch con la paleta violeta. Por ahora se copia a mano
   a `~/.config/fastfetch/`; el instalador todavia no lo despliega ni instala
   fastfetch.
+- Clave `sidebar-pinned`: deja la sidebar fija y siempre visible en lugar de
+  retraerse sola (por defecto sigue siendo desplegable). Se aplica en vivo.
 - El bloque SISTEMA de la barra muestra el logo ASCII de Nebula a su
   izquierda, como en el concepto original (`build.sh` lo genera desde
   `dotfiles/fastfetch/nebula.txt`).

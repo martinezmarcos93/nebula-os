@@ -22,6 +22,11 @@
       <summary>Barra de Nebula (escritorios, taskbar, MPRIS, menu de sistema, calendario)</summary>
       <description>Se aplica en vivo, sin reiniciar el Shell.</description>
     </key>
+    <key name="sidebar-pinned" type="b">
+      <default>false</default>
+      <summary>Sidebar fija: siempre visible, sin retraerse sola</summary>
+      <description>Con false (por defecto) la sidebar se retrae al alejar el puntero y se revela desde el borde izquierdo. Con true queda desplegada de forma permanente, superpuesta al escritorio. Se aplica en vivo.</description>
+    </key>
     <key name="bar-position" type="s">
       <choices>
         <choice value="top"/>

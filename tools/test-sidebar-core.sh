@@ -196,6 +196,13 @@ check 'sidebar: empieza debajo de la barra de Nebula y no se sale de la pantalla
 # pie queda cortado por el borde: o entra entero o se oculta.
 check 'sidebar: todas las categorias entran completas' "(() => { const last = S._catButtons.at(-1); const [, y] = last.get_transformed_position(); return y + last.height <= S._sidebar.y + S._sidebar.height; })()"
 check 'sidebar: ningun bloque visible sobresale por abajo' "S._sidebar.get_children().every(c => !c.visible || c.y + c.height <= S._sidebar.height)"
+# Sidebar fija (sidebar-pinned): no se retrae ni con el boton ni sola.
+e "$X X._settings.set_boolean('sidebar-pinned', true); 1" >/dev/null; sleep .8
+e "$X S._collapse(); S._scheduleAutoCollapse(); 1" >/dev/null; sleep 1.2
+check 'sidebar fija: queda desplegada aunque se pida retraerla' "!S._collapsed && S._sidebar.visible && S._sidebar.translation_x === 0"
+e "$X X._settings.set_boolean('sidebar-pinned', false); 1" >/dev/null; sleep 1.5
+check 'sidebar fija: al soltarla vuelve a retraerse sola' "S._collapsed"
+e "$X S._expand(); 1" >/dev/null; sleep .8
 # bar-position=bottom: la barra baja y la de GNOME vuelve.
 e "$X X._settings.set_string('bar-position', 'bottom'); 1" >/dev/null; sleep 1.5
 check 'barra al pie: la barra de GNOME vuelve a verse' "(() => { $B const m = Main.layoutManager.primaryMonitor; return $PB.visible && B._bar.y + B._bar.height === m.y + m.height; })()"
