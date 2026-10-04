@@ -53,9 +53,17 @@ Hace:
 - **Barra inferior** (`bottombar.js`), franja full-width al pie (reserva su alto
   con struts): indicador de escritorios (`global.workspace_manager`, clic para
   cambiar), now-playing MPRIS (título + artista + `Previous`/`PlayPause`/`Next`
-  vía DBus `org.mpris.MediaPlayer2.Player`), accesos rápidos (volumen →
-  `pavucontrol`, red → `nm-connection-editor`) y reloj. La bandeja real
-  (StatusNotifier) la sigue mostrando `ubuntu-appindicators` en la barra superior.
+  vía DBus `org.mpris.MediaPlayer2.Player`), botón de **sistema**, modo/tema y
+  reloj. El botón de sistema no duplica nada: abre el **mismo menú de Quick
+  Settings de GNOME** (wifi, bluetooth, volumen, brillo, apagar) anclado sobre
+  esta barra; desde el indicador de la barra superior sigue abriendo arriba.
+  Los escritorios de GNOME separan **ventanas**, no iconos: los iconos del
+  escritorio (DING) son los mismos en todos. La bandeja real (StatusNotifier)
+  la sigue mostrando `ubuntu-appindicators` en la barra superior.
+- **Acento violeta del Shell** (`accent.js`, clave `violet-accent`): carga la
+  variante `Yaru-purple` del tema de GNOME Shell en lugar del naranja de Ubuntu
+  (interruptores, deslizadores, Quick Settings, calendario, dock). No toca el
+  tema GTK de las aplicaciones.
 - Lee `categories.json` (generado desde `dotfiles/nebula/categories.toml`),
   oculta apps no instaladas y categorías vacías, lanza al clic.
 - Estética Cosmic Dark en sus propios widgets (`stylesheet.css`).
@@ -73,7 +81,8 @@ que se decida un *shell theme*.
 | `nebula-shell@nebula-os/sidebar.js` | Sidebar ancha (cabecera + reloj + categorías + energía) + atajo + ciclo de vida (superpuesta, sin struts) |
 | `nebula-shell@nebula-os/launcher.js` | Panel "Buscar aplicaciones...": búsqueda + lista plana icono/nombre/descripción |
 | `nebula-shell@nebula-os/meters.js` | Bloque SISTEMA: CPU/RAM/SWAP/GPU/Disco/Red en vivo + sparkline (Cairo) |
-| `nebula-shell@nebula-os/bottombar.js` | Barra inferior: escritorios + MPRIS (DBus) + accesos + reloj |
+| `nebula-shell@nebula-os/bottombar.js` | Barra inferior: escritorios + taskbar + MPRIS (DBus) + menú de sistema de GNOME + reloj |
+| `nebula-shell@nebula-os/accent.js` | Acento violeta del Shell (hoja de tema `Yaru-purple`) |
 | `nebula-shell@nebula-os/model.js` | Carga `categories.json`, detección `GLib.find_program_in_path`, lanzamiento, iconos + descripciones (`Gio.AppInfo`), `flatApps`/`filterApps` |
 | `nebula-shell@nebula-os/stylesheet.css` | Paleta Cosmic Dark, scopeada a `.nebula-*` |
 | `nebula-shell@nebula-os/schemas/*.gschema.xml` | Tecla `toggle-sidebar` (`<Super>b`) |

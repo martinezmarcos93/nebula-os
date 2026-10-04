@@ -5,7 +5,8 @@
 //   sidebar.js    - la sidebar ancha (cabecera, reloj, categorias, meters, energia)
 //   launcher.js   - el panel "Buscar aplicaciones..."
 //   meters.js     - el bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red + sparkline)
-//   bottombar.js  - la barra inferior (escritorios, MPRIS, accesos, reloj)
+//   bottombar.js  - la barra inferior (escritorios, taskbar, MPRIS, menu de sistema, reloj)
+//   accent.js     - acento violeta del propio Shell (variante Yaru-purple)
 //   model.js      - categorias + apps desde categories.json
 //
 // Disciplina GNOME 45+: la extension se DESACTIVA en la pantalla de bloqueo y
@@ -22,6 +23,8 @@ import GLib from 'gi://GLib';
 import {applyAppearance, clearAppearance} from './appearance.js';
 import {setDebug} from './debug.js';
 import {moveDockAway, restoreDock} from './dock.js';
+import {applyAccent, clearAccent} from './accent.js';
+import St from 'gi://St';
 
 export default class NebulaShellExtension extends Extension {
     enable() {
@@ -37,6 +40,7 @@ export default class NebulaShellExtension extends Extension {
             this._settings.connect('changed::debug',
                 () => setDebug(this._settings.get_boolean('debug'))),
             this._settings.connect('changed::style-top-panel', () => this._syncPanelStyle()),
+            this._settings.connect('changed::violet-accent', () => this._syncAccent()),
             ...['enable-launcher', 'enable-meters', 'enable-bottombar', 'disk-path'].map(key =>
                 this._settings.connect(`changed::${key}`, () => {
                     if (!this._enabled)
@@ -47,6 +51,10 @@ export default class NebulaShellExtension extends Extension {
         ];
         moveDockAway(this._settings);
         this._syncPanelStyle();
+        this._syncAccent();
+        // Claro/oscuro cambia de variante: re-elegir la hoja violeta que toca.
+        this._colorSchemeId = St.Settings.get().connect('notify::color-scheme',
+            () => this._syncAccent());
         this._sidebars = [];
         this._bottomBars = [];
         this._monitorSignalId = Main.layoutManager.connect('monitors-changed', () => {
@@ -86,6 +94,13 @@ export default class NebulaShellExtension extends Extension {
             Main.panel.remove_style_class_name('nebula-panel');
     }
 
+    _syncAccent() {
+        if (this._settings?.get_boolean('violet-accent'))
+            applyAccent();
+        else
+            clearAccent();
+    }
+
     // Primera superficie (monitor primario): atajo para tests y diagnostico.
     get _sidebar() {
         return this._sidebars?.[0] ?? null;
@@ -102,6 +117,11 @@ export default class NebulaShellExtension extends Extension {
         setDebug(false);
         clearAppearance();
         Main.panel.remove_style_class_name('nebula-panel');
+        if (this._colorSchemeId) {
+            St.Settings.get().disconnect(this._colorSchemeId);
+            this._colorSchemeId = 0;
+        }
+        clearAccent();
         if (this._monitorSignalId) {
             Main.layoutManager.disconnect(this._monitorSignalId);
             this._monitorSignalId = 0;

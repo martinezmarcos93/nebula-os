@@ -35,6 +35,23 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
   sobre el panel nativo: todos los indicadores y menus de GNOME siguen
   funcionando. Se apaga en vivo con
   `gsettings set org.gnome.shell.extensions.nebula-shell style-top-panel false`.
+- Boton de **sistema** en la barra inferior: abre el mismo menu de Quick
+  Settings de GNOME (wifi, bluetooth, volumen, brillo, apagar) anclado sobre la
+  barra de Nebula. No se clona el menu; desde la barra superior sigue igual.
+- **Acento violeta en GNOME Shell** en lugar del naranja de Ubuntu
+  (interruptores, deslizadores, Quick Settings, calendario, dock), cargando la
+  variante `Yaru-purple` que ya trae el sistema. Se apaga en vivo con
+  `gsettings set org.gnome.shell.extensions.nebula-shell violet-accent false`.
+
+### Quitado
+- Accesos de la barra inferior que solo abrian paneles de Configuracion y
+  duplicaban los indicadores de GNOME: volumen, red, bluetooth, brillo,
+  notificaciones y No molestar.
+
+### Corregido
+- La sidebar llegaba hasta el borde inferior y la barra inferior le tapaba la
+  fila de energia; ahora termina donde empieza la barra. Ademas los cinco
+  botones de energia no entraban en el ancho y el ultimo quedaba recortado.
 
 ### Cambiado
 - Iconos de la bandeja de la barra inferior a 16 px, el mismo tamano que los

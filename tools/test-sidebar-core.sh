@@ -115,7 +115,7 @@ check 'launch: relanzar una app abierta no abre otra ventana (BUG-34)' "$NW === 
 check 'launch: relanzar la trae al frente (des-minimizada y con foco)' "global.display.focus_window?.get_title() === 'nebula-testwin' && !global.display.focus_window.minimized"
 [[ "$(grep -c x "$T/activations.txt" 2>/dev/null)" == 1 ]] && ok 'launch: la app se activo una sola vez' || bad "launch: la app se activo $(grep -c x "$T/activations.txt" 2>/dev/null) veces"
 # --- Escritorio (docs/NEBULA-DESKTOP-ROADMAP.md): taskbar, escritorios,
-# temas, accesos rapidos, acciones del buscador, favoritos y No molestar.
+# temas, accesos rapidos, acciones del buscador, favoritos y menu de sistema.
 B="const B=X?._bottomBars?.[0]; const TW=global.get_window_actors().find(a => a.meta_window.get_title() === 'nebula-testwin')?.meta_window; const TB=B?._windowButtons.find(b => b.child.get_children()[1].text.includes('nebula-testwin'));"
 EXT="'file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path"
 check 'taskbar: barra inferior creada' "(() => { $B return !!B && !!B._bar; })()"
@@ -154,15 +154,37 @@ e "$X X._settings.set_boolean('style-top-panel', false); 1" >/dev/null; sleep .4
 check 'panel: apagar la clave devuelve el aspecto de GNOME en vivo' "!Main.panel.has_style_class_name('nebula-panel') && $PBG !== '8,8,16'"
 e "$X X._settings.set_boolean('style-top-panel', true); 1" >/dev/null; sleep .4
 check 'panel: volver a encenderla lo re-aplica' "Main.panel.has_style_class_name('nebula-panel')"
-DND="new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'}).get_boolean('show-banners')"
-e "$X $B B._toggleDnd(); 1" >/dev/null; sleep .5
-check 'No molestar: el conmutador apaga los banners de GNOME' "$DND === false"
-e "$X $B B._toggleDnd(); 1" >/dev/null; sleep .5
-check 'No molestar: vuelve a encenderlos' "$DND === true"
+# Barra inferior sin accesos duplicados: un solo boton abre el menu de Quick
+# Settings de GNOME anclado sobre la barra de Nebula.
+QS="const QS=Main.panel.statusArea.quickSettings.menu; const QP=QS._boxPointer;"
+check 'barra: no quedan accesos que dupliquen los indicadores de GNOME' "(() => { $B return !!B._systemButton && !B._dndButton && !B._notificationButton; })()"
+e "$X $B B._toggleSystemMenu(); 1" >/dev/null; sleep 1.2
+check 'barra: el boton de sistema abre el menu de Quick Settings de GNOME' "(() => { $QS return QS.isOpen; })()"
+check 'barra: el menu se despliega hacia arriba, pegado a la barra de Nebula' "(() => { $B $QS const [, y] = QP.get_transformed_position(); const bottom = y + QP.height; return QP._arrowSide === 2 && bottom <= B._bar.y + 1 && bottom > B._bar.y - 60; })()"
+e "$X $B B._toggleSystemMenu(); 1" >/dev/null; sleep 1.2
+check 'barra: el segundo clic lo cierra y devuelve el menu al panel superior' "(() => { $B $QS return !QS.isOpen && QP._userArrowSide === 0 && QP._arrowSide === 0 && !B._restoreSystemMenu; })()"
+e "$QS QS.open(); 1" >/dev/null; sleep 1
+check 'barra: desde el indicador de GNOME el menu sigue abriendo arriba' "(() => { $QS const [, y] = QP.get_transformed_position(); return QS.isOpen && QP._arrowSide === 0 && y < 100; })()"
+e "$QS QS.close(); 1" >/dev/null; sleep .8
+# La sidebar termina donde empieza la barra inferior y su fila de energia entra completa.
+e "$X S._expand(); 1" >/dev/null; sleep .8
+check 'sidebar: no queda tapada por la barra inferior' "(() => { $B return S._sidebar.y + S._sidebar.height <= B._bar.y; })()"
+check 'sidebar: el ultimo boton de energia entra completo' "(() => { const row = S._sidebar.get_last_child(); const last = row.get_last_child(); const [x] = last.get_transformed_position(); const [sx] = S._sidebar.get_transformed_position(); return row.get_n_children() === 5 && last.width > 0 && x + last.width <= sx + S._sidebar.width; })()"
+# Acento violeta del Shell (clave violet-accent): variante Yaru-purple.
+if ls /usr/share/gnome-shell/theme/Yaru-purple*/gnome-shell.css >/dev/null 2>&1; then
+    ACC="(Main.getThemeStylesheet()?.get_path() ?? '')"
+    check 'acento: el Shell carga la variante violeta de Yaru' "/Yaru-purple/.test($ACC)"
+    check 'acento: los estilos de Nebula siguen cargados encima' "Main.panel.has_style_class_name('nebula-panel') && $PBG === '8,8,16'"
+    e "$X X._settings.set_boolean('violet-accent', false); 1" >/dev/null; sleep .6
+    check 'acento: apagar la clave devuelve el tema del Shell en vivo' "$ACC === ''"
+    e "$X X._settings.set_boolean('violet-accent', true); 1" >/dev/null; sleep .6
+    check 'acento: volver a encenderla lo re-aplica' "/Yaru-purple/.test($ACC)"
+fi
 e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep .3
 check 'disable no deja extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
 check 'disable no deja clases de tema/modo en el Shell' "!/nebula-/.test(Main.uiGroup.get_style_class_name() ?? '')"
 check 'disable devuelve el panel de GNOME a su aspecto original' "!Main.panel.has_style_class_name('nebula-panel')"
+check 'disable quita el acento violeta del Shell' "!Main.getThemeStylesheet()"
 check 'disable libera la sidebar' "!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebars?.[0]"
 e "Main.extensionManager.enableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 1
 check 're-enable recupera la extension' "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"

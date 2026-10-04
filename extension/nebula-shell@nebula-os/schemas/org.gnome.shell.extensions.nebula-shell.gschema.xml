@@ -19,13 +19,18 @@
     </key>
     <key name="enable-bottombar" type="b">
       <default>true</default>
-      <summary>Barra inferior (taskbar, escritorios, MPRIS, accesos)</summary>
+      <summary>Barra inferior (escritorios, taskbar, MPRIS, menu de sistema)</summary>
       <description>Se aplica en vivo, sin reiniciar el Shell.</description>
     </key>
     <key name="style-top-panel" type="b">
       <default>true</default>
       <summary>Barra superior de GNOME con la estetica de Nebula</summary>
       <description>Solo cambia el aspecto (colores, tipografia, resaltados). Se aplica en vivo.</description>
+    </key>
+    <key name="violet-accent" type="b">
+      <default>true</default>
+      <summary>Acento violeta en GNOME Shell en lugar del naranja de Ubuntu</summary>
+      <description>Carga la variante Yaru-purple del tema del Shell (interruptores, deslizadores, Quick Settings, calendario). Se aplica en vivo.</description>
     </key>
     <key name="disk-path" type="s">
       <default>'/'</default>
