@@ -37,7 +37,17 @@ Ver [`CHANGELOG.md`](CHANGELOG.md) para el detalle de que se hizo y que sigue
 abierto, y [`docs/BUGS.md`](docs/BUGS.md) para los bugs ya encontrados
 (causa raiz y variables que los disparan) y los riesgos aun sin verificar.
 
-**Prototipo en paralelo: extension de GNOME Shell.** `extension/` (ver
+**Estado al 2026-10-03.** El producto principal es la extension de GNOME
+(`extension/`); la sesion bspwm queda como sesion ligera, congelada en
+features. Roadmap de producto en
+[`docs/NEBULA-DESKTOP-ROADMAP.md`](docs/NEBULA-DESKTOP-ROADMAP.md), estabilidad
+y deuda en [`docs/ROADMAP-REPARACION.md`](docs/ROADMAP-REPARACION.md), y como
+volver atras si algo falla en [`docs/ROLLBACK.md`](docs/ROLLBACK.md). La CI
+esta en verde y la extension se activa sin errores en GNOME Shell 46 headless;
+la validacion en uso real de las funciones de escritorio sigue pendiente
+(ultimo handoff en `docs/handoffs/`).
+
+**Extension de GNOME Shell.** `extension/` (ver
 [`extension/README.md`](extension/README.md)) explora llevar el sidebar de
 Nebula a una **extension de GNOME 46** en vez de reemplazar el escritorio:
 sidebar de categorias, lanzador con busqueda, meters de sistema en vivo y

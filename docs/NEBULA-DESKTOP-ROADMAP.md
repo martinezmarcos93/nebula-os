@@ -570,6 +570,14 @@ Una extensión rota nunca debe dejar al usuario sin una ruta de recuperación ha
 
 Nebula 1.0 requiere como mínimo:
 
+> **Lectura de las marcas (revisado el 2026-10-03).** `[x]` = implementado y
+> cubierto por los gates automáticos en GNOME Shell 46 headless. `[~]` =
+> implementado pero **sin validar en uso real** en la máquina de referencia.
+> Hasta el 2026-10-03 la extensión no llegaba a activarse (BUG-35, `docs/BUGS.md`),
+> así que todo lo agregado por las Etapas 1-10 que no tenga un test propio
+> está en `[~]`. Un ítem pasa a `[x]` cuando se lo recorre en una sesión real
+> y se anota en el handoff.
+
 ### Navegación
 
 - [x] Sidebar.
@@ -581,39 +589,39 @@ Nebula 1.0 requiere como mínimo:
 
 ### Ventanas
 
-- [x] Taskbar/lista de ventanas.
-- [x] Activación.
-- [x] Minimizar.
-- [x] Restaurar.
-- [x] Maximizar.
-- [x] Cerrar.
-- [x] Alt+Tab (delegado al comportamiento nativo de GNOME).
-- [x] Workspaces.
-- [x] Multi-monitor (superficies por monitor implementadas; validación GNOME 46 pendiente).
-- [x] Múltiples ventanas por aplicación.
+- [~] Taskbar/lista de ventanas.
+- [~] Activación.
+- [~] Minimizar.
+- [~] Restaurar.
+- [~] Maximizar.
+- [~] Cerrar.
+- [~] Alt+Tab (delegado al comportamiento nativo de GNOME).
+- [~] Workspaces.
+- [~] Multi-monitor (superficies por monitor implementadas; validación GNOME 46 pendiente).
+- [~] Múltiples ventanas por aplicación.
 
 ### Escritorio
 
-- [x] Integración con la superficie de iconos existente de GNOME/DING (Nebula no implementa un desktop manager paralelo).
+- [~] Integración con la superficie de iconos existente de GNOME/DING (Nebula no implementa un desktop manager paralelo).
 - [~] Reordenamiento (delegado a DING; validación real pendiente).
 - [~] Persistencia (delegada a DING; validación real pendiente).
-- [x] Accesos directos de aplicaciones (creación de `.desktop` compatible con DING).
-- [x] Wallpaper (acceso a configuración nativa de GNOME).
-- [x] Papelera (acción global delegada a `gio open trash:///`).
+- [~] Accesos directos de aplicaciones (creación de `.desktop` compatible con DING).
+- [~] Wallpaper (acceso a configuración nativa de GNOME).
+- [~] Papelera (acción global delegada a `gio open trash:///`).
 - [~] Menú contextual (DING/GNOME; integración real pendiente).
 
 ### Sistema
 
 - [x] Reloj.
-- [x] Calendario (acceso directo desde el reloj; utiliza GNOME Calendar/Settings).
-- [x] Audio (acceso al panel nativo de GNOME Settings).
-- [x] Red.
-- [x] Bluetooth.
-- [x] Brillo (acceso al panel nativo de pantalla/brillo).
-- [x] Batería (estado dinámico vía UPower; acceso al panel nativo de energía).
-- [x] Notificaciones (acceso al panel nativo de GNOME).
-- [x] No molestar (conmutación mediante GSettings nativo de GNOME).
-- [x] Captura.
+- [~] Calendario (acceso directo desde el reloj; utiliza GNOME Calendar/Settings).
+- [~] Audio (acceso al panel nativo de GNOME Settings).
+- [~] Red.
+- [~] Bluetooth.
+- [~] Brillo (acceso al panel nativo de pantalla/brillo).
+- [~] Batería (estado dinámico vía UPower; acceso al panel nativo de energía).
+- [~] Notificaciones (acceso al panel nativo de GNOME).
+- [~] No molestar (conmutación mediante GSettings nativo de GNOME).
+- [~] Captura.
 - [ ] Grabación.
 - [x] Bloqueo.
 - [x] Cerrar sesión.
@@ -623,12 +631,12 @@ Nebula 1.0 requiere como mínimo:
 
 ### Archivos
 
-- [x] Home.
-- [x] Discos.
-- [x] Unidades externas (montajes detectados dinámicamente).
-- [x] GOA/Drive (cuando está montado por GVfs/GNOME Online Accounts).
-- [x] Papelera.
-- [x] Accesos rápidos.
+- [~] Home.
+- [~] Discos.
+- [~] Unidades externas (montajes detectados dinámicamente).
+- [~] GOA/Drive (cuando está montado por GVfs/GNOME Online Accounts).
+- [~] Papelera.
+- [~] Accesos rápidos.
 
 ### Personalización
 
@@ -636,16 +644,16 @@ Nebula 1.0 requiere como mínimo:
 - [x] Recientes.
 - [x] Orden personalizado.
 - [x] Preferencias persistentes.
-- [x] Temas (Theme Engine base; validación visual GNOME pendiente).
+- [~] Temas (Theme Engine base; validación visual GNOME pendiente).
 
 ### Robustez
 
 - [ ] Instalación limpia.
-- [ ] Recuperación ante fallo de extensión.
-- [x] Validación estática automatizada (CI GitHub: sintaxis JS/bash, JSON y categories.toml).
+- [~] Recuperación ante fallo de extensión (procedimiento en `docs/ROLLBACK.md`; falta ensayarlo).
+- [x] Validación estática automatizada (CI GitHub: sintaxis JS/bash, ESLint `no-undef`, JSON y categories.toml).
 - [ ] Validación en uso real.
 - [x] CI estático inicial.
-- [ ] Documentación de rollback.
+- [x] Documentación de rollback (`docs/ROLLBACK.md`).
 
 ---
 

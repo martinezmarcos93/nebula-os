@@ -115,10 +115,10 @@ reposo 10 min). Sin warnings nuevos en `journalctl`.
 | R-301 🔬 | **Quitar `trackFullscreen` de la sidebar y del lanzador** (FS-20). Escuchar `global.display` `in-fullscreen-changed` y ocultar a mano, **respetando `_isOpen`/`_collapsed`** | Cerrar el lanzador → Super, Super → no reaparece. Colapsar sidebar → Overview → `UnredirectGuard._count === 0` |
 | R-302 🔬 | Cerrar BUG-26 con el protocolo de su criterio de aceptación. Si el crash nativo reaparece: reportarlo a mutter con la traza (no se puede corregir desde la extensión) y documentar el flujo seguro de recarga | Una semana de uso sin `signal 11` en el journal |
 | R-303 🔬 | Reactivar "clic afuera cierra" (`_installStageCapture`, BUG-004/KNOWN-04) **después** de R-301 (probable causa común) | Ciclo de BUG-24 ×5 sin click-through |
-| R-304 | Pasar `FEATURES` de `config.js` a claves gsettings (`enable-launcher`, `enable-meters`, `enable-bottombar`) con reacción en vivo. Default: launcher ✔, **meters ✔**, bottombar ✘ hasta validarla (BUG-005) | Cambiar la clave sin tocar código |
-| R-305 | Meters en pausa mientras la sidebar está colapsada (FS-25) | 0 procesos `nvidia-smi` con la sidebar colapsada |
-| R-306 | Logs de diagnóstico detrás de una clave `debug` (AUD-003); borrar `_togglingVisibility`; renombrar "BUG-25"→"BUG-26" en comentarios (FS-28) | `journalctl` limpio en uso normal |
-| R-307 | Conflicto con `ubuntu-dock` (FS-24): al habilitar, si el dock está a la izquierda, se mueve abajo (`dash-to-dock dock-position BOTTOM`), guardando el valor anterior y restaurándolo en `disable()` | Sidebar y dock no se superponen; `disable()` restaura |
+| R-304 ✅ | Pasar `FEATURES` de `config.js` a claves gsettings (`enable-launcher`, `enable-meters`, `enable-bottombar`) con reacción en vivo. Default: launcher ✔, **meters ✔**, bottombar ✘ hasta validarla (BUG-005) | Cambiar la clave sin tocar código |
+| R-305 ✅ | Meters en pausa mientras la sidebar está colapsada (FS-25) | 0 procesos `nvidia-smi` con la sidebar colapsada |
+| R-306 ✅ | Logs de diagnóstico detrás de una clave `debug` (AUD-003); borrar `_togglingVisibility`; renombrar "BUG-25"→"BUG-26" en comentarios (FS-28) | `journalctl` limpio en uso normal |
+| R-307 ✅ | Conflicto con `ubuntu-dock` (FS-24): al habilitar, si el dock está a la izquierda, se mueve abajo (`dash-to-dock dock-position BOTTOM`), guardando el valor anterior y restaurándolo en `disable()` | Sidebar y dock no se superponen; `disable()` restaura |
 | R-308 | `bottombar.js`: `Gio.Cancellable` en las llamadas D-Bus asíncronas (ListNames, DBusProxy.new) para que un callback no toque actores destruidos | Deshabilitar con un reproductor MPRIS abierto no deja warnings |
 | R-309 | Launch con `Gio.AppInfo`/`Shell.App` cuando existe `.desktop` (startup notification, scope de systemd); `spawn_command_line_async` queda solo como fallback | Las apps lanzadas aparecen en el dock como "en ejecución" |
 | R-310 | `state.js`: validar el tipo de cada campo al cargar (un JSON con `favoritos` que no sea array hoy rompe `.includes`) | Test gjs con JSON corrupto |
@@ -135,7 +135,7 @@ reposo 10 min). Sin warnings nuevos en `journalctl`.
 | ID | Tarea | Aceptación |
 |---|---|---|
 | R-401 ✅ | **bats-core** para `lib/common.sh` (run/dry-run, confirm sin TTY, backup_path, ensure_line) y para cada `bin/nebula-*` con stubs de `bspc`/`eww`/`notify-send`/`nvidia-smi` en `PATH` | ≥ 1 test por script; CI verde |
-| R-402 | **ESLint** con la config oficial de GNOME Shell sobre `extension/` | CI verde |
+| R-402 ✅ | **ESLint** con la config oficial de GNOME Shell sobre `extension/` | CI verde |
 | R-403 | **E2E:** job en contenedor `ubuntu:24.04` con usuario no-root y sudo sin contraseña: `install.sh --yes` (`NEBULA_PANEL=polybar` para no compilar), después Xvfb + `nebula-session` y `60-postcheck.sh` **dentro** de la sesión | Postcheck FAIL=0 en CI |
 | R-404 ✅ | Job **semanal** (`schedule`) que compila eww con el mismo comando que `20-panel.sh` | Aviso automático si upstream rompe la compilación |
 | R-405 | Hook `pre-commit` (opcional, documentado): shellcheck + `nebula-categories check` + diff de `eww.yuck` | `CONTRIBUTING.md` lo explica |

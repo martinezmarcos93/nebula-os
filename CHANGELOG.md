@@ -29,6 +29,39 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Corregido (2026-10-03, auditoria de estado — la extension no se activaba)
+- BUG-35/36/37: `enable()` fallaba en cadena (tema/modo sobre `global.stage`,
+  `tooltip_text` en `St.Button`, imports faltantes en `bottombar.js`) y la
+  extension quedaba en `Estado: ERROR`. Tema y modo se aplican ahora desde
+  `appearance.js` sobre `Main.uiGroup`.
+- BUG-38: "Subir/Bajar en la categoria" no hacia nada la primera vez.
+- BUG-39: CI de `main` en verde por primera vez en mas de 100 corridas
+  (`categories.json` generado, `eww.yuck` regenerado, gates al dia).
+- `update-nebula.sh` avisa que hace falta reiniciar el equipo para cargar el
+  codigo nuevo (BUG-24), no solo cerrar sesion.
+- Comentarios "BUG-25"/`CRASH-BUG25.md` corregidos a BUG-26.
+
+### Agregado (2026-10-03)
+- Claves gsettings `enable-launcher`, `enable-meters`, `enable-bottombar` y
+  `debug`, aplicadas en vivo (R-304, R-306); se elimina `config.js`.
+- Los meters se pausan con la sidebar colapsada (R-305).
+- El Ubuntu Dock deja el borde izquierdo mientras Nebula esta activa y vuelve
+  al deshabilitarla (R-307).
+- "Abrir nueva ventana" del menu contextual abre una ventana nueva real.
+- Iconos de las categorias "Mis discos y nubes" y "Accesos rapidos".
+- ESLint (`no-undef`) y `tools/test-extension.sh` en la CI (R-402).
+- `docs/ROLLBACK.md`: como volver a un GNOME limpio si Nebula falla.
+
+### Agregado (2026-09-29 a 2026-10-02, roadmap de escritorio)
+Etapas 1-10 de `docs/NEBULA-DESKTOP-ROADMAP.md`, fusionadas desde
+`feature/nebula-desktop-amalgama`: taskbar de ventanas (`window-manager.js`),
+superficies por monitor, accesos rapidos XDG y "Mis discos y nubes",
+acciones del sistema y busqueda de archivos (Tracker) en el buscador global,
+bateria (UPower), No molestar, favoritos/recientes/ocultos/orden/renombrado,
+anclado a la taskbar, temas y modos. **Ninguna de estas funciones se habia
+ejecutado en GNOME real antes del 2026-10-03** (ver BUG-35): quedan
+pendientes de validacion en uso.
+
 ### Corregido (2026-09-28, extension GNOME — uso real del Producto 1)
 - BUG-34: abrir desde el lanzador una app que ya estaba abierta (p. ej.
   Chrome) abria otra ventana; ahora la trae al frente, como el dock

@@ -27,6 +27,7 @@ Convención de estado:
 - [1. Núcleo (instalador, bspwm, eww)](#1-núcleo-instalador-bspwm-eww)
 - [2. Extensión GNOME (Nebula Shell, prototipo)](#2-extensión-gnome-nebula-shell-prototipo)
 - [3. Conocidos, no resueltos](#3-conocidos-no-resueltos)
+- [3d. Auditoría de estado (2026-10-03)](#3d-auditoría-de-estado-2026-10-03)
 - [4. Sin verificar](#4-sin-verificar)
 
 ---
@@ -623,14 +624,10 @@ Convención de estado:
   crashed with signal 11`) usando la sidebar/launcher. Pasó **3 veces en el
   mismo día** (2026-09-13): 14:45:31, 17:48:38 y 18:14:49 — cada vez, GDM
   relanza `gnome-shell` automáticamente unos segundos después.
-- **Nota de numeración — importante para no confundirse:** los comentarios
-  agregados al código (todavía sin commitear al cerrar esta sesión)
-  referencian este bug como **"BUG-25"** y un archivo
-  `docs/CRASH-BUG25.md` que nunca llegó a crearse. Ese número ya lo usa en
-  este mismo archivo el bug de alineación del lanzador (resuelto, más
-  arriba). Se registra acá como **BUG-26** para no pisar esa entrada;
-  renombrar los comentarios en `launcher.js`/`sidebar.js`/`unredirect.js` la
-  próxima vez que se toquen esos archivos.
+- **Nota de numeración:** durante un tiempo los comentarios del código
+  citaron este bug como "BUG-25" y un archivo `docs/CRASH-BUG25.md` que nunca
+  existió. Se corrigieron el 2026-10-03 (R-306): `launcher.js`, `sidebar.js` y
+  `unredirect.js` ya referencian BUG-26 y este archivo.
 - **Causa raíz — confirmada (con `gdb` sobre el coredump real):** el toggle
   sincrónico `hide()+show()` introducido para BUG-24 (para forzar el
   recálculo de la región de input tras la animación de revelado) se
@@ -1049,6 +1046,107 @@ y desactivar la extension en vivo fue limpio.
   (como Chrome), minimizandola en el medio: debe quedar 1 ventana, con foco,
   y 1 sola activacion. Con el codigo anterior falla (2 ventanas).
 - **Estado:** ✅ Resuelto y cubierto por CI.
+
+---
+
+## 3d. Auditoría de estado (2026-10-03)
+
+Revisión de `main` (`88eec7d`) tras fusionar `feature/nebula-desktop-amalgama`
+(Etapas 1-10 del roadmap de escritorio). Dos hallazgos de fondo: la extensión
+instalada estaba en **`Estado: ERROR`** en la máquina de referencia y la CI
+llevaba **más de 100 corridas sin un solo verde**. Es decir: todo el código
+de la rama de escritorio se había escrito y marcado `[x]` sin que la
+extensión llegara a activarse una sola vez. Los bugs de abajo se encontraron
+ejecutando la extensión en GNOME Shell 46 headless (`tools/test-sidebar-core.sh`
+y `tools/test-extension.sh`), no leyendo el código.
+
+### BUG-35 — La extensión no se activa: tema y modo se aplicaban sobre `global.stage`
+- **Componente:** `extension.js`, `bottombar.js` (Theme Engine / Modes).
+- **Síntoma:** `gnome-extensions info` → `Estado: ERROR`;
+  `TypeError: stage.remove_style_class_name is not a function` en cada
+  `enable()` (journal del 2026-10-03, 5 veces en el día).
+- **Causa raíz / variables:** las clases `nebula-theme-*` / `nebula-mode-*`
+  se agregaban a `global.stage`, que es un `Clutter.Stage`: los métodos
+  `add/remove_style_class_name` son de `St.Widget`. La variable es el **tipo
+  del actor** sobre el que se cuelga la clase global.
+- **Corrección:** nuevo `appearance.js` (`applyAppearance()` /
+  `clearAppearance()`), que opera sobre `Main.uiGroup` (un `St.Widget`,
+  ancestro de todo el chrome de Nebula, así que los selectores descendientes
+  del CSS siguen funcionando). Reemplaza el código duplicado en tres lugares.
+- **Estado:** ✅ Resuelto y cubierto por CI (commit `1618567`); falta
+  confirmarlo en la máquina de referencia tras reiniciar.
+
+### BUG-36 — `St.Button` no tiene `tooltip_text`
+- **Componente:** `bottombar.js`.
+- **Síntoma:** tapado por BUG-35; al corregirlo, `enable()` fallaba con
+  `Error: No property tooltip_text on StButton`.
+- **Causa raíz / variables:** `tooltip_text` es de GTK, no de St; GNOME Shell
+  46 no trae tooltips nativos en `St.Button`.
+- **Corrección:** se usa `accessible_name` (sirve a lectores de pantalla; un
+  tooltip visual queda como mejora futura).
+- **Estado:** ✅ Resuelto y cubierto por CI (commit `1618567`).
+
+### BUG-37 — `bottombar.js` usaba `taskbarPinnedApps` y `launch` sin importarlos
+- **Componente:** `bottombar.js`.
+- **Síntoma:** tapado por BUG-36; `ReferenceError: taskbarPinnedApps is not
+  defined` en `enable()`.
+- **Causa raíz / variables:** `node --check` (lo único que validaba la CI
+  estática) solo detecta errores de **sintaxis**; un identificador sin
+  importar es válido sintácticamente y explota recién en runtime.
+- **Corrección:** imports agregados, y **ESLint con `no-undef`** en el
+  workflow estático (R-402, `extension/eslint.config.mjs`) para que esta
+  clase de error no vuelva a llegar a `main`.
+- **Estado:** ✅ Resuelto y cubierto por CI (commits `1618567`, `ab1cb5c`).
+
+### BUG-38 — "Subir/Bajar en la categoría" no hacía nada la primera vez
+- **Componente:** `state.js` (`moveApp()`), `launcher.js`.
+- **Síntoma:** el menú contextual ofrecía reordenar apps dentro de una
+  categoría, pero el primer movimiento nunca tenía efecto.
+- **Causa raíz / variables:** el orden persistido (`orden[categoria]`) arranca
+  vacío; `moveApp()` agregaba solo la app movida, quedaba con una lista de un
+  elemento y no había con quién intercambiarla — ni siquiera guardaba. La
+  variable es **si la categoría ya tenía un orden guardado**.
+- **Corrección:** `moveApp()` recibe el orden visible y lo siembra antes de
+  mover. Cubierto en `tools/test-state-persistence.mjs`, que además pasó a
+  verificar los 7 campos actuales del estado (antes esperaba 3 y fallaba).
+- **Estado:** ✅ Resuelto y cubierto por CI (commit `3611f47`).
+
+### BUG-39 — CI de `main` en rojo en los tres workflows
+- **Síntoma:** 95 fallos y 5 cancelaciones en las últimas 100 corridas.
+- **Causas (tres, independientes):**
+  1. `Nebula static validation` validaba `categories.json`, que está en
+     `extension/.gitignore` (artefacto de build): en un checkout limpio no
+     existe. Ahora se valida la salida del generador.
+  2. `lint`: `eww.yuck` desincronizado de `categories.toml` (faltaba
+     "Grabacion de pantalla") y dos categorías sin icono
+     (`mis-discos-y-nubes.png`, `accesos-rapidos.png`).
+  3. `extension`: el test de persistencia desactualizado (ver BUG-38) y los
+     gates leyendo `stateObj._sidebar`, que pasó a ser `_sidebars[]` con las
+     superficies por monitor.
+- **Estado:** ✅ Resuelto (commits `958e0c3`, `a8fa9f0`). Primer verde en
+  `3c5009f`.
+
+### Tareas del roadmap de reparación cerradas en esta pasada
+`tools/test-extension.sh` tenía 7 fallos "previos": no eran del test, eran
+tareas de la Fase 3 que el merge del Producto 1 había dejado sin implementar.
+- **R-304:** `enable-launcher` / `enable-meters` / `enable-bottombar` en
+  gsettings, aplicadas en vivo; se elimina `config.js`.
+- **R-305:** los meters no sondean (ni lanzan `nvidia-smi`) con la sidebar
+  colapsada.
+- **R-306:** logs `[Nebula]` detrás de la clave `debug` (`debug.js`).
+- **R-307:** el Ubuntu Dock deja el borde izquierdo mientras Nebula está
+  activa y vuelve al deshabilitar, pero no al bloquear la pantalla
+  (`dock.js`). **Ajuste respecto del roadmap:** va a la **derecha** cuando la
+  barra inferior de Nebula está activa (abajo se superpondrían) y abajo si
+  no.
+- **KNOWN-03** sigue abierto (`DISK_PATH` fijo a `/`).
+
+### Decisión: BUG-34 frente al roadmap de escritorio §3.1
+El roadmap decía "clic izquierdo = siempre nueva ventana", lo contrario de
+BUG-34 (reportado en uso real). Se mantiene BUG-34: el clic trae al frente la
+ventana existente y **"Abrir nueva ventana"** del menú contextual pasa a abrir
+una ventana nueva de verdad (antes repetía la acción del clic). Roadmap
+actualizado.
 
 ---
 
