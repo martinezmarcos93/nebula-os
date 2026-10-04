@@ -83,7 +83,7 @@ que se decida un *shell theme*.
 | `nebula-shell@nebula-os/sidebar.js` | Sidebar ancha (cabecera + reloj + categorías + energía) + atajo + ciclo de vida (superpuesta, sin struts) |
 | `nebula-shell@nebula-os/launcher.js` | Panel "Buscar aplicaciones...": búsqueda + lista plana icono/nombre/descripción |
 | `nebula-shell@nebula-os/meters.js` | Bloque SISTEMA: CPU/RAM/SWAP/GPU/Disco/Red en vivo + sparkline (Cairo) |
-| `nebula-shell@nebula-os/bottombar.js` | Barra inferior: escritorios + taskbar + MPRIS (DBus) + menú de sistema de GNOME + reloj |
+| `nebula-shell@nebula-os/bottombar.js` | Barra de Nebula (arriba o al pie): escritorios + taskbar + MPRIS (DBus) + menú de sistema de GNOME + reloj |
 | `nebula-shell@nebula-os/accent.js` | Acento violeta del Shell (hoja de tema `Yaru-purple`) |
 | `nebula-shell@nebula-os/model.js` | Carga `categories.json`, detección `GLib.find_program_in_path`, lanzamiento, iconos + descripciones (`Gio.AppInfo`), `flatApps`/`filterApps` |
 | `nebula-shell@nebula-os/stylesheet.css` | Paleta Cosmic Dark, scopeada a `.nebula-*` |
@@ -125,7 +125,7 @@ instante (la extension se reconstruye sola):
 S="gsettings --schemadir $HOME/.local/share/gnome-shell/extensions/nebula-shell@nebula-os/schemas"
 $S set org.gnome.shell.extensions.nebula-shell enable-meters false     # bloque SISTEMA (def. true)
 $S set org.gnome.shell.extensions.nebula-shell enable-launcher true    # lanzador (def. true)
-$S set org.gnome.shell.extensions.nebula-shell enable-bottombar false  # barra inferior (def. true)
+$S set org.gnome.shell.extensions.nebula-shell enable-bottombar false  # barra de Nebula (def. true)
 $S set org.gnome.shell.extensions.nebula-shell bar-position bottom     # barra al pie + barra de GNOME visible (def. top)
 $S set org.gnome.shell.extensions.nebula-shell violet-accent false     # acento violeta del Shell (def. true)
 $S set org.gnome.shell.extensions.nebula-shell debug true              # logs de diagnostico (def. false)
@@ -178,34 +178,77 @@ falló la descarga por red). Variables de control:
 
 ## Checklist
 
-`[x]` = cubierto por un gate automático en GNOME Shell 46 (`tools/test-sidebar-core.sh`
-y `tools/test-extension.sh`, en CI desde `f3656d6`, 2026-10-04). `[ ]` = solo
-se puede confirmar mirando una sesión real; ver el último handoff en
-`docs/handoffs/`.
+Revisado el 2026-10-04 (`v0.3.0`). Tres marcas:
 
-- [ ] la sidebar se ve con la estética Cosmic Dark, borde izquierdo, altura completa;
-- [ ] cabecera (marca + textos) y reloj en vivo (fecha en español + hora) correctos;
-- [ ] las categorías se listan; cada una muestra **solo** apps instaladas;
+- `[x]` = cubierto por un gate automático en GNOME Shell 46
+  (`tools/test-sidebar-core.sh` y `tools/test-extension.sh`, en CI, Wayland y X11).
+- `[v]` = sin gate, pero **visto por el autor** en sesión real el 2026-10-04
+  (`docs/handoffs/2026-10-04.md`).
+- `[ ]` = solo se puede confirmar mirando una sesión real y todavía no se recorrió.
+
+Sidebar y lanzador:
+
+- [v] la sidebar se ve con la estética Cosmic Dark, en el borde izquierdo, debajo de la barra de Nebula;
+- [v] cabecera (marca + textos) y reloj en vivo (fecha en español + hora) correctos;
+- [x] todas las categorías entran completas, también en 768 px de alto; los
+      bloques del pie (SISTEMA, búsqueda, energía) se muestran enteros o se ocultan;
+- [ ] cada categoría muestra **solo** apps instaladas;
 - [x] clic en una categoría abre el lanzador filtrado a esa categoría;
 - [x] escribir en "Buscar aplicaciones..." filtra sobre todas las apps (y en X11 lo tipeado llega al buscador);
 - [ ] `Enter` lanza la primera; clic en una fila lanza la app y el lanzador se cierra;
 - [x] `Esc`, un clic afuera o el Overview cierran el lanzador;
 - [ ] `Super+B` abre (todas las apps) / cierra el lanzador;
-- [x] los meters sondean solo con la sidebar desplegada;
-- [ ] bloque SISTEMA: CPU/RAM/SWAP/Disco se mueven; GPU aparece con nombre y %
-      (o no aparece si no hay `nvidia-smi`); Red muestra ↓/↑ y la sparkline dibuja;
-- [ ] los 3 botones del pie: apagar y reiniciar muestran el diálogo de GNOME; bloquear bloquea;
-- [x] barra inferior: un botón por escritorio y uno por ventana; clic en una
-      ventana la minimiza/restaura; se engancha al reproductor MPRIS;
-- [ ] con música sonando aparece "Artista - Título" y los controles funcionan;
-      reloj al día; una ventana maximizada no queda debajo de la barra;
+- [x] relanzar una app ya abierta la trae al frente en vez de abrir otra ventana (BUG-34);
+- [v] "Mis discos y nubes" lista los discos y las cuentas de Google Drive, y
+      las monta al primer clic (el montaje simulado está en el gate, BUG-41);
 - [x] la sidebar se **superpone** (sin struts): desplegarla o colapsarla no
       cambia el área de trabajo, así que ni los iconos del escritorio ni las
-      ventanas maximizadas se mueven (BUG-33);
-- [x] el Ubuntu Dock deja el borde izquierdo y vuelve al deshabilitar; no salta al bloquear;
-- [ ] red, audio, Bluetooth, discos, notificaciones y bloqueo siguen 100% normales;
+      ventanas maximizadas se mueven (BUG-33).
+
+Bloques del pie de la sidebar (solo aparecen si la pantalla es lo bastante
+alta; en 1360x768 quedan ocultos):
+
+- [x] los meters sondean solo con la sidebar desplegada y a la vista;
+- [ ] bloque SISTEMA: CPU/RAM/SWAP/Disco se mueven; GPU aparece con nombre y %
+      (o no aparece si no hay `nvidia-smi`); Red muestra ↓/↑ y la sparkline dibuja;
+- [x] los cinco botones de energía entran en el ancho;
+- [ ] apagar, reiniciar, cerrar sesión y suspender piden confirmación; bloquear bloquea.
+
+Barra de Nebula (`bar-position`: arriba por defecto):
+
+- [x] va arriba y la barra superior de GNOME queda oculta, también después del
+      Overview; con `bar-position bottom` baja al pie y la de GNOME vuelve;
+- [x] un botón por escritorio y uno por ventana; clic en una ventana la
+      minimiza/restaura;
+- [x] el botón de sistema abre el menú Quick Settings nativo de GNOME anclado a
+      la barra (hacia abajo con la barra arriba, hacia arriba con la barra al pie);
+- [v] desde ese menú funcionan wifi, bluetooth, volumen, brillo y apagar;
+- [x] el reloj muestra día y hora, y el clic despliega el calendario nativo de GNOME;
+- [x] se engancha al reproductor MPRIS;
+- [ ] con música sonando aparece "Artista - Título" y los controles funcionan;
+- [ ] una ventana maximizada no queda debajo de la barra;
+- [ ] menú contextual de una ventana (clic derecho): maximizar, minimizar,
+      mover a otro escritorio, cerrar.
+
+Aspecto y convivencia con GNOME:
+
+- [x] acento violeta del Shell (`violet-accent`): carga la variante `Yaru-purple`
+      y se apaga en vivo;
+- [v] interruptores, deslizadores y botones activos se ven en violeta, no en naranja;
+- [x] con la barra de Nebula al pie, la barra superior de GNOME toma la estética
+      de Nebula (`style-top-panel`);
+- [x] el Ubuntu Dock deja el borde izquierdo (abajo, o a la derecha si la barra
+      de Nebula está al pie) y vuelve al deshabilitar; no salta al bloquear;
+- [ ] multi-monitor: enchufar/desenchufar una pantalla y pantalla completa;
+- [ ] discos externos, notificaciones y bloqueo siguen 100% normales;
 - [x] `gnome-extensions disable` + bloquear/desbloquear no deja actores, clases
-      CSS ni errores JS en el journal.
+      CSS ni errores JS en el journal, y devuelve la barra y el tema de GNOME;
+- [x] `tools/nebula-gnome-emergency.sh` desactiva Nebula y deja GNOME con su
+      configuración base (nivel básico; `--full` y el uso desde un TTY, sin ensayar).
+
+Limitaciones conocidas con la barra de GNOME oculta: no se ven los iconos de
+bandeja de las aplicaciones (AppIndicators) ni el botón de Actividades (la
+tecla Super sigue abriendo la vista general).
 
 ## Puntos sensibles a versión de GNOME
 
@@ -217,8 +260,7 @@ se puede confirmar mirando una sesión real; ver el último handoff en
   no `GLib.DateTime.format`, para no depender del `LANG` de la sesión.
 - `meters.js` importa `cairo` (módulo especial de GJS, sin `gi://`) para la
   sparkline; el `repaint` está en try/catch (Cairo puede fallar en captura de
-  thumbnail). `DISK_PATH` está fijo a `/` — hacerlo configurable es trabajo
-  futuro.
+  thumbnail). El disco que mide se elige con la clave `disk-path` (def. `/`).
 
 ## Siguiente paso si el prototipo convence
 
