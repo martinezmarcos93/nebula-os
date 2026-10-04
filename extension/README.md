@@ -123,7 +123,8 @@ instante (la extension se reconstruye sola):
 S="gsettings --schemadir $HOME/.local/share/gnome-shell/extensions/nebula-shell@nebula-os/schemas"
 $S set org.gnome.shell.extensions.nebula-shell enable-meters false     # bloque SISTEMA (def. true)
 $S set org.gnome.shell.extensions.nebula-shell enable-launcher true    # lanzador (def. true)
-$S set org.gnome.shell.extensions.nebula-shell enable-bottombar true   # barra inferior (def. false)
+$S set org.gnome.shell.extensions.nebula-shell enable-bottombar false  # barra inferior (def. true)
+$S set org.gnome.shell.extensions.nebula-shell violet-accent false     # acento violeta del Shell (def. true)
 $S set org.gnome.shell.extensions.nebula-shell debug true              # logs de diagnostico (def. false)
 ```
 

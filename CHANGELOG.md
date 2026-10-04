@@ -48,11 +48,6 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
   duplicaban los indicadores de GNOME: volumen, red, bluetooth, brillo,
   notificaciones y No molestar.
 
-### Corregido
-- La sidebar llegaba hasta el borde inferior y la barra inferior le tapaba la
-  fila de energia; ahora termina donde empieza la barra. Ademas los cinco
-  botones de energia no entraban en el ancho y el ultimo quedaba recortado.
-
 ### Cambiado
 - Iconos de la bandeja de la barra inferior a 16 px, el mismo tamano que los
   indicadores de la barra superior.
@@ -61,6 +56,9 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 - BUG-41: "Mis discos y nubes" lista las cuentas de Google Drive de Cuentas en
   linea aunque todavia no esten montadas (las monta al primer clic) y se
   actualiza sola al montar, desmontar o enchufar una unidad.
+- La sidebar llegaba hasta el borde inferior y la barra inferior le tapaba la
+  fila de energia; ahora termina donde empieza la barra. Ademas los cinco
+  botones de energia no entraban en el ancho y el ultimo quedaba recortado.
 
 ## [0.2.0] - 2026-10-04
 
