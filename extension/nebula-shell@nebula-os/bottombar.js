@@ -140,7 +140,7 @@ export class NebulaBottomBar {
         for (const [icon, cmd] of QUICK) {
             const b = new St.Button({
                 style_class: 'nebula-tray-btn',
-                child: new St.Icon({icon_name: icon, icon_size: 15}),
+                child: new St.Icon({icon_name: icon, icon_size: 16}),
                 can_focus: true,
             });
             this._connect(b, 'clicked', () => {
@@ -155,7 +155,7 @@ export class NebulaBottomBar {
 
         this._notificationButton = new St.Button({
             style_class: 'nebula-tray-btn',
-            child: new St.Icon({icon_name: 'preferences-system-notifications-symbolic', icon_size: 15}),
+            child: new St.Icon({icon_name: 'preferences-system-notifications-symbolic', icon_size: 16}),
             can_focus: true,
             accessible_name: 'Notificaciones',
         });
@@ -170,7 +170,7 @@ export class NebulaBottomBar {
 
         this._dndButton = new St.Button({
             style_class: 'nebula-tray-btn',
-            child: new St.Icon({icon_name: 'notifications-disabled-symbolic', icon_size: 15}),
+            child: new St.Icon({icon_name: 'notifications-disabled-symbolic', icon_size: 16}),
             can_focus: true,
             accessible_name: 'No molestar',
         });
@@ -178,7 +178,7 @@ export class NebulaBottomBar {
         right.add_child(this._dndButton);
         const modeButton = new St.Button({
             style_class: 'nebula-tray-btn',
-            child: new St.Icon({icon_name: 'preferences-desktop-symbolic', icon_size: 15}),
+            child: new St.Icon({icon_name: 'preferences-desktop-symbolic', icon_size: 16}),
             can_focus: true,
             accessible_name: 'Modo y tema',
         });

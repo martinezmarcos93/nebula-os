@@ -29,6 +29,17 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Agregado
+- La barra superior de GNOME toma la estetica de Nebula (fondo, borde violeta,
+  tipografia y resaltados iguales a la barra inferior). Es solo una clase CSS
+  sobre el panel nativo: todos los indicadores y menus de GNOME siguen
+  funcionando. Se apaga en vivo con
+  `gsettings set org.gnome.shell.extensions.nebula-shell style-top-panel false`.
+
+### Cambiado
+- Iconos de la bandeja de la barra inferior a 16 px, el mismo tamano que los
+  indicadores de la barra superior.
+
 ### Corregido
 - BUG-41: "Mis discos y nubes" lista las cuentas de Google Drive de Cuentas en
   linea aunque todavia no esten montadas (las monta al primer clic) y se

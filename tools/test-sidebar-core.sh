@@ -145,6 +145,15 @@ FAV="S._model.find(c => !['Favoritos','Recientes','Accesos rapidos','Mis discos 
 e "$X globalThis.__fav = $FAV; import($EXT + '/state.js').then(m => { globalThis.__favOn = m.toggleFavorite(globalThis.__fav); S._populate(); }); 1" >/dev/null; sleep .5
 check 'favoritos: marcar una app la suma a Favoritos' "globalThis.__favOn === true && S._model.find(c => c.nombre === 'Favoritos')?.apps.some(a => a.exec === globalThis.__fav)"
 e "$X import($EXT + '/state.js').then(m => { m.toggleFavorite(globalThis.__fav); S._populate(); }); 1" >/dev/null; sleep .5
+# Barra superior de GNOME con la estetica de Nebula (clave style-top-panel).
+PBG="(() => { const c = Main.panel.get_theme_node().get_background_color(); return [c.red, c.green, c.blue].join(','); })()"
+check 'panel: la barra superior de GNOME lleva la clase de Nebula' "Main.panel.has_style_class_name('nebula-panel')"
+check 'panel: el fondo del panel es el de la barra de Nebula' "$PBG === '8,8,16'"
+check 'panel: sigue siendo el panel nativo con sus indicadores' "!!Main.panel.statusArea.quickSettings && !!Main.panel.statusArea.dateMenu && Main.panel.visible"
+e "$X X._settings.set_boolean('style-top-panel', false); 1" >/dev/null; sleep .4
+check 'panel: apagar la clave devuelve el aspecto de GNOME en vivo' "!Main.panel.has_style_class_name('nebula-panel') && $PBG !== '8,8,16'"
+e "$X X._settings.set_boolean('style-top-panel', true); 1" >/dev/null; sleep .4
+check 'panel: volver a encenderla lo re-aplica' "Main.panel.has_style_class_name('nebula-panel')"
 DND="new Gio.Settings({schema_id: 'org.gnome.desktop.notifications'}).get_boolean('show-banners')"
 e "$X $B B._toggleDnd(); 1" >/dev/null; sleep .5
 check 'No molestar: el conmutador apaga los banners de GNOME' "$DND === false"
@@ -153,6 +162,7 @@ check 'No molestar: vuelve a encenderlos' "$DND === true"
 e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep .3
 check 'disable no deja extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
 check 'disable no deja clases de tema/modo en el Shell' "!/nebula-/.test(Main.uiGroup.get_style_class_name() ?? '')"
+check 'disable devuelve el panel de GNOME a su aspecto original' "!Main.panel.has_style_class_name('nebula-panel')"
 check 'disable libera la sidebar' "!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebars?.[0]"
 e "Main.extensionManager.enableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 1
 check 're-enable recupera la extension' "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"

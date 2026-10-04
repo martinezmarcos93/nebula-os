@@ -457,6 +457,64 @@
 }
 
 
+/* ---- Barra superior de GNOME con la estetica de Nebula -------------- */
+/* Unica excepcion al "solo .nebula-*": la clase .nebula-panel la pone la
+ * extension sobre el panel nativo (clave style-top-panel) y la quita en
+ * disable(). Mismos valores que .nebula-bottombar y .nebula-tray-btn, para
+ * que las dos barras se lean como un solo sistema. El resaltado va por
+ * box-shadow porque asi lo pinta el tema del Shell (no por background). */
+#panel.nebula-panel {
+    background-color: rgba(8, 8, 16, 0.92);
+    box-shadow: inset 0 -1px 0 0 rgba(124, 58, 237, 0.45);
+    font-family: "Inter", "Cantarell", sans-serif;
+    font-weight: 600;
+    color: #d1d5db;
+}
+#panel.nebula-panel:overview {
+    background-color: transparent;
+    box-shadow: none;
+}
+#panel.nebula-panel .panel-button {
+    color: #9ca3af;
+    font-weight: 600;
+    border-radius: 6px;
+}
+#panel.nebula-panel .panel-button:hover,
+#panel.nebula-panel .panel-button:focus {
+    color: #f3f4f6;
+    box-shadow: inset 0 0 0 100px rgba(124, 58, 237, 0.25);
+}
+#panel.nebula-panel .panel-button:active,
+#panel.nebula-panel .panel-button:checked,
+#panel.nebula-panel .panel-button:active:hover,
+#panel.nebula-panel .panel-button:checked:hover {
+    color: #ffffff;
+    box-shadow: inset 0 0 0 100px rgba(124, 58, 237, 0.42);
+}
+/* El reloj resalta su etiqueta interna, no el boton. */
+#panel.nebula-panel .panel-button.clock-display,
+#panel.nebula-panel .panel-button.clock-display:hover,
+#panel.nebula-panel .panel-button.clock-display:focus,
+#panel.nebula-panel .panel-button.clock-display:active,
+#panel.nebula-panel .panel-button.clock-display:checked {
+    box-shadow: none;
+}
+#panel.nebula-panel .panel-button.clock-display .clock {
+    color: #e5e7eb;
+    border-radius: 6px;
+}
+#panel.nebula-panel .panel-button.clock-display:hover .clock,
+#panel.nebula-panel .panel-button.clock-display:focus .clock {
+    box-shadow: inset 0 0 0 100px rgba(124, 58, 237, 0.25);
+}
+#panel.nebula-panel .panel-button.clock-display:active .clock,
+#panel.nebula-panel .panel-button.clock-display:checked .clock {
+    box-shadow: inset 0 0 0 100px rgba(124, 58, 237, 0.42);
+}
+#panel.nebula-panel .panel-button#panelActivities .workspace-dot {
+    background-color: #e879f9;
+}
+
 /* ---- Theme Engine -------------------------------------------------- */
 /* Cosmic Dark es el tema base. Las variantes se aplican sobre los mismos
  * componentes: no existen dos implementaciones visuales paralelas. */
@@ -523,4 +581,28 @@
 .nebula-result-name,
 .nebula-result-desc {
     x-align: fill;
+}
+
+.nebula-theme-monochrome #panel.nebula-panel {
+    background-color: rgba(16, 16, 16, 0.94);
+    box-shadow: inset 0 -1px 0 0 rgba(210, 210, 210, 0.28);
+}
+.nebula-theme-monochrome #panel.nebula-panel:overview {
+    background-color: transparent;
+    box-shadow: none;
+}
+.nebula-theme-monochrome #panel.nebula-panel .panel-button:hover,
+.nebula-theme-monochrome #panel.nebula-panel .panel-button:focus,
+.nebula-theme-monochrome #panel.nebula-panel .panel-button.clock-display:hover .clock,
+.nebula-theme-monochrome #panel.nebula-panel .panel-button.clock-display:focus .clock {
+    box-shadow: inset 0 0 0 100px rgba(210, 210, 210, 0.14);
+}
+.nebula-theme-monochrome #panel.nebula-panel .panel-button:active,
+.nebula-theme-monochrome #panel.nebula-panel .panel-button:checked,
+.nebula-theme-monochrome #panel.nebula-panel .panel-button.clock-display:active .clock,
+.nebula-theme-monochrome #panel.nebula-panel .panel-button.clock-display:checked .clock {
+    box-shadow: inset 0 0 0 100px rgba(210, 210, 210, 0.22);
+}
+.nebula-theme-monochrome #panel.nebula-panel .panel-button#panelActivities .workspace-dot {
+    background-color: #d0d0d0;
 }

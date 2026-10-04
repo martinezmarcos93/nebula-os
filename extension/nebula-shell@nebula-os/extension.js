@@ -36,6 +36,7 @@ export default class NebulaShellExtension extends Extension {
         this._settingsIds = [
             this._settings.connect('changed::debug',
                 () => setDebug(this._settings.get_boolean('debug'))),
+            this._settings.connect('changed::style-top-panel', () => this._syncPanelStyle()),
             ...['enable-launcher', 'enable-meters', 'enable-bottombar', 'disk-path'].map(key =>
                 this._settings.connect(`changed::${key}`, () => {
                     if (!this._enabled)
@@ -45,6 +46,7 @@ export default class NebulaShellExtension extends Extension {
                 })),
         ];
         moveDockAway(this._settings);
+        this._syncPanelStyle();
         this._sidebars = [];
         this._bottomBars = [];
         this._monitorSignalId = Main.layoutManager.connect('monitors-changed', () => {
@@ -73,6 +75,17 @@ export default class NebulaShellExtension extends Extension {
         }
     }
 
+    // Barra superior de GNOME con la estetica de Nebula: solo una clase CSS
+    // sobre el panel nativo (stylesheet.css, "#panel.nebula-panel"). No se
+    // reemplaza ni se mueve ningun indicador: todas las funciones de GNOME
+    // siguen intactas y quitar la clase lo deja como estaba.
+    _syncPanelStyle() {
+        if (this._settings?.get_boolean('style-top-panel'))
+            Main.panel.add_style_class_name('nebula-panel');
+        else
+            Main.panel.remove_style_class_name('nebula-panel');
+    }
+
     // Primera superficie (monitor primario): atajo para tests y diagnostico.
     get _sidebar() {
         return this._sidebars?.[0] ?? null;
@@ -88,6 +101,7 @@ export default class NebulaShellExtension extends Extension {
         this._settingsIds = [];
         setDebug(false);
         clearAppearance();
+        Main.panel.remove_style_class_name('nebula-panel');
         if (this._monitorSignalId) {
             Main.layoutManager.disconnect(this._monitorSignalId);
             this._monitorSignalId = 0;

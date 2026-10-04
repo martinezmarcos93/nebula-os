@@ -22,6 +22,11 @@
       <summary>Barra inferior (taskbar, escritorios, MPRIS, accesos)</summary>
       <description>Se aplica en vivo, sin reiniciar el Shell.</description>
     </key>
+    <key name="style-top-panel" type="b">
+      <default>true</default>
+      <summary>Barra superior de GNOME con la estetica de Nebula</summary>
+      <description>Solo cambia el aspecto (colores, tipografia, resaltados). Se aplica en vivo.</description>
+    </key>
     <key name="disk-path" type="s">
       <default>'/'</default>
       <summary>Punto de montaje que mide el meter de disco</summary>
