@@ -858,9 +858,9 @@ Diagnosticados pero pospuestos a propósito — no bloquean el uso diario.
   datos NTFS que monta `nebula-mount-datos`).
 - **Causa raíz / variables:** la ruta está hardcodeada; no hay variable de
   entorno ni entrada de config que la resuelva en runtime.
-- **Por qué se pospone:** señalado como "trabajo futuro" en
-  `extension/README.md`; el prototipo todavía está en fase de viabilidad.
-- **Estado:** 🟡 Conocido, no resuelto.
+- **Corrección (2026-10-04):** nueva clave gsettings `disk-path` (default
+  `/`), leída por `NebulaMeters`; se aplica en vivo.
+- **Estado:** ✅ Resuelto.
 
 ### KNOWN-04 — "Clic afuera cierra" del lanzador GNOME está implementado pero deshabilitado desde la investigación de BUG-24
 - **Componente:** `extension/nebula-shell@nebula-os/launcher.js`
@@ -1139,7 +1139,16 @@ tareas de la Fase 3 que el merge del Producto 1 había dejado sin implementar.
   (`dock.js`). **Ajuste respecto del roadmap:** va a la **derecha** cuando la
   barra inferior de Nebula está activa (abajo se superpondrían) y abajo si
   no.
-- **KNOWN-03** sigue abierto (`DISK_PATH` fijo a `/`).
+- **R-303 / BUG-28 (regresión):** el merge del Producto 1 había vuelto a
+  dejar comentada la captura global y perdido el re-foco del buscador, aunque
+  la sección 3b los daba por resueltos. Reimplementados en `launcher.js`
+  (`_installOutsideWatch()`); la fase X11 de `tools/test-extension.sh` (clics
+  y teclas reales) los cubre y ahora corre en CI.
+- **R-308:** `Gio.Cancellable` en las llamadas D-Bus de la barra inferior. De
+  paso: `_dropMpris()` desconectaba por error la sincronización de "No
+  molestar" cada vez que se cerraba un reproductor; esa limpieza pasó a
+  `destroy()`.
+- **KNOWN-03:** resuelto con la clave `disk-path`.
 
 ### Decisión: BUG-34 frente al roadmap de escritorio §3.1
 El roadmap decía "clic izquierdo = siempre nueva ventana", lo contrario de

@@ -36,7 +36,7 @@ export default class NebulaShellExtension extends Extension {
         this._settingsIds = [
             this._settings.connect('changed::debug',
                 () => setDebug(this._settings.get_boolean('debug'))),
-            ...['enable-launcher', 'enable-meters', 'enable-bottombar'].map(key =>
+            ...['enable-launcher', 'enable-meters', 'enable-bottombar', 'disk-path'].map(key =>
                 this._settings.connect(`changed::${key}`, () => {
                     if (!this._enabled)
                         return;

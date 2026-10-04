@@ -119,7 +119,7 @@ reposo 10 min). Sin warnings nuevos en `journalctl`.
 | R-305 ✅ | Meters en pausa mientras la sidebar está colapsada (FS-25) | 0 procesos `nvidia-smi` con la sidebar colapsada |
 | R-306 ✅ | Logs de diagnóstico detrás de una clave `debug` (AUD-003); borrar `_togglingVisibility`; renombrar "BUG-25"→"BUG-26" en comentarios (FS-28) | `journalctl` limpio en uso normal |
 | R-307 ✅ | Conflicto con `ubuntu-dock` (FS-24): al habilitar, si el dock está a la izquierda, se mueve abajo (`dash-to-dock dock-position BOTTOM`), guardando el valor anterior y restaurándolo en `disable()` | Sidebar y dock no se superponen; `disable()` restaura |
-| R-308 | `bottombar.js`: `Gio.Cancellable` en las llamadas D-Bus asíncronas (ListNames, DBusProxy.new) para que un callback no toque actores destruidos | Deshabilitar con un reproductor MPRIS abierto no deja warnings |
+| R-308 ✅ | `bottombar.js`: `Gio.Cancellable` en las llamadas D-Bus asíncronas (ListNames, DBusProxy.new) para que un callback no toque actores destruidos | Deshabilitar con un reproductor MPRIS abierto no deja warnings |
 | R-309 | Launch con `Gio.AppInfo`/`Shell.App` cuando existe `.desktop` (startup notification, scope de systemd); `spawn_command_line_async` queda solo como fallback | Las apps lanzadas aparecen en el dock como "en ejecución" |
 | R-310 | `state.js`: validar el tipo de cada campo al cargar (un JSON con `favoritos` que no sea array hoy rompe `.includes`) | Test gjs con JSON corrupto |
 | R-311 | `metadata.json`: `shell-version` 46 + **47/48** después de validar en esas versiones (Ubuntu 24.10/25.04), o documentar "solo 46" | CI ESLint + matriz documentada |

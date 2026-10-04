@@ -89,7 +89,9 @@ export class NebulaSidebar {
                 unredirect,
             )
             : null;
-        this._meters = this._settings.get_boolean('enable-meters') ? new NebulaMeters() : null;
+        this._meters = this._settings.get_boolean('enable-meters')
+            ? new NebulaMeters(this._settings.get_string('disk-path'))
+            : null;
         this._battery = new NebulaBattery(St, Clutter);
 
         this._buildActors();

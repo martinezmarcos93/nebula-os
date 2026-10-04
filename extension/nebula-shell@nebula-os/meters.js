@@ -22,7 +22,6 @@ void Cairo;   // asegura la carga del modulo cairo para St.DrawingArea
 
 const POLL_S = 2;
 const SPARK_SAMPLES = 48;
-const DISK_PATH = '/';
 
 function readText(path) {
     try {
@@ -54,7 +53,8 @@ function fmtRate(bytesPerSec) {
 }
 
 export class NebulaMeters {
-    constructor() {
+    constructor(diskPath = '/') {
+        this._diskPath = diskPath || '/';
         this._pollId = 0;
         this._gpuCancel = null;
         this._prevCpu = null;
@@ -198,7 +198,7 @@ export class NebulaMeters {
 
     _pollDisk() {
         try {
-            const info = Gio.File.new_for_path(DISK_PATH)
+            const info = Gio.File.new_for_path(this._diskPath)
                 .query_filesystem_info('filesystem::size,filesystem::used', null);
             const size = info.get_attribute_uint64('filesystem::size');
             const used = info.get_attribute_uint64('filesystem::used');

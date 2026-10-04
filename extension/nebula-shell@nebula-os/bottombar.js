@@ -61,6 +61,7 @@ export class NebulaBottomBar {
         this._nameWatchId = 0;
         this._notificationSettings = null;
         this._notificationSettingsId = 0;
+        this._cancellable = new Gio.Cancellable();
 
         this._build();
         this._place();
@@ -481,12 +482,12 @@ export class NebulaBottomBar {
         Gio.DBus.session.call(
             'org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
             'ListNames', null, new GLib.VariantType('(as)'),
-            Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
+            Gio.DBusCallFlags.NONE, -1, this._cancellable, (bus, res) => {
                 let names = [];
                 try {
                     [names] = bus.call_finish(res).deepUnpack();
                 } catch (_e) {
-                    return;
+                    return;   // incluye la cancelacion de destroy() (R-308)
                 }
                 const hit = names.find(n => n.startsWith('org.mpris.MediaPlayer2.'));
                 if (hit)
@@ -500,13 +501,17 @@ export class NebulaBottomBar {
         this._mprisName = name;
         Gio.DBusProxy.new(
             Gio.DBus.session, Gio.DBusProxyFlags.NONE, null,
-            name, MPRIS_PATH, MPRIS_PLAYER_IFACE, null, (_s, res) => {
+            name, MPRIS_PATH, MPRIS_PLAYER_IFACE, this._cancellable, (_s, res) => {
+                let proxy;
                 try {
-                    this._mprisProxy = Gio.DBusProxy.new_finish(res);
-                } catch (_e) {
-                    this._mprisName = null;
+                    proxy = Gio.DBusProxy.new_finish(res);
+                } catch (e) {
+                    // Cancelado por destroy(): la barra ya no existe, no tocar nada.
+                    if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                        this._mprisName = null;
                     return;
                 }
+                this._mprisProxy = proxy;
                 this._mprisPropsId = this._mprisProxy.connect(
                     'g-properties-changed', () => this._updateMpris());
                 this._updateMpris();
@@ -519,11 +524,6 @@ export class NebulaBottomBar {
             this._mprisPropsId = 0;
         }
         this._mprisProxy = null;
-        if (this._notificationSettings && this._notificationSettingsId) {
-            this._notificationSettings.disconnect(this._notificationSettingsId);
-            this._notificationSettingsId = 0;
-        }
-        this._notificationSettings = null;
         this._mprisName = null;
         this._mprisBox?.hide();
         this._scanMpris();
@@ -574,6 +574,15 @@ export class NebulaBottomBar {
             this._mprisPropsId = 0;
         }
         this._mprisProxy = null;
+        // R-308: corta ListNames / DBusProxy.new en vuelo para que sus
+        // callbacks no toquen actores ya destruidos.
+        this._cancellable?.cancel();
+        this._cancellable = null;
+        if (this._notificationSettings && this._notificationSettingsId) {
+            this._notificationSettings.disconnect(this._notificationSettingsId);
+            this._notificationSettingsId = 0;
+        }
+        this._notificationSettings = null;
         this._windowTracker?.destroy();
         if (this._windowMenu) {
             this._windowMenu.destroy();
