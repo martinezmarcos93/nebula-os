@@ -1,12 +1,13 @@
 // Nebula Shell - barra inferior (incremento 5). Franja full-width al pie:
 //
-//   [1 2 3 4 5]        Artista - Titulo   |< >|| >|          🔊 📶   21:37
-//   escritorios        now-playing (MPRIS)  transporte       accesos  reloj
+//   [1 2 3 4 5] [ventanas...]   Artista - Titulo |< >|| >|      🔊⏻ ⚙  21:37
+//   escritorios  taskbar        now-playing (MPRIS)             sistema reloj
 //
 // Reserva su alto via struts. GNOME Shell 46 / GJS 1.80.
 //
-// La "bandeja" real (StatusNotifier) la sigue mostrando ubuntu-appindicators
-// en la barra superior; aca van accesos simples (volumen, red) + reloj.
+// No duplica los indicadores de GNOME: el boton "sistema" abre el MISMO menu
+// de Quick Settings de la barra superior (wifi, bluetooth, volumen, apagar),
+// anclado sobre esta barra. La bandeja (StatusNotifier) sigue arriba.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -33,17 +34,14 @@ import {THEMES, currentTheme, setTheme} from './theme.js';
 import {taskbarPinnedApps, launchEntry} from './model.js';
 import {applyAppearance} from './appearance.js';
 
-const BAR_HEIGHT = 34;
+export const BAR_HEIGHT = 34;
 const CLOCK_TICK_S = 15;
 const MPRIS_PATH = '/org/mpris/MediaPlayer2';
 const MPRIS_PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
 
-const QUICK = [
-    ['audio-volume-high-symbolic', 'gnome-control-center sound'],
-    ['network-wireless-symbolic', 'gnome-control-center network'],
-    ['bluetooth-active-symbolic', 'gnome-control-center bluetooth'],
-    ['display-brightness-symbolic', 'gnome-control-center display'],
-];
+// Un clic sobre el boton con el menu abierto primero lo cierra (el gestor de
+// menus de GNOME cierra en el press): sin esta gracia, el release lo reabria.
+const SYSTEM_MENU_REOPEN_GRACE_US = 300 * 1000;
 
 export class NebulaBottomBar {
     constructor(monitorIndex = 0, extensionPath = null) {
@@ -59,8 +57,8 @@ export class NebulaBottomBar {
         this._mprisName = null;
         this._mprisProxy = null;
         this._nameWatchId = 0;
-        this._notificationSettings = null;
-        this._notificationSettingsId = 0;
+        this._restoreSystemMenu = null;
+        this._systemMenuClosedAt = 0;
         this._cancellable = new Gio.Cancellable();
 
         this._build();
@@ -71,7 +69,6 @@ export class NebulaBottomBar {
         this._windowTracker = new WindowTracker(() => this._syncWindows());
         this._startClock();
         this._initMpris();
-        this._initNotifications();
 
         this._connect(Main.layoutManager, 'monitors-changed', () => this._place());
         const wm = global.workspace_manager;
@@ -135,47 +132,20 @@ export class NebulaBottomBar {
 
         this._bar.add_child(new St.Widget({x_expand: true}));
 
-        // Derecha: accesos + reloj
+        // Derecha: menu de sistema de GNOME + modo/tema + reloj
         const right = new St.BoxLayout({style_class: 'nebula-tray'});
-        for (const [icon, cmd] of QUICK) {
-            const b = new St.Button({
-                style_class: 'nebula-tray-btn',
-                child: new St.Icon({icon_name: icon, icon_size: 16}),
-                can_focus: true,
-            });
-            this._connect(b, 'clicked', () => {
-                try {
-                    GLib.spawn_command_line_async(cmd);
-                } catch (e) {
-                    console.error(`Nebula Shell: fallo "${cmd}": ${e}`);
-                }
-            });
-            right.add_child(b);
-        }
-
-        this._notificationButton = new St.Button({
+        const systemIcons = new St.BoxLayout({style_class: 'nebula-system-icons'});
+        for (const icon of ['audio-volume-high-symbolic', 'system-shutdown-symbolic'])
+            systemIcons.add_child(new St.Icon({icon_name: icon, icon_size: 16}));
+        this._systemButton = new St.Button({
             style_class: 'nebula-tray-btn',
-            child: new St.Icon({icon_name: 'preferences-system-notifications-symbolic', icon_size: 16}),
+            child: systemIcons,
             can_focus: true,
-            accessible_name: 'Notificaciones',
+            accessible_name: 'Sistema: red, bluetooth, volumen y apagado',
         });
-        this._connect(this._notificationButton, 'clicked', () => {
-            try {
-                GLib.spawn_command_line_async('gnome-control-center notifications');
-            } catch (e) {
-                console.error(`Nebula Shell: no se pudo abrir Notificaciones: ${e}`);
-            }
-        });
-        right.add_child(this._notificationButton);
+        this._connect(this._systemButton, 'clicked', () => this._toggleSystemMenu());
+        right.add_child(this._systemButton);
 
-        this._dndButton = new St.Button({
-            style_class: 'nebula-tray-btn',
-            child: new St.Icon({icon_name: 'notifications-disabled-symbolic', icon_size: 16}),
-            can_focus: true,
-            accessible_name: 'No molestar',
-        });
-        this._connect(this._dndButton, 'clicked', () => this._toggleDnd());
-        right.add_child(this._dndButton);
         const modeButton = new St.Button({
             style_class: 'nebula-tray-btn',
             child: new St.Icon({icon_name: 'preferences-desktop-symbolic', icon_size: 16}),
@@ -245,49 +215,46 @@ export class NebulaBottomBar {
         this._bar.set_width(m.width);
     }
 
-    // --- notificaciones / no molestar ---------------------------
+    // --- menu de sistema (Quick Settings de GNOME) ---------------
 
-    _initNotifications() {
-        try {
-            this._notificationSettings = new Gio.Settings({
-                schema: 'org.gnome.desktop.notifications',
-            });
-            this._notificationSettingsId = this._notificationSettings.connect(
-                'changed::show-banners', () => this._syncDnd());
-            this._syncDnd();
-        } catch (e) {
-            console.debug?.(`Nebula: esquema de notificaciones no disponible: ${e}`);
-            this._notificationSettings = null;
-        }
-    }
-
-    _syncDnd() {
-        if (!this._notificationSettings || !this._dndButton)
+    // Abre el menu de Quick Settings del panel nativo anclado a esta barra.
+    // No se clona ni se mueve nada: es el mismo menu, solo que mientras esta
+    // abierto desde aca apunta a nuestro boton y se despliega hacia arriba.
+    // Al cerrarse vuelve a su flecha original, asi el indicador de la barra
+    // superior lo sigue abriendo en su lugar de siempre.
+    _toggleSystemMenu() {
+        const menu = Main.panel.statusArea.quickSettings?.menu;
+        const pointer = menu?._boxPointer;
+        if (!menu || !pointer?.setPosition || !pointer.updateArrowSide)
             return;
-        let showBanners = true;
-        try {
-            showBanners = this._notificationSettings.get_boolean('show-banners');
-        } catch (_e) {
+        if (menu.isOpen) {
+            menu.close(BoxPointer.PopupAnimation.FULL);
             return;
         }
-        const dnd = !showBanners;
-        this._dndButton.child.icon_name = dnd
-            ? 'notifications-disabled-symbolic'
-            : 'notifications-symbolic';
-        this._dndButton.set_style_class_name(
-            dnd ? 'nebula-tray-btn nebula-tray-btn-active' : 'nebula-tray-btn');
-        this._dndButton.accessible_name = dnd ? 'No molestar: activado' : 'No molestar: desactivado';
-    }
-
-    _toggleDnd() {
-        if (!this._notificationSettings)
+        if (GLib.get_monotonic_time() - this._systemMenuClosedAt < SYSTEM_MENU_REOPEN_GRACE_US)
             return;
-        try {
-            const showBanners = this._notificationSettings.get_boolean('show-banners');
-            this._notificationSettings.set_boolean('show-banners', !showBanners);
-        } catch (e) {
-            console.error(`Nebula: no se pudo cambiar No molestar: ${e}`);
-        }
+
+        this._restoreSystemMenu?.();
+        const originalSide = pointer._userArrowSide ?? St.Side.TOP;
+        pointer._userArrowSide = St.Side.BOTTOM;
+        pointer.updateArrowSide(St.Side.BOTTOM);
+        const openId = menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (!isOpen)
+                this._systemMenuClosedAt = GLib.get_monotonic_time();
+        });
+        // 'menu-closed' llega al terminar la animacion de cierre: restaurar
+        // antes haria saltar el menu al borde superior mientras se desvanece.
+        const closedId = menu.connect('menu-closed', () => this._restoreSystemMenu?.());
+        this._restoreSystemMenu = () => {
+            this._restoreSystemMenu = null;
+            menu.disconnect(openId);
+            menu.disconnect(closedId);
+            pointer._userArrowSide = originalSide;
+            pointer.updateArrowSide(originalSide);
+        };
+
+        menu.open(BoxPointer.PopupAnimation.FULL);
+        pointer.setPosition(this._systemButton, 0.5);
     }
 
     // --- escritorios --------------------------------------------
@@ -578,11 +545,12 @@ export class NebulaBottomBar {
         // callbacks no toquen actores ya destruidos.
         this._cancellable?.cancel();
         this._cancellable = null;
-        if (this._notificationSettings && this._notificationSettingsId) {
-            this._notificationSettings.disconnect(this._notificationSettingsId);
-            this._notificationSettingsId = 0;
+        if (this._restoreSystemMenu) {
+            const menu = Main.panel.statusArea.quickSettings?.menu;
+            if (menu?.isOpen)
+                menu.close(BoxPointer.PopupAnimation.NONE);
+            this._restoreSystemMenu?.();
         }
-        this._notificationSettings = null;
         this._windowTracker?.destroy();
         if (this._windowMenu) {
             this._windowMenu.destroy();

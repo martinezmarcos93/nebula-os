@@ -37,6 +37,7 @@ import {NebulaLauncher} from './launcher.js';
 import {runWithConfirmation} from './system-actions.js';
 import {NebulaMeters} from './meters.js';
 import {NebulaBattery} from './battery.js';
+import {BAR_HEIGHT} from './bottombar.js';
 
 const SIDEBAR_WIDTH = 236;    // px de ancho (superpuesta: no reserva area de trabajo)
 const CAT_ICON = 16;
@@ -206,12 +207,15 @@ export class NebulaSidebar {
             }
             return;
         }
+        // Con la barra inferior activa la sidebar termina donde ella empieza:
+        // si no, la barra tapaba la fila de energia del pie.
+        const height = m.height - (this._settings.get_boolean('enable-bottombar') ? BAR_HEIGHT : 0);
         this._sidebar.set_position(m.x, m.y);
-        this._sidebar.set_size(SIDEBAR_WIDTH, m.height);
+        this._sidebar.set_size(SIDEBAR_WIDTH, height);
         this._sidebar.translation_x = this._collapsed ? -SIDEBAR_WIDTH : 0;
 
         this._hotEdge?.set_position(m.x, m.y);
-        this._hotEdge?.set_size(HOT_EDGE_W, m.height);
+        this._hotEdge?.set_size(HOT_EDGE_W, height);
     }
 
     // --- lista de categorias (se reconstruye) --------------------

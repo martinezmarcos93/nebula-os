@@ -234,14 +234,16 @@
 /* ---- Fila de energia --------------------------------------------- */
 
 .nebula-power {
-    spacing: 8px;
+    spacing: 6px;
     padding-top: 10px;
     border-top: 1px solid rgba(124, 58, 237, 0.30);
 }
 
+/* 5 botones: 5 x (18 + 2x8) + 4 x 6 = 194px, dentro de los 205px utiles de la
+ * sidebar. Con el padding anterior (14px) el ultimo quedaba recortado. */
 .nebula-power-btn {
     color: #9ca3af;
-    padding: 8px 14px;
+    padding: 8px 8px;
     border-radius: 8px;
     transition-duration: 110ms;
 }
@@ -444,9 +446,8 @@
     color: #f3f4f6;
 }
 
-.nebula-tray-btn-active {
-    background-color: rgba(124, 58, 237, 0.40);
-    color: #e879f9;
+.nebula-system-icons {
+    spacing: 6px;
 }
 
 .nebula-bottom-clock {
