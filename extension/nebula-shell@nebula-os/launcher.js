@@ -9,10 +9,9 @@
 //   - clic en una fila                      -> lanza esa
 //   - Esc (con foco en el panel) / Super+B  -> cierra
 //
-// "clic afuera cierra" NO esta activo hoy: _installStageCapture() implementa
-// esto pero open()/toggle() no lo invocan (deshabilitado a mitad de la
-// investigacion de BUG-24, docs/BUGS.md; reactivar requiere confirmar en una
-// sesion GNOME real que no reintroduce ese bug). Ver docs/BUGS.md.
+// "Clic afuera cierra" (R-303): un clic fuera del panel y de la sidebar, Esc
+// o abrir el Overview cierran el lanzador, sin consumir el clic. Ver
+// _installOutsideWatch().
 //
 // No reserva espacio (sin struts): las ventanas no se reacomodan.
 
@@ -88,6 +87,11 @@ export class NebulaLauncher {
         this._isOpen = false;   // estado explicito: NO depender de this._panel.visible
         this._lastMonitorLabel = 'n/a';
         this._toggleIdleId = 0;             // BUG-26: hide()+show() diferido de _present()
+        this._focusGuard = false;           // true mientras el toggle mueve el foco (BUG-28)
+        this._focusGuardId = 0;
+        this._focusCheckId = 0;
+        this._focusWindowId = 0;
+        this._overviewId = 0;
         this._fileSearchProcess = null;
         this._fileSearchSerial = 0;
         this._fileResults = [];
@@ -202,7 +206,7 @@ export class NebulaLauncher {
         this._relayout();
         this._rebuild();
         this._present();
-        // this._installStageCapture();   // PRUEBA DE AISLAMIENTO: captura global desactivada
+        this._installOutsideWatch();
         debug(`SWITCH category=${categoryIndex} ` +
             `isOpen=${this._isOpen} visible=${this._panel?.visible} mapped=${this._panel?.mapped} ` +
             `pos=${JSON.stringify(this._panel?.get_position())} size=${JSON.stringify(this._panel?.get_size())} ` +
@@ -217,7 +221,7 @@ export class NebulaLauncher {
         this._present();
         this._rebuild();
         this._entry.grab_key_focus();
-        // this._installStageCapture();   // PRUEBA DE AISLAMIENTO: captura global del stage desactivada
+        this._installOutsideWatch();
         debug(
             `OPEN category=${categoryIndex} ` +
             `isOpen=${this._isOpen} ` +
@@ -236,7 +240,7 @@ export class NebulaLauncher {
             `filter=${this._filterIndex} ` +
             `visible=${this._panel?.visible}`
         );
-        this._removeStageCapture();
+        this._removeOutsideWatch();
         const wasOpen = this._isOpen;
         // El estado logico se sincroniza SIEMPRE, pase lo que pase con el actor.
         this._isOpen = false;
@@ -284,17 +288,69 @@ export class NebulaLauncher {
             this._toggleIdleId = 0;
             if (!this._isOpen || !this._panel)
                 return GLib.SOURCE_REMOVE;
+            // BUG-28: ocultar el panel le saca el foco al buscador y mutter
+            // se lo devuelve a la ventana de atras. Se recupera tras el
+            // toggle; mientras tanto ese cambio de foco no cuenta como "clic
+            // afuera" (ver _installOutsideWatch).
+            this._focusGuard = true;
             this._panel.hide();
             this._panel.show();
+            this._entry?.grab_key_focus();
+            if (this._focusGuardId)
+                GLib.source_remove(this._focusGuardId);
+            this._focusGuardId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
+                this._focusGuardId = 0;
+                this._focusGuard = false;
+                return GLib.SOURCE_REMOVE;
+            });
             return GLib.SOURCE_REMOVE;
         });
     }
 
-    // Cierra al hacer clic fuera del panel (y fuera de la sidebar) o con Esc,
-    // sin depender del foco de teclado.
-    // PRUEBA DE AISLAMIENTO EN CURSO: open()/toggle() NO llaman a este metodo,
-    // asi que la captura global del stage no se instala. Codigo intacto para
-    // reactivarlo descomentando las dos lineas `_installStageCapture()`.
+    // Cierra al hacer clic fuera del panel (y fuera de la sidebar), con Esc o
+    // al abrir el Overview, sin depender del foco de teclado (R-303).
+    //   - captured-event del stage: clics sobre el chrome del Shell y Esc.
+    //   - notify::focus-window: en X11 el stage NO ve los clics sobre ventanas
+    //     normales; lo que se ve es que una ventana toma el foco. Se evalua
+    //     diferido, para no cerrar por el paso transitorio del foco al abrir.
+    //   - overview showing: el Overview tapa el panel.
+    _installOutsideWatch() {
+        this._installStageCapture();
+        if (!this._focusWindowId) {
+            this._focusWindowId = global.display.connect('notify::focus-window', () => {
+                if (!this._isOpen || this._focusGuard || this._focusCheckId)
+                    return;
+                this._focusCheckId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                    this._focusCheckId = 0;
+                    if (this._isOpen && !this._focusGuard && global.display.focus_window)
+                        this.close('focus-window');
+                    return GLib.SOURCE_REMOVE;
+                });
+            });
+        }
+        if (!this._overviewId)
+            this._overviewId = Main.overview.connect('showing', () => this.close('overview'));
+    }
+
+    _removeOutsideWatch() {
+        this._removeStageCapture();
+        if (this._focusWindowId) {
+            global.display.disconnect(this._focusWindowId);
+            this._focusWindowId = 0;
+        }
+        if (this._overviewId) {
+            Main.overview.disconnect(this._overviewId);
+            this._overviewId = 0;
+        }
+        for (const key of ['_focusCheckId', '_focusGuardId']) {
+            if (this[key]) {
+                GLib.source_remove(this[key]);
+                this[key] = 0;
+            }
+        }
+        this._focusGuard = false;
+    }
+
     _installStageCapture() {
         if (this._stageCaptureId)
             return;
@@ -675,7 +731,7 @@ export class NebulaLauncher {
             GLib.source_remove(this._toggleIdleId);
             this._toggleIdleId = 0;
         }
-        this._removeStageCapture();
+        this._removeOutsideWatch();
         for (const [target, id] of this._signalIds)
             target.disconnect(id);
         this._signalIds = [];
