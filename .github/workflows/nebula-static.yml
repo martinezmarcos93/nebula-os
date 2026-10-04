@@ -34,10 +34,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m json.tool extension/nebula-shell@nebula-os/metadata.json >/dev/null
-          python3 -m json.tool extension/nebula-shell@nebula-os/categories.json >/dev/null
+          # categories.json es un artefacto de build (no se versiona): se genera
+          # desde categories.toml y se valida la salida del generador.
+          python3 bin/nebula-categories json --toml dotfiles/nebula/categories.toml | python3 -m json.tool >/dev/null
 
       - name: Validate Nebula categories
         shell: bash
         run: |
           set -euo pipefail
-          bin/nebula-categories check --toml dotfiles/nebula/categories.toml
+          python3 bin/nebula-categories check --toml dotfiles/nebula/categories.toml

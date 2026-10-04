@@ -82,7 +82,7 @@ e() {  # e JS -> imprime el valor devuelto por Eval (sin el envoltorio de gdbus)
         --method org.gnome.Shell.Eval "$1" 2>/dev/null \
         | sed -E "s/^\(true, '(.*)'\)$/\1/; s/^\(false, .*/__EVAL_ERROR__/"
 }
-X="const X=Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj; const S=X?._sidebar; const L=S?._launcher; const G=X?._unredirect;"
+X="const X=Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj; const S=X?._sidebars?.[0]; const L=S?._launcher; const G=X?._unredirect;"
 check() {  # check DESCRIPCION EXPRESION_JS_BOOLEANA
     local r; r="$(e "$X ($2) ? 'SI' : 'NO'")"
     [[ "$r" == *SI* ]] && ok "$1" || bad "$1 (obtuve: $r)"

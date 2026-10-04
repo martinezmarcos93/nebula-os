@@ -55,7 +55,7 @@ cat > "$T/common.sh" <<'EOF'
 ok(){ printf '  OK   %s\n' "$*"; }
 bad(){ printf '  FAIL %s\n' "$*"; }
 e(){ gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval "$1" 2>/dev/null | sed -E "s/^\(true, '(.*)'\)$/\1/; s/^\(false, .*/__EVAL_ERROR__/"; }
-X="const X=Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj; const S=X?._sidebar; const L=S?._launcher; const G=X?._unredirect;"
+X="const X=Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj; const S=X?._sidebars?.[0]; const L=S?._launcher; const G=X?._unredirect;"
 check(){ local r; r="$(e "$X ($2) ? 'SI' : 'NO'")"; [[ "$r" == *SI* ]] && ok "$1" || bad "$1 (obtuve: $r)"; }
 for _ in $(seq 1 80); do [[ "$(e '1+1')" == 2 ]] && break; sleep .5; done
 [[ "$(e '1+1')" == 2 ]] || { bad 'GNOME Shell no responde por D-Bus'; exit 1; }
@@ -112,10 +112,10 @@ check 'launch: relanzar la trae al frente (des-minimizada y con foco)' "global.d
 [[ "$(grep -c x "$T/activations.txt" 2>/dev/null)" == 1 ]] && ok 'launch: la app se activo una sola vez' || bad "launch: la app se activo $(grep -c x "$T/activations.txt" 2>/dev/null) veces"
 e "Main.extensionManager.disableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep .3
 check 'disable no deja extension activa' "Main.extensionManager.lookup('nebula-shell@nebula-os').state !== 1"
-check 'disable libera la sidebar' "!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebar"
+check 'disable libera la sidebar' "!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebars?.[0]"
 e "Main.extensionManager.enableExtension('nebula-shell@nebula-os'); 1" >/dev/null; sleep 1
 check 're-enable recupera la extension' "Main.extensionManager.lookup('nebula-shell@nebula-os').state === 1"
-check 're-enable recrea sidebar' "!!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebar"
+check 're-enable recrea sidebar' "!!Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj?._sidebars?.[0]"
 EOF
 
 cat > "$T/phase-wayland.sh" <<'EOF'
