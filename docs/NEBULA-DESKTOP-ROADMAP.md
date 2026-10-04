@@ -641,7 +641,7 @@ Nebula 1.0 requiere como mínimo:
 
 - [~] Home.
 - [x] Discos (2026-10-04).
-- [~] Unidades externas (montajes detectados dinámicamente).
+- [x] Unidades externas (montajes detectados dinámicamente; 2026-10-04).
 - [x] GOA/Drive (las cuentas aparecen aunque no estén montadas y se montan al primer clic, BUG-41; 2026-10-04).
 - [~] Papelera.
 - [x] Accesos rápidos.

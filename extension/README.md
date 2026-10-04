@@ -195,9 +195,10 @@ Sidebar y lanzador:
 - [ ] cada categoría muestra **solo** apps instaladas;
 - [x] clic en una categoría abre el lanzador filtrado a esa categoría;
 - [x] escribir en "Buscar aplicaciones..." filtra sobre todas las apps (y en X11 lo tipeado llega al buscador);
-- [ ] `Enter` lanza la primera; clic en una fila lanza la app y el lanzador se cierra;
+- [v] `Enter` lanza la primera app;
+- [ ] clic en una fila lanza la app y el lanzador se cierra;
 - [x] `Esc`, un clic afuera o el Overview cierran el lanzador;
-- [ ] `Super+B` abre (todas las apps) / cierra el lanzador;
+- [v] `Super+B` abre (todas las apps) / cierra el lanzador;
 - [x] relanzar una app ya abierta la trae al frente en vez de abrir otra ventana (BUG-34);
 - [v] "Mis discos y nubes" lista los discos y las cuentas de Google Drive, y
       las monta al primer clic (el montaje simulado está en el gate, BUG-41);
@@ -206,7 +207,8 @@ Sidebar y lanzador:
       ventanas maximizadas se mueven (BUG-33).
 
 Bloques del pie de la sidebar (solo aparecen si la pantalla es lo bastante
-alta; en 1360x768 quedan ocultos):
+alta; en 1360x768, la máquina de referencia, quedan ocultos y sus dos ítems
+`[ ]` no se pueden validar ahí):
 
 - [x] los meters sondean solo con la sidebar desplegada y a la vista;
 - [ ] bloque SISTEMA: CPU/RAM/SWAP/Disco se mueven; GPU aparece con nombre y %
@@ -225,9 +227,9 @@ Barra de Nebula (`bar-position`: arriba por defecto):
 - [v] desde ese menú funcionan wifi, bluetooth, volumen, brillo y apagar;
 - [x] el reloj muestra día y hora, y el clic despliega el calendario nativo de GNOME;
 - [x] se engancha al reproductor MPRIS;
-- [ ] con música sonando aparece "Artista - Título" y los controles funcionan;
-- [ ] una ventana maximizada no queda debajo de la barra;
-- [ ] menú contextual de una ventana (clic derecho): maximizar, minimizar,
+- [v] con música sonando aparece "Artista - Título" y los controles funcionan;
+- [v] una ventana maximizada no queda debajo de la barra;
+- [v] menú contextual de una ventana (clic derecho): maximizar, minimizar,
       mover a otro escritorio, cerrar.
 
 Aspecto y convivencia con GNOME:
@@ -239,8 +241,10 @@ Aspecto y convivencia con GNOME:
       de Nebula (`style-top-panel`);
 - [x] el Ubuntu Dock deja el borde izquierdo (abajo, o a la derecha si la barra
       de Nebula está al pie) y vuelve al deshabilitar; no salta al bloquear;
-- [ ] multi-monitor: enchufar/desenchufar una pantalla y pantalla completa;
-- [ ] discos externos, notificaciones y bloqueo siguen 100% normales;
+- [ ] multi-monitor: enchufar/desenchufar una segunda pantalla y pantalla completa
+      (la máquina de referencia usa una sola pantalla: no se puede validar ahí);
+- [v] los discos externos funcionan;
+- [ ] notificaciones y bloqueo de pantalla siguen 100% normales;
 - [x] `gnome-extensions disable` + bloquear/desbloquear no deja actores, clases
       CSS ni errores JS en el journal, y devuelve la barra y el tema de GNOME;
 - [x] `tools/nebula-gnome-emergency.sh` desactiva Nebula y deja GNOME con su
