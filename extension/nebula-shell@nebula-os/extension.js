@@ -2,9 +2,10 @@
 //
 // Instancia los componentes en enable() y los destruye por completo en
 // disable(). La logica vive en:
-//   sidebar.js    - la sidebar ancha (cabecera, reloj, categorias, meters, energia)
+//   sidebar.js    - la sidebar ancha (cabecera, reloj, categorias, busqueda)
 //   launcher.js   - el panel "Buscar aplicaciones..."
-//   meters.js     - el bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red + sparkline)
+//   meters.js     - el bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red + sparkline),
+//                   desplegable desde la barra de Nebula
 //   bottombar.js  - la barra de Nebula, arriba o al pie (escritorios, taskbar, MPRIS,
 //                   menu de sistema y calendario de GNOME)
 //   accent.js     - acento violeta del propio Shell (variante Yaru-purple)
@@ -80,7 +81,7 @@ export default class NebulaShellExtension extends Extension {
         for (let i = 0; i < count; i++) {
             this._sidebars.push(new NebulaSidebar(this, this._unredirect, i, i === 0));
             if (this._settings.get_boolean('enable-bottombar'))
-                this._bottomBars.push(new NebulaBottomBar(i, this.path, this._barAtTop()));
+                this._bottomBars.push(new NebulaBottomBar(i, this.path, this._barAtTop(), this._settings));
         }
         this._syncGnomePanel();
     }

@@ -29,6 +29,15 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+### Cambiado
+- El bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red) sale de la sidebar y se
+  despliega desde un boton nuevo de la barra de Nebula; solo sondea mientras
+  esta abierto. En pantallas de 768 px no entraba en la sidebar y no se veia.
+
+### Quitado
+- Fila de botones de energia de la sidebar: apagar, reiniciar y cerrar sesion
+  ya estan en el menu de sistema de GNOME que abre la barra.
+
 ## [0.3.0] - 2026-10-04
 
 Segunda version estable: primera validada por el autor en una sesion real de

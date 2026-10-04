@@ -1,7 +1,7 @@
 // Nebula Shell - la barra de Nebula (incremento 5). Franja full-width:
 //
-//   [1 2 3 4 5] [ventanas...]   Artista - Titulo |< >|| >|    🔊⏻  dom 4 oct 21:37
-//   escritorios  taskbar        now-playing (MPRIS)           sistema  fecha y hora
+//   [1 2 3 4 5] [ventanas...]   Artista - Titulo |< >|| >|  📈 🔊⏻  dom 4 oct 21:37
+//   escritorios  taskbar        now-playing (MPRIS)      meters sistema  fecha y hora
 //
 // Clave bar-position: 'top' la pone en el lugar de la barra superior de GNOME
 // (que se oculta mientras tanto, ver extension.js) y 'bottom' al pie, con la
@@ -9,7 +9,9 @@
 //
 // No duplica los indicadores de GNOME: el boton "sistema" y el reloj abren
 // los MISMOS menus del panel nativo (Quick Settings y calendario con
-// notificaciones), anclados a esta barra.
+// notificaciones), anclados a esta barra. El boton "meters" despliega el
+// bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red), que solo sondea mientras esta
+// abierto (R-305).
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -32,6 +34,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import {taskbarPinnedApps, launchEntry} from './model.js';
+import {NebulaMeters} from './meters.js';
 
 export const BAR_HEIGHT = 34;
 const CLOCK_TICK_S = 15;
@@ -43,7 +46,11 @@ const MPRIS_PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
 const PANEL_MENU_REOPEN_GRACE_US = 300 * 1000;
 
 export class NebulaBottomBar {
-    constructor(monitorIndex = 0, extensionPath = null, atTop = false) {
+    constructor(monitorIndex = 0, extensionPath = null, atTop = false, settings = null) {
+        this._settings = settings;
+        this._meters = null;
+        this._metersMenu = null;
+        this._metersClosedAt = 0;
         this._monitorIndex = monitorIndex;
         this._atTop = atTop;
         this._extensionPath = extensionPath;
@@ -135,6 +142,9 @@ export class NebulaBottomBar {
 
         // Derecha: menu de sistema de GNOME + fecha y hora (calendario de GNOME)
         const right = new St.BoxLayout({style_class: 'nebula-tray'});
+        if (this._settings?.get_boolean('enable-meters'))
+            right.add_child(this._buildMetersButton());
+
         const systemIcons = new St.BoxLayout({style_class: 'nebula-system-icons'});
         for (const icon of ['audio-volume-high-symbolic', 'system-shutdown-symbolic'])
             systemIcons.add_child(new St.Icon({icon_name: icon, icon_size: 16}));
@@ -174,6 +184,52 @@ export class NebulaBottomBar {
             return;
         this._bar.set_position(m.x, this._atTop ? m.y : m.y + m.height - BAR_HEIGHT);
         this._bar.set_width(m.width);
+    }
+
+    // --- bloque SISTEMA (meters) ---------------------------------
+
+    _buildMetersButton() {
+        this._metersButton = new St.Button({
+            style_class: 'nebula-tray-btn',
+            child: new St.Icon({icon_name: 'utilities-system-monitor-symbolic', icon_size: 16}),
+            can_focus: true,
+            accessible_name: 'Sistema: CPU, memoria, disco y red',
+        });
+
+        this._meters = new NebulaMeters(this._settings.get_string('disk-path'));
+        const menu = new PopupMenu.PopupMenu(
+            this._metersButton, 0.5, this._atTop ? St.Side.TOP : St.Side.BOTTOM);
+        menu.box.add_style_class_name('nebula-meters-popup');
+        Main.uiGroup.add_child(menu.actor);
+        menu.actor.hide();
+        Main.panel.menuManager.addMenu(menu);
+        const item = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+        this._meters.actor.x_expand = true;
+        item.add_child(this._meters.actor);
+        menu.addMenuItem(item);
+        // R-305: sin sondeo (ni nvidia-smi) mientras el bloque no se ve.
+        menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (isOpen) {
+                this._meters?.start();
+            } else {
+                this._meters?.stop();
+                this._metersClosedAt = GLib.get_monotonic_time();
+            }
+        });
+        this._metersMenu = menu;
+
+        this._connect(this._metersButton, 'clicked', () => this._toggleMeters());
+        return this._metersButton;
+    }
+
+    _toggleMeters() {
+        const menu = this._metersMenu;
+        if (!menu)
+            return;
+        if (menu.isOpen)
+            menu.close(BoxPointer.PopupAnimation.FULL);
+        else if (GLib.get_monotonic_time() - this._metersClosedAt >= PANEL_MENU_REOPEN_GRACE_US)
+            menu.open(BoxPointer.PopupAnimation.FULL);
     }
 
     // --- menus del panel de GNOME anclados a esta barra ----------
@@ -530,6 +586,12 @@ export class NebulaBottomBar {
             if (this._openPanelMenu?.isOpen)
                 this._openPanelMenu.close(BoxPointer.PopupAnimation.NONE);
             this._restorePanelMenu?.();
+        }
+        this._meters?.destroy();
+        this._meters = null;
+        if (this._metersMenu) {
+            this._metersMenu.destroy();
+            this._metersMenu = null;
         }
         this._windowTracker?.destroy();
         if (this._windowMenu) {

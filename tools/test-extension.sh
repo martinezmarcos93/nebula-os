@@ -108,17 +108,20 @@ if [[ "$HAS_DOCK" == *SI* ]]; then
     check "Ubuntu Dock: con la barra arriba vuelve abajo" "$DOCK === 'BOTTOM'"
 fi
 
-# R-304/R-305: meters encendidos por defecto (BUG-005), en pausa si la
-# sidebar esta colapsada, y flags de gsettings aplicados en vivo.
-check "meters activos por defecto (enable-meters)"  "S._meters !== null"
-e "$X S._collapse(); 1" >/dev/null; sleep 1
-check "sidebar colapsada: meters en pausa (sin sondeo)" "S._meters._pollId === 0"
-e "$X S._expand(); 1" >/dev/null; sleep 1
-check "sidebar expandida: meters sondeando"             "S._meters._pollId !== 0"
+# R-304/R-305: meters encendidos por defecto (BUG-005). Viven en un boton de
+# la barra de Nebula y solo sondean mientras su bloque esta desplegado.
+BM="const BM=X._bottomBar;"
+check "meters activos por defecto (enable-meters)"      "(() => { $BM return !!BM._meters && !!BM._metersButton; })()"
+check "la sidebar ya no lleva meters ni fila de energia" "S._meters === undefined && S._powerRow === undefined"
+check "bloque cerrado: meters en pausa (sin sondeo)"    "(() => { $BM return BM._meters._pollId === 0; })()"
+e "$X $BM BM._toggleMeters(); 1" >/dev/null; sleep 1.2
+check "boton de la barra: despliega el bloque SISTEMA y sondea" "(() => { $BM return BM._metersMenu.isOpen && BM._meters._pollId !== 0 && BM._meters.actor.mapped; })()"
+e "$X $BM BM._toggleMeters(); 1" >/dev/null; sleep 1.2
+check "segundo clic: lo cierra y deja de sondear"       "(() => { $BM return !BM._metersMenu.isOpen && BM._meters._pollId === 0; })()"
 e "$X X._settings.set_boolean('enable-meters', false); 1" >/dev/null; sleep 1
-check "enable-meters=false se aplica en vivo"           "X._sidebar._meters === null"
+check "enable-meters=false se aplica en vivo"           "X._bottomBar._meters === null && !X._bottomBar._metersButton"
 e "$X X._settings.set_boolean('enable-meters', true); 1" >/dev/null; sleep 1
-check "enable-meters=true se vuelve a aplicar en vivo"  "X._sidebar._meters !== null"
+check "enable-meters=true se vuelve a aplicar en vivo"  "X._bottomBar._meters !== null"
 e "$X S._collapse(); 1" >/dev/null; sleep 1
 
 # FS-20: el Overview (que GNOME abre al iniciar sesion) no debe resucitar
@@ -287,7 +290,7 @@ run_phase() {  # run_phase SCRIPT -> un GNOME Shell headless nuevo por fase
     dbus-run-session -- bash -c '
         gsettings set org.gnome.shell disable-user-extensions false
         gsettings set org.gnome.shell enabled-extensions "[\"nebula-harness@test\", \"nebula-shell@nebula-os\"]"
-        gnome-shell --headless --wayland --no-x11 --virtual-monitor 1920x1200 >> "$T/shell.log" 2>&1 &
+        gnome-shell --headless --wayland --no-x11 --virtual-monitor 1280x800 >> "$T/shell.log" 2>&1 &
         GS=$!
         source "$1" >> "$T/results.txt"
         kill $GS 2>/dev/null; wait $GS 2>/dev/null

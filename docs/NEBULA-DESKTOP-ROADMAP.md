@@ -605,7 +605,7 @@ Nebula 1.0 requiere como mínimo:
 - [~] Cerrar.
 - [~] Alt+Tab (delegado al comportamiento nativo de GNOME).
 - [x] Workspaces (un botón por escritorio en la barra de Nebula; separan ventanas, los iconos de DING son los mismos en todos).
-- [~] Multi-monitor (superficies por monitor implementadas; validación GNOME 46 pendiente).
+- [~] Multi-monitor (superficies por monitor implementadas; sin validar: el autor usa una sola pantalla hoy y prevé sumar otra).
 - [~] Múltiples ventanas por aplicación.
 
 ### Escritorio

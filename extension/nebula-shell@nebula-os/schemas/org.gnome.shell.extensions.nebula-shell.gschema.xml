@@ -14,8 +14,8 @@
     </key>
     <key name="enable-meters" type="b">
       <default>true</default>
-      <summary>Bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red) en la sidebar</summary>
-      <description>Los meters solo sondean mientras la sidebar esta desplegada.</description>
+      <summary>Bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red) en la barra de Nebula</summary>
+      <description>Boton de la barra que despliega los meters; solo sondean mientras el bloque esta abierto. Requiere enable-bottombar.</description>
     </key>
     <key name="enable-bottombar" type="b">
       <default>true</default>

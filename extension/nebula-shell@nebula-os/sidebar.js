@@ -9,10 +9,11 @@
 //   | CATEGORIAS           |
 //   |  > Favoritos         |   lista de categorias; clic -> lanzador (launcher.js)
 //   |  ...                 |   filtrado a esa categoria
-//   | SISTEMA              |
-//   |  CPU  RAM  SWAP ...  |   meters en vivo (meters.js) + sparkline de red
-//   |  [power][lock][reboot]|  al pie
+//   | [Buscar aplicaciones]|   al pie: disparador del lanzador
 //   +----------------------+
+//
+// El bloque SISTEMA (meters) vive en la barra de Nebula (bottombar.js) y
+// apagar/reiniciar en el menu de sistema de GNOME que abre esa barra.
 //
 // Se superpone al escritorio SIN struts (BUG-33): reservar el ancho en cada
 // desplegar/colapsar cambiaba el area de trabajo y DING reacomodaba los iconos
@@ -34,8 +35,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {debug} from './debug.js';
 import {buildModel, invalidateIconCache} from './model.js';
 import {NebulaLauncher} from './launcher.js';
-import {runWithConfirmation} from './system-actions.js';
-import {NebulaMeters} from './meters.js';
 import {NebulaBattery} from './battery.js';
 import {BAR_HEIGHT} from './bottombar.js';
 
@@ -47,14 +46,6 @@ const HOT_EDGE_W = 6;         // franja reactiva pegada al borde para revelar
 const AUTO_COLLAPSE_MS = 350; // gracia tras salir el puntero antes de retraer
 const REVEAL_MS = 180;        // duracion de la animacion mostrar/ocultar
 const FIRST_COLLAPSE_MS = 1600; // se retrae sola al arrancar si el puntero no esta encima
-
-const POWER_ACTIONS = {
-    'system-shutdown-symbolic': 'gnome-session-quit --power-off',
-    'system-lock-screen-symbolic': 'loginctl lock-session',
-    'system-reboot-symbolic': 'gnome-session-quit --reboot',
-    'system-log-out-symbolic': 'gnome-session-quit --logout',
-    'system-suspend-symbolic': 'systemctl suspend',
-};
 
 export class NebulaSidebar {
     constructor(extension, unredirect, monitorIndex = 0, ownsKeybinding = false) {
@@ -89,9 +80,6 @@ export class NebulaSidebar {
                 () => this._sidebar,   // clics en la sidebar no cierran el lanzador
                 unredirect,
             )
-            : null;
-        this._meters = this._settings.get_boolean('enable-meters')
-            ? new NebulaMeters(this._settings.get_string('disk-path'))
             : null;
         this._battery = new NebulaBattery(St, Clutter);
 
@@ -144,13 +132,9 @@ export class NebulaSidebar {
         this._sidebar.add_child(this._catList);
 
         this._sidebar.add_child(new St.Widget({y_expand: true}));   // empuja lo de abajo
-        if (this._meters)
-            this._sidebar.add_child(this._meters.actor);
         this._sidebar.add_child(this._battery.actor);
         if (this._launcher)
             this._sidebar.add_child(this._buildQuickSearch());
-        this._powerRow = this._buildPowerRow();
-        this._sidebar.add_child(this._powerRow);
 
         // SIN trackFullscreen (R-301, FS-20): con esa opcion LayoutManager
         // forzaba `visible = true` al cerrar el Overview o salir de pantalla
@@ -223,16 +207,14 @@ export class NebulaSidebar {
         this._fitToHeight();
     }
 
-    // En pantallas bajas (768 px) las categorias ocupan casi todo el alto y
-    // los bloques del pie no entran. Un bloque cortado por el borde se ve
-    // roto: cada uno se muestra entero o no se muestra. Las categorias
-    // mandan; se sacrifican, en este orden, los meters, el recuadro de
-    // busqueda (el lanzador sigue con Super+B o una categoria) y la fila de
-    // energia (apagar sigue en el menu de sistema de la barra).
+    // En pantallas bajas (768 px) las categorias ocupan casi todo el alto. Un
+    // bloque cortado por el borde se ve roto: lo que va al pie se muestra
+    // entero o no se muestra. Las categorias mandan; el recuadro de busqueda
+    // se sacrifica (el lanzador sigue con Super+B o una categoria).
     _fitToHeight() {
         if (!this._sidebar)
             return;
-        const blocks = [this._meters?.actor, this._quickSearch, this._powerRow].filter(Boolean);
+        const blocks = [this._quickSearch].filter(Boolean);
         blocks.forEach(b => b.show());
         const available = this._sidebar.height;
         // Con el alto fijado el actor informa ese alto, no el de su contenido.
@@ -244,16 +226,6 @@ export class NebulaSidebar {
             block.hide();
         }
         this._sidebar.set_height(available);
-        if (this._meters && !this._meters.actor.visible)
-            this._meters.stop();
-        else if (!this._collapsed)
-            this._startMeters();
-    }
-
-    // R-305: los meters solo sondean si se ven (sidebar desplegada y con lugar).
-    _startMeters() {
-        if (this._meters?.actor.visible)
-            this._meters.start();
     }
 
     // --- lista de categorias (se reconstruye) --------------------
@@ -398,29 +370,6 @@ export class NebulaSidebar {
             this._launcher.open(-1);
         });
         return this._quickSearch;
-    }
-
-    _buildPowerRow() {
-        const row = new St.BoxLayout({style_class: 'nebula-power'});
-        for (const [icon, cmd] of Object.entries(POWER_ACTIONS)) {
-            const btn = new St.Button({
-                style_class: 'nebula-power-btn',
-                can_focus: true,
-                child: new St.Icon({icon_name: icon, icon_size: 18}),
-            });
-            this._connect(btn, 'clicked', () => {
-                const labels = {
-                    'gnome-session-quit --power-off': 'Apagar',
-                    'loginctl lock-session': 'Bloquear',
-                    'gnome-session-quit --reboot': 'Reiniciar',
-                    'gnome-session-quit --logout': 'Cerrar sesión',
-                    'systemctl suspend': 'Suspender',
-                };
-                runWithConfirmation(labels[cmd] ?? 'Ejecutar acción', cmd);
-            });
-            row.add_child(btn);
-        }
-        return row;
     }
 
     _brandIcon() {
@@ -576,7 +525,6 @@ export class NebulaSidebar {
         if (this._collapsed)
             return;
         this._collapsed = true;
-        this._meters?.stop();   // R-305: sin sondeo (ni nvidia-smi) mientras no se ve
         this._launcher?.close('sidebar-collapse');
         this._sidebar.ease({
             translation_x: -SIDEBAR_WIDTH,
@@ -719,8 +667,6 @@ export class NebulaSidebar {
 
         this._removeKeybinding();
 
-        this._meters?.destroy();
-        this._meters = null;
         this._battery?.destroy();
         this._battery = null;
         this._launcher?.destroy();

@@ -36,12 +36,14 @@ Hace:
   - reloj en vivo (fecha en español + hora grande);
   - lista de las 13 categorías (icono de línea simbólico + nombre); clic → abre
     el lanzador filtrado a esa categoría;
-  - bloque **SISTEMA** (`meters.js`): barras en vivo CPU (`/proc/stat`), RAM y
-    SWAP (`/proc/meminfo`), GPU (`nvidia-smi`, se oculta si no está), Disco
-    (`/`), fila Red (↓/↑ desde `/proc/net/dev`) y una sparkline de red (Cairo).
-    Poll cada 2 s;
-  - fila al pie: apagar (`gnome-session-quit --power-off`) · bloquear
-    (`loginctl lock-session`) · reiniciar (`gnome-session-quit --reboot`).
+  - recuadro "Buscar aplicaciones..." al pie (si entra en el alto de la pantalla).
+  La fila de botones de energía se quitó: apagar, reiniciar y cerrar sesión
+  están en el menú de sistema de GNOME que abre la barra de Nebula.
+- **Bloque SISTEMA** (`meters.js`), desplegable desde un botón de la barra de
+  Nebula: barras en vivo CPU (`/proc/stat`), RAM y SWAP (`/proc/meminfo`), GPU
+  (`nvidia-smi`, se oculta si no está), Disco (clave `disk-path`), fila Red
+  (↓/↑ desde `/proc/net/dev`) y una sparkline de red (Cairo). Poll cada 2 s,
+  solo mientras el bloque está abierto.
 - **Lanzador con búsqueda** (`launcher.js`), panel flotante a la derecha de la
   sidebar (no reserva espacio): campo "Buscar aplicaciones..." + lista de apps
   (icono + nombre + descripción). Clic en categoría → filtrado a esa categoría;
@@ -55,7 +57,7 @@ Hace:
   la manda al pie y vuelve a mostrar la de GNOME). Reserva su alto con
   struts. Contenido: indicador de escritorios (`global.workspace_manager`, clic para
   cambiar), now-playing MPRIS (título + artista + `Previous`/`PlayPause`/`Next`
-  vía DBus `org.mpris.MediaPlayer2.Player`), botón de **sistema** y reloj con
+  vía DBus `org.mpris.MediaPlayer2.Player`), botón de **meters**, botón de **sistema** y reloj con
   el día, que al clic despliega el calendario de GNOME. El botón de sistema no duplica nada: abre el **mismo menú de Quick
   Settings de GNOME** (wifi, bluetooth, volumen, brillo, apagar) anclado sobre
   esta barra; desde el indicador de la barra superior sigue abriendo arriba.
@@ -80,9 +82,9 @@ que se decida un *shell theme*.
 |---|---|
 | `nebula-shell@nebula-os/metadata.json` | UUID, `shell-version: ["46"]`, schema de settings |
 | `nebula-shell@nebula-os/extension.js` | `enable()` / `disable()` — solo instancia y destruye el sidebar |
-| `nebula-shell@nebula-os/sidebar.js` | Sidebar ancha (cabecera + reloj + categorías + energía) + atajo + ciclo de vida (superpuesta, sin struts) |
+| `nebula-shell@nebula-os/sidebar.js` | Sidebar ancha (cabecera + reloj + categorías + búsqueda) + atajo + ciclo de vida (superpuesta, sin struts) |
 | `nebula-shell@nebula-os/launcher.js` | Panel "Buscar aplicaciones...": búsqueda + lista plana icono/nombre/descripción |
-| `nebula-shell@nebula-os/meters.js` | Bloque SISTEMA: CPU/RAM/SWAP/GPU/Disco/Red en vivo + sparkline (Cairo) |
+| `nebula-shell@nebula-os/meters.js` | Bloque SISTEMA: CPU/RAM/SWAP/GPU/Disco/Red en vivo + sparkline (Cairo); lo despliega un botón de la barra |
 | `nebula-shell@nebula-os/bottombar.js` | Barra de Nebula (arriba o al pie): escritorios + taskbar + MPRIS (DBus) + menú de sistema de GNOME + reloj |
 | `nebula-shell@nebula-os/accent.js` | Acento violeta del Shell (hoja de tema `Yaru-purple`) |
 | `nebula-shell@nebula-os/model.js` | Carga `categories.json`, detección `GLib.find_program_in_path`, lanzamiento, iconos + descripciones (`Gio.AppInfo`), `flatApps`/`filterApps` |
@@ -123,7 +125,7 @@ instante (la extension se reconstruye sola):
 
 ```bash
 S="gsettings --schemadir $HOME/.local/share/gnome-shell/extensions/nebula-shell@nebula-os/schemas"
-$S set org.gnome.shell.extensions.nebula-shell enable-meters false     # bloque SISTEMA (def. true)
+$S set org.gnome.shell.extensions.nebula-shell enable-meters false     # botón y bloque SISTEMA en la barra (def. true)
 $S set org.gnome.shell.extensions.nebula-shell enable-launcher true    # lanzador (def. true)
 $S set org.gnome.shell.extensions.nebula-shell enable-bottombar false  # barra de Nebula (def. true)
 $S set org.gnome.shell.extensions.nebula-shell bar-position bottom     # barra al pie + barra de GNOME visible (def. top)
@@ -136,8 +138,8 @@ que la sidebar. Al activar Nebula se pasa abajo y al desactivarla vuelve a la
 izquierda (no al bloquear la pantalla). Para no tocarlo:
 `$S set org.gnome.shell.extensions.nebula-shell move-ubuntu-dock false`.
 
-Los meters se pausan solos con la sidebar colapsada o una ventana en pantalla
-completa (no lanzan `nvidia-smi` mientras no se ven).
+Los meters solo sondean mientras su bloque está desplegado (no lanzan
+`nvidia-smi` mientras no se ven).
 
 ### Pruebas automaticas
 
@@ -191,7 +193,7 @@ Sidebar y lanzador:
 - [v] la sidebar se ve con la estética Cosmic Dark, en el borde izquierdo, debajo de la barra de Nebula;
 - [v] cabecera (marca + textos) y reloj en vivo (fecha en español + hora) correctos;
 - [x] todas las categorías entran completas, también en 768 px de alto; los
-      bloques del pie (SISTEMA, búsqueda, energía) se muestran enteros o se ocultan;
+      recuadro de búsqueda del pie se muestra entero o se oculta;
 - [ ] cada categoría muestra **solo** apps instaladas;
 - [x] clic en una categoría abre el lanzador filtrado a esa categoría;
 - [x] escribir en "Buscar aplicaciones..." filtra sobre todas las apps (y en X11 lo tipeado llega al buscador);
@@ -206,15 +208,13 @@ Sidebar y lanzador:
       cambia el área de trabajo, así que ni los iconos del escritorio ni las
       ventanas maximizadas se mueven (BUG-33).
 
-Bloques del pie de la sidebar (solo aparecen si la pantalla es lo bastante
-alta; en 1360x768, la máquina de referencia, quedan ocultos y sus dos ítems
-`[ ]` no se pueden validar ahí):
+Bloque SISTEMA (botón de la barra de Nebula):
 
-- [x] los meters sondean solo con la sidebar desplegada y a la vista;
-- [ ] bloque SISTEMA: CPU/RAM/SWAP/Disco se mueven; GPU aparece con nombre y %
-      (o no aparece si no hay `nvidia-smi`); Red muestra ↓/↑ y la sparkline dibuja;
-- [x] los cinco botones de energía entran en el ancho;
-- [ ] apagar, reiniciar, cerrar sesión y suspender piden confirmación; bloquear bloquea.
+- [x] el botón despliega el bloque debajo de la barra y el segundo clic lo cierra;
+- [x] los meters sondean solo mientras el bloque está abierto;
+- [ ] CPU/RAM/SWAP/Disco se mueven; GPU aparece con nombre y % (o no aparece
+      si no hay `nvidia-smi`); Red muestra ↓/↑ y la sparkline dibuja;
+- [ ] el bloque se ve bien dentro del menú desplegable (ancho, colores, legibilidad).
 
 Barra de Nebula (`bar-position`: arriba por defecto):
 
