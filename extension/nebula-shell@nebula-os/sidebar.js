@@ -75,7 +75,6 @@ export class NebulaSidebar {
         this._inFullscreen = false;
         this._autoCollapseId = 0;
         this._hotEdge = null;
-        this._togglingVisibility = false;   // BUG-25: true durante el hide()+show() diferido
 
         this._launcher = FEATURES.launcher
             ? new NebulaLauncher(
@@ -502,7 +501,7 @@ export class NebulaSidebar {
                 // esas señales reales (mismo workaround que usa el propio
                 // GNOME Shell para este problema tras animaciones de slide).
                 //
-                // BUG-25 (docs/CRASH-BUG25.md): el toggle NO puede ser
+                // BUG-26 (docs/BUGS.md): el toggle NO puede ser
                 // sincronico aca: onComplete corre dentro del frame callback
                 // de Clutter, y hide()/show() ahi adentro provoco un segfault
                 // nativo real en mutter. Diferido a GLib.idle_add corre
@@ -511,10 +510,8 @@ export class NebulaSidebar {
                     this._addIdle(() => {
                         if (this._collapsed || !this._sidebar)
                             return;
-                        this._togglingVisibility = true;
                         this._sidebar.hide();
                         this._sidebar.show();
-                        this._togglingVisibility = false;
                     });
                 }
             },
@@ -533,7 +530,7 @@ export class NebulaSidebar {
             duration: REVEAL_MS,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
             onComplete: () => {
-                // BUG-25 (docs/CRASH-BUG25.md): mismo motivo que en _expand()
+                // BUG-26 (docs/BUGS.md): mismo motivo que en _expand()
                 // -- hide() y _queueUpdateRegions() no pueden correr dentro
                 // del frame callback de la animacion. Van juntos al mismo
                 // idle para que la region se recalcule ya con el hide()
@@ -542,9 +539,7 @@ export class NebulaSidebar {
                     this._addIdle(() => {
                         if (!this._collapsed || !this._sidebar)
                             return;
-                        this._togglingVisibility = true;
                         this._sidebar.hide();
-                        this._togglingVisibility = false;
                         Main.layoutManager._queueUpdateRegions?.();
                     });
                 }
@@ -637,7 +632,7 @@ export class NebulaSidebar {
         return id;
     }
 
-    // Igual que _addTimeout pero para GLib.idle_add (BUG-25): se cancela con
+    // Igual que _addTimeout pero para GLib.idle_add (BUG-26): se cancela con
     // el mismo mecanismo en destroy(), _timeoutIds solo guarda ids de fuentes
     // GLib cancelables, no importa si son timeout o idle.
     _addIdle(cb) {
