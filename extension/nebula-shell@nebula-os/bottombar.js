@@ -147,6 +147,21 @@ export class NebulaBottomBar {
         if (this._settings?.get_boolean('enable-meters'))
             right.add_child(this._buildMetersButton());
 
+        // Indicador de grabacion: con la barra de Nebula arriba, el panel de GNOME
+        // (donde vive el punto rojo y el stop) esta oculto. Este boton aparece
+        // solo mientras se graba y detiene la grabacion al hacer clic.
+        this._recButton = new St.Button({
+            style_class: 'nebula-tray-btn nebula-rec-btn',
+            child: new St.Label({text: '\u25CF REC', y_align: Clutter.ActorAlign.CENTER}),
+            can_focus: true,
+            visible: false,
+            accessible_name: 'Grabando la pantalla: clic para detener',
+        });
+        this._connect(this._recButton, 'clicked', () => Main.screenshotUI.stopScreencast());
+        this._connect(Main.screenshotUI, 'notify::screencast-in-progress', () => this._syncRec());
+        this._syncRec();
+        right.add_child(this._recButton);
+
         const systemIcons = new St.BoxLayout({style_class: 'nebula-system-icons'});
         for (const icon of ['audio-volume-high-symbolic', 'system-shutdown-symbolic'])
             systemIcons.add_child(new St.Icon({icon_name: icon, icon_size: 16}));
@@ -586,6 +601,10 @@ export class NebulaBottomBar {
     }
 
     // --- ciclo de vida -------------------------------------
+
+    _syncRec() {
+        this._recButton.visible = Main.screenshotUI.screencast_in_progress;
+    }
 
     _connect(target, signal, cb) {
         const id = target.connect(signal, cb);

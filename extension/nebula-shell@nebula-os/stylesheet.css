@@ -444,6 +444,18 @@
     border-radius: 6px;
 }
 
+.nebula-rec-btn {
+    color: #ffffff;
+    background-color: #dc2626;
+    font-weight: 700;
+    padding: 4px 10px;
+}
+
+.nebula-rec-btn:hover {
+    background-color: #ef4444;
+    color: #ffffff;
+}
+
 .nebula-tray-btn:hover {
     background-color: rgba(124, 58, 237, 0.25);
     color: #f3f4f6;
