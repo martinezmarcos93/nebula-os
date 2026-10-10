@@ -193,7 +193,7 @@ NEBULA_QUERY_EOF")
             (launcher :label "Configuracion de GPU (NVIDIA)" :cmd "nvidia-settings &")
             (launcher :label "Copias de seguridad (Deja Dup)" :cmd "deja-dup &")
             (launcher :label "Rescatar entorno" :cmd "nebula-rescue &")
-            (launcher :label "Energia (bloquear / salir)" :cmd "nebula-powermenu &"))
+            (launcher :label "Papelera" :cmd "nautilus trash:/// &"))
           (catgroup :name "Herramientas" :slug "herramientas" :icon "${EWW_CONFIG_DIR}/../nebula/icons/herramientas.png"
             (launcher :label "Calculadora" :cmd "gnome-calculator &")
             (launcher :label "Calendario" :cmd "gnome-calendar &")
@@ -211,9 +211,13 @@ NEBULA_QUERY_EOF")
             (launcher :label "Tienda de software" :cmd "gnome-software &")
             (launcher :label "Synaptic" :cmd "synaptic-pkexec &"))
           (catgroup :name "Configuracion" :slug "configuracion" :icon "${EWW_CONFIG_DIR}/../nebula/icons/configuracion.png"
-            (launcher :label "Configuracion del sistema" :cmd "gnome-control-center &")
-            (launcher :label "Ajustes avanzados" :cmd "gnome-tweaks &")
-            (launcher :label "Impresoras" :cmd "system-config-printer &"))
+            (launcher :label "Controladores adicionales" :cmd "software-properties-gtk --open-tab=4 &")
+            (launcher :label "Configuracion de red" :cmd "nm-connection-editor &")
+            (launcher :label "CPU-X" :cmd "cpu-x &")
+            (launcher :label "Caracteres" :cmd "gnome-characters &")
+            (launcher :label "Relojes" :cmd "gnome-clocks &")
+            (launcher :label "Neovim" :cmd "alacritty -e nvim &")
+            (launcher :label "Estadisticas de energia" :cmd "gnome-power-statistics &"))
         )
         ;; --- nebula:autogen END ---
         (box :class "results" :orientation "v" :space-evenly false :spacing 2 :visible {QUERY != ""}
@@ -237,13 +241,21 @@ NEBULA_QUERY_EOF")
 ;; (bspwm no la gestiona).
 ;; Se abre llevando el puntero al borde izquierdo (nebula-edge-sidebar) o con
 ;; Super + B; el daemon lo arranca bspwmrc sin abrir esta ventana.
-    ;; --- Nueva barra de disparo (trigger) ---
-    (defwindow nebula-trigger
-      :monitor 0
-      :geometry (geometry :x "0" :y "0" :width "10px" :height "100%" :anchor "left center")
-      :stacking "fg"
-      :wm-ignore true
-      (button :class "trigger-btn" :onclick "nebula-sidebar open" "▸"))
+;; Sidebar principal: la abre el boton de disparo o Super+B.
+(defwindow nebula-sidebar
+  :monitor 0
+  :geometry (geometry :x "0" :y "0" :width "260px" :height "100%" :anchor "left center")
+  :stacking "fg"
+  :wm-ignore true
+  (sidebar-content))
+
+;; Disparador manual fijo en el borde izquierdo.
+(defwindow nebula-trigger
+  :monitor 0
+  :geometry (geometry :x "0" :y "0" :width "10px" :height "100%" :anchor "left center")
+  :stacking "fg"
+  :wm-ignore true
+  (button :class "trigger-btn" :onclick "nebula-sidebar open" "▸"))
 
 
 ;; --- Barra de estado superior -----------------------------------------
