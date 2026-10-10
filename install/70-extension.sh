@@ -67,9 +67,12 @@ print(repr(lst))' "$current" "$UUID")"
         run gsettings set org.gnome.shell enabled-extensions "$new"
         ok "$UUID habilitada (activa en el proximo inicio de sesion GNOME)"
     fi
-    # Las extensiones de usuario pueden estar apagadas globalmente.
+    # No cambiar la preferencia global de GNOME: desactivar todas las
+    # extensiones puede ser una decisión deliberada del usuario. Si está
+    # activada, Nebula queda registrada pero GNOME no la cargará hasta que el
+    # usuario habilite las extensiones desde Ajustes.
     if [[ "$(gsettings get org.gnome.shell disable-user-extensions 2>/dev/null)" == "true" ]]; then
-        run gsettings set org.gnome.shell disable-user-extensions false
+        warn "GNOME tiene desactivadas globalmente las extensiones de usuario; no cambio esa preferencia. Habilita las extensiones manualmente si quieres usar Nebula Shell."
     fi
 else
     warn "sin gsettings: habilitala a mano con 'gnome-extensions enable $UUID' tras reiniciar sesion."
