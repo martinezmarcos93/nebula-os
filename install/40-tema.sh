@@ -182,12 +182,16 @@ if [[ "$THEME_GNOME" == "1" ]]; then
         # Resguardar el cursor previo del usuario antes de cambiar la sesión GNOME.
         backup_path "$DEFAULT_ICON_THEME"
         mkdir -p "$ICONS_DIR/default"
-        cat > "$DEFAULT_ICON_THEME" <<EOF
+        # Escribir temporal y reemplazar por rename: si el destino era un
+        # symlink, no seguirlo ni modificar el archivo al que apuntaba.
+        tmp_theme="$(mktemp)"
+        cat > "$tmp_theme" <<EOF
 [Icon Theme]
 Name=Default
 Comment=Nebula OS - cursor por defecto de la sesion
 Inherits=$CURSOR_NAME
 EOF
+        mv -f -- "$tmp_theme" "$DEFAULT_ICON_THEME"
         info "escrito: $DEFAULT_ICON_THEME (Inherits=$CURSOR_NAME)"
     fi
 elif grep -qs '^Comment=Nebula OS' "$DEFAULT_ICON_THEME"; then
