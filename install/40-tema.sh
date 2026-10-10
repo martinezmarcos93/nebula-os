@@ -78,7 +78,10 @@ install_nordic() {
 install_fluent() {
     [[ -d "$THEMES_DIR/Fluent-dark" ]] && { info "Fluent-dark ya instalado"; return 0; }
     local src; src="$(mktemp -d)"
-    if run git clone --depth 1 https://github.com/vinceliuice/Fluent-gtk-theme.git "$src/Fluent"; then
+    # Release fijado: no ejecutar install.sh desde la rama mutable master.
+    # Tag oficial 2025-04-17 (compatible con GNOME 46 y posteriores).
+    local fluent_tag="2025-04-17"
+    if run git clone --depth 1 --branch "$fluent_tag" https://github.com/vinceliuice/Fluent-gtk-theme.git "$src/Fluent"; then
         if ! run bash "$src/Fluent/install.sh" -d "$THEMES_DIR" -c dark; then
             warn "install.sh de Fluent-gtk-theme fallo; tema GTK queda en el que ya haya."
         fi
