@@ -238,10 +238,8 @@ NEBULA_QUERY_EOF")
       (label :halign "start" :class "temp-label" :text {TEMP != "" ? "TEMP ${TEMP}" : ""})
       (label :halign "start" :class "clock" :text "${DATE}  ${TIME}")))))
 
-;; UNA sola ventana, sin strut (no empuja las ventanas) y con :wm-ignore
-;; (bspwm no la gestiona).
-;; Se abre llevando el puntero al borde izquierdo (nebula-edge-sidebar) o con
-;; Super + B; el daemon lo arranca bspwmrc sin abrir esta ventana.
+;; Sidebar y disparador manual: el trigger se oculta al abrir el panel
+;; y se restaura al cerrarlo; ambos son overlays sin strut.
 ;; Sidebar principal: la abre el boton de disparo o Super+B.
 (defwindow nebula-sidebar
   :monitor 0
