@@ -179,6 +179,8 @@ if [[ "$THEME_GNOME" == "1" ]]; then
     if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
         info "[dry-run] escribiria $DEFAULT_ICON_THEME (Inherits=$CURSOR_NAME)"
     else
+        # Resguardar el cursor previo del usuario antes de cambiar la sesión GNOME.
+        backup_path "$DEFAULT_ICON_THEME"
         mkdir -p "$ICONS_DIR/default"
         cat > "$DEFAULT_ICON_THEME" <<EOF
 [Icon Theme]
