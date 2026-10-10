@@ -451,9 +451,10 @@ exec   = "nebula-rescue"
 icono  = "lifebuoy"
 
 [[categoria.app]]
-nombre = "Energia (bloquear / salir)"
-exec   = "nebula-powermenu"
-icono  = "power"
+nombre = "Papelera"
+exec   = "nautilus trash:///"
+icono  = "trash"
+
 
 
 [[categoria]]

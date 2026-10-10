@@ -237,14 +237,14 @@ NEBULA_QUERY_EOF")
 ;; (bspwm no la gestiona).
 ;; Se abre llevando el puntero al borde izquierdo (nebula-edge-sidebar) o con
 ;; Super + B; el daemon lo arranca bspwmrc sin abrir esta ventana.
-(defwindow nebula-sidebar
-  :monitor 0
-  :geometry (geometry :x "0" :y "0" :width "260px" :height "100%" :anchor "left center")
-  :stacking "fg"
-  ;; Sin :reserve: el sidebar se superpone, no empuja las ventanas.
-  ;; (:exclusive/:focusable eran propiedades de Wayland, ignoradas en X11.)
-  :wm-ignore true
-  (sidebar-content))
+    ;; --- Nueva barra de disparo (trigger) ---
+    (defwindow nebula-trigger
+      :monitor 0
+      :geometry (geometry :x "0" :y "0" :width "10px" :height "100%" :anchor "left center")
+      :stacking "fg"
+      :wm-ignore true
+      (button :class "trigger-btn" :onclick "nebula-sidebar open" "▸"))
+
 
 ;; --- Barra de estado superior -----------------------------------------
 ;; Siempre visible (la abre bspwmrc al iniciar sesion). Marca (izq.) · taskbar
