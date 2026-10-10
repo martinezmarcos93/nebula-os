@@ -542,16 +542,37 @@ nombre = "Configuracion"
 icono  = "settings"
 
 [[categoria.app]]
-nombre = "Configuracion del sistema"
-exec   = "gnome-control-center"
+nombre = "Controladores adicionales"
+exec   = "software-properties-gtk --open-tab=4"
 icono  = "settings"
 
 [[categoria.app]]
-nombre = "Ajustes avanzados"
-exec   = "gnome-tweaks"
-icono  = "tweaks"
+nombre = "Configuracion de red"
+exec   = "nm-connection-editor"
+icono  = "wifi"
 
 [[categoria.app]]
-nombre = "Impresoras"
-exec   = "system-config-printer"
-icono  = "printer"
+nombre = "CPU-X"
+exec   = "cpu-x"
+icono  = "cpu"
+
+[[categoria.app]]
+nombre = "Caracteres"
+exec   = "gnome-characters"
+icono  = "font"
+
+[[categoria.app]]
+nombre = "Relojes"
+exec   = "gnome-clocks"
+icono  = "clock"
+
+[[categoria.app]]
+nombre = "Neovim"
+exec   = "alacritty -e nvim"
+icono  = "edit"
+
+[[categoria.app]]
+nombre = "Estadisticas de energia"
+exec   = "gnome-power-statistics"
+icono  = "battery"
+
