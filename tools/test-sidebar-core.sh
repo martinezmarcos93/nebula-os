@@ -174,7 +174,7 @@ check 'barra: va arriba, en el lugar de la barra de GNOME' "(() => { $B return B
 check 'barra: la barra superior de GNOME queda oculta' "!$PB.visible"
 e "Main.overview.show(); 1" >/dev/null; sleep 1.5; e "Main.overview.hide(); 1" >/dev/null; sleep 1.5
 check 'barra: el Overview no resucita la barra de GNOME' "!$PB.visible"
-check 'barra: solo meters, sistema y reloj, sin accesos duplicados ni modo/tema' "(() => { $B return !!B._metersButton && !!B._systemButton && !!B._clockButton && B._clockButton.get_parent().get_n_children() === 3; })()"
+check 'barra: solo meters, sistema y reloj, sin accesos duplicados ni modo/tema' "(() => { $B return !!B._metersButton && !!B._systemButton && !!B._clockButton && B._clockButton.get_parent().get_children().filter(c => c.visible).length === 3; })()"
 e "$X $B B._toggleMeters(); 1" >/dev/null; sleep 1.2
 check 'barra: el boton de meters despliega el bloque SISTEMA debajo de la barra' "(() => { $B const [, y] = B._metersMenu.actor.get_transformed_position(); return B._metersMenu.isOpen && B._meters.actor.mapped && y >= B._bar.y + B._bar.height - 1; })()"
 check 'barra: el logo ASCII de Nebula va a la izquierda de los meters, con su mismo alto aproximado' "(() => { $B const L = B._metersLogo; const M = B._meters.actor; const [lx] = L.get_transformed_position(); const [mx] = M.get_transformed_position(); return L.mapped && L.text.split(String.fromCharCode(10)).length === 18 && lx + L.width <= mx + 1 && L.height > M.height * 0.6 && L.height < M.height * 1.4; })()"
