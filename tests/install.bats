@@ -61,6 +61,7 @@ setup() { setup_home; }
     stub gnome-shell 'echo "GNOME Shell 46.0"'
     # "dconf" simulado en un archivo: CLAVE=VALOR por linea.
     echo "org.gnome.shell enabled-extensions=['ubuntu-dock@ubuntu.com']" > "$HOME/gsettings.db"
+    echo "org.gnome.shell disable-user-extensions=true" >> "$HOME/gsettings.db"
     stub gsettings 'f="$HOME/gsettings.db"
         case "$1" in
           get) grep -m1 "^$2 $3=" "$f" | cut -d= -f2- ;;
@@ -72,6 +73,7 @@ setup() { setup_home; }
     [ -f "$HOME/.local/share/gnome-shell/extensions/nebula-shell@nebula-os/metadata.json" ]
     [ ! -L "$HOME/.local/share/gnome-shell/extensions/nebula-shell@nebula-os" ]
     grep -q "enabled-extensions=\['ubuntu-dock@ubuntu.com', 'nebula-shell@nebula-os'\]" "$HOME/gsettings.db"
+    grep -q "disable-user-extensions=true" "$HOME/gsettings.db"
     run env NEBULA_EXTENSION=auto NEBULA_DRY_RUN=0 bash "$REPO/install/70-extension.sh"
     [[ "$output" == *"ya estaba en enabled-extensions"* ]]
 }
@@ -83,3 +85,4 @@ setup() { setup_home; }
     [ "$status" -eq 0 ]
     [[ "$output" == *"validada solo en 46"* ]]
 }
+

@@ -48,12 +48,20 @@
 }
 
 /* Franja invisible pegada al borde: solo un tenue destello al pasar el mouse. */
-.nebula-hot-edge {
-    background-color: transparent;
+.nebula-edge-arrow {
+    background-color: rgba(12, 12, 22, 0.78);
+    color: #22d3ee;
+    font-size: 22pt;
+    font-weight: bold;
+    border-radius: 0 10px 10px 0;
+    border: 1px solid rgba(124, 58, 237, 0.55);
+    border-left-width: 0;
+    padding: 0;
 }
 
-.nebula-hot-edge:hover {
-    background-color: rgba(124, 58, 237, 0.22);
+.nebula-edge-arrow:hover {
+    background-color: rgba(124, 58, 237, 0.55);
+    color: #f3f4f6;
 }
 
 .nebula-subtitle {

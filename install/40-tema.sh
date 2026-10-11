@@ -78,7 +78,10 @@ install_nordic() {
 install_fluent() {
     [[ -d "$THEMES_DIR/Fluent-dark" ]] && { info "Fluent-dark ya instalado"; return 0; }
     local src; src="$(mktemp -d)"
-    if run git clone --depth 1 https://github.com/vinceliuice/Fluent-gtk-theme.git "$src/Fluent"; then
+    # Release fijado: no ejecutar install.sh desde la rama mutable master.
+    # Tag oficial 2025-04-17 (compatible con GNOME 46 y posteriores).
+    local fluent_tag="2025-04-17"
+    if run git clone --depth 1 --branch "$fluent_tag" https://github.com/vinceliuice/Fluent-gtk-theme.git "$src/Fluent"; then
         if ! run bash "$src/Fluent/install.sh" -d "$THEMES_DIR" -c dark; then
             warn "install.sh de Fluent-gtk-theme fallo; tema GTK queda en el que ya haya."
         fi
@@ -176,13 +179,19 @@ if [[ "$THEME_GNOME" == "1" ]]; then
     if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
         info "[dry-run] escribiria $DEFAULT_ICON_THEME (Inherits=$CURSOR_NAME)"
     else
+        # Resguardar el cursor previo del usuario antes de cambiar la sesión GNOME.
+        backup_path "$DEFAULT_ICON_THEME"
         mkdir -p "$ICONS_DIR/default"
-        cat > "$DEFAULT_ICON_THEME" <<EOF
+        # Escribir temporal y reemplazar por rename: si el destino era un
+        # symlink, no seguirlo ni modificar el archivo al que apuntaba.
+        tmp_theme="$(mktemp)"
+        cat > "$tmp_theme" <<EOF
 [Icon Theme]
 Name=Default
 Comment=Nebula OS - cursor por defecto de la sesion
 Inherits=$CURSOR_NAME
 EOF
+        mv -f -- "$tmp_theme" "$DEFAULT_ICON_THEME"
         info "escrito: $DEFAULT_ICON_THEME (Inherits=$CURSOR_NAME)"
     fi
 elif grep -qs '^Comment=Nebula OS' "$DEFAULT_ICON_THEME"; then

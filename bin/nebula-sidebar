@@ -64,16 +64,23 @@ set_query() {
 open() {
     is_open && { ew update SIDEBAR_REVEAL=true; return 0; }
     ew update SIDEBAR_REVEAL=false QUERY="" RESULTS="[]" CAT_OPEN="" >/dev/null 2>&1
-    ew open "$WIN" >/dev/null 2>&1 || return 1
+    # Ocultar el disparador mientras el panel ocupa el borde, para que no se
+    # superponga a los primeros pixeles del sidebar.
+    ew close nebula-trigger >/dev/null 2>&1 || true
+    ew open "$WIN" >/dev/null 2>&1 || { ew open nebula-trigger >/dev/null 2>&1 || true; return 1; }
     sleep 0.05                       # que GTK mapee la ventana antes de animar
     ew update SIDEBAR_REVEAL=true
 }
 
 close() {
-    is_open || return 0
+    if ! is_open; then
+        ew open nebula-trigger >/dev/null 2>&1 || true
+        return 0
+    fi
     ew update SIDEBAR_REVEAL=false
     sleep "$SLIDE_S"                  # dejar terminar el deslizamiento
     ew close "$WIN" >/dev/null 2>&1
+    ew open nebula-trigger >/dev/null 2>&1 || true
     # Vaciar tambien el texto guardado, bajo el mismo lock: un publish_query
     # atrasado no debe re-llenar el buscador despues de cerrar.
     if mkdir -p "$QDIR" 2>/dev/null && exec 9> "$QDIR/sidebar-query.lock"; then

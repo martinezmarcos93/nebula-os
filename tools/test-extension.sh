@@ -70,6 +70,16 @@ EOF
 chmod +x "$T/bin/nebtestapp"
 printf '[Desktop Entry]\nType=Application\nName=Nebula Test App\nExec=%s\n' "$T/bin/nebtestapp" \
     > "$XDG_DATA_HOME/applications/nebtestapp.desktop"
+# Pares de .desktop con el mismo ejecutable (como gnome-terminal / Terminal
+# Preferences): uno oculto y uno visible. Gio.AppInfo.get_all() los entrega en
+# orden de hash, asi que con 8 pares alguno trae el oculto primero seguro.
+for n in 1 2 3 4 5 6 7 8; do
+    printf '#!/bin/sh\nexit 0\n' > "$T/bin/nebtestdup$n"; chmod +x "$T/bin/nebtestdup$n"
+    printf '[Desktop Entry]\nType=Application\nName=Dup%s Oculto\nComment=desc-oculta\nNoDisplay=true\nExec=nebtestdup%s --preferences\n' "$n" "$n" \
+        > "$XDG_DATA_HOME/applications/nebtestdup$n-prefs.desktop"
+    printf '[Desktop Entry]\nType=Application\nName=Dup%s Visible\nComment=desc-visible\nExec=nebtestdup%s\n' "$n" "$n" \
+        > "$XDG_DATA_HOME/applications/nebtestdup$n.desktop"
+done
 export PATH="$T/bin:$PATH"
 
 cat > "$T/common.sh" <<'SCEN'
@@ -140,19 +150,36 @@ check "FS-16: 5 repoblados no acumulan senales" "(() => { const n = S._signalIds
 e "$X S._expand(); L.open(0); 1" >/dev/null; sleep 1
 WAYLAND_DISPLAY="$(ls "$XDG_RUNTIME_DIR" | grep -m1 '^wayland-[0-9]*$')" gjs "$FSWIN" >/dev/null 2>&1 &
 sleep 3
-check "fullscreen: sidebar, borde y lanzador ocultos" "S._monitor().inFullscreen && !S._sidebar.visible && !S._hotEdge.visible && !L._panel.visible"
+check "fullscreen: sidebar, borde y lanzador ocultos" "S._monitor().inFullscreen && !S._sidebar.visible && !S._edgeArrow.visible && !L._panel.visible"
 check "fullscreen: 0 holds (scanout directo para juegos)" "G._count === 0"
 e "$X S._expand(); 1" >/dev/null; sleep 0.5
 check "fullscreen: rozar el borde no revela la sidebar" "!S._sidebar.visible"
 sleep 4
-check "fin del fullscreen: vuelve la franja de borde"   "!S._monitor().inFullscreen && S._hotEdge.visible"
+check "fin del fullscreen: la flecha refleja el estado (visible solo retraida)" "!S._monitor().inFullscreen && S._edgeArrow.visible === S._collapsed"
 check "fin del fullscreen: la sidebar respeta su estado" "S._sidebar.visible === !S._collapsed"
+
+# Flecha manual del borde: aparece solo con la sidebar retraida y su clic la despliega.
+e "$X S._collapse(); 1" >/dev/null; sleep 0.6
+check "flecha: con la sidebar retraida la flecha se ve" "S._collapsed && S._edgeArrow.visible && !S._sidebar.visible"
+e "$X S._edgeArrow.emit('clicked', 0); 1" >/dev/null; sleep 0.6
+check "flecha: el clic despliega la sidebar y se oculta" "!S._collapsed && S._sidebar.visible && !S._edgeArrow.visible"
 
 # launch() (R-309): sin argumentos -> Shell.App del .desktop; con argumentos
 # -> AppInfo desde la linea de comandos (conserva los argumentos).
 e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__nl = [m.launch('nebtestapp'), m.launch('nebtestapp --con-args')].join(','); }); 1" >/dev/null
 sleep 2
 check "launch(): sin argumentos usa Shell.App; con argumentos, AppInfo" "globalThis.__nl === 'app,appinfo'"
+
+# "Otras aplicaciones": una app del grid que el .toml no nombra (nebtestapp) cae
+# ahi, con un exec unico y lanzable; las del .toml no se repiten ahi.
+e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { const model = m.buildModel(Main.extensionManager.lookup('nebula-shell@nebula-os').path); const o = model.find(c => c.nombre === 'Otras aplicaciones'); const resto = new Set(model.filter(c => c !== o && c.nombre !== 'Favoritos' && c.nombre !== 'Recientes').flatMap(c => c.apps.map(a => a.exec))); globalThis.__ot = JSON.stringify({names: o ? o.apps.map(a => a.nombre) : [], last: model[model.length - 1].nombre, dup: o ? o.apps.filter(a => resto.has(a.exec)).length : 0}); }); 1" >/dev/null
+sleep 2
+check "Otras aplicaciones: incluye la app sin categoria, al final del panel" "JSON.parse(globalThis.__ot).names.includes('Nebula Test App') && JSON.parse(globalThis.__ot).last === 'Otras aplicaciones'"
+check "Otras aplicaciones: no repite apps que ya estan en otra categoria" "JSON.parse(globalThis.__ot).dup === 0"
+# Mapa ejecutable -> .desktop: gana la app visible sobre la oculta que comparte ejecutable.
+e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__dd = [1, 2, 3, 4, 5, 6, 7, 8].map(n => m.descForApp({exec: 'nebtestdup' + n})).join(','); }); 1" >/dev/null
+sleep 1
+check "icono/descripcion: un .desktop oculto no le gana al visible del mismo ejecutable" "globalThis.__dd === Array(8).fill('desc-visible').join(',')"
 if grep -qx -- '--con-args' "$T/launched.txt" 2>/dev/null && grep -qx '' "$T/launched.txt" 2>/dev/null; then
     ok "launch(): la app corrio las dos veces y conservo los argumentos"
 else
@@ -221,7 +248,9 @@ sleep 2
 e "Main.overview.hide(); 1" >/dev/null; sleep 1.5
 focus() { xdotool getwindowfocus getwindowname 2>/dev/null; }
 cat_xy() { e "$X (() => { const b = S._catButtons[$1]; const [x, y] = b.get_transformed_position(); const [w, h] = b.get_transformed_size(); return Math.round(x + w/2) + ' ' + Math.round(y + h/2); })()" | tr -dc '0-9 ' | xargs; }
-reveal() { xdotool mousemove 700 400; sleep 1.2; xdotool mousemove 1 400; sleep 0.8; }
+arrow_xy() { e "$X (() => { const b = S._edgeArrow; const [x, y] = b.get_transformed_position(); const [w, h] = b.get_transformed_size(); return Math.round(x + w/2) + ' ' + Math.round(y + h/2); })()" | tr -dc '0-9 ' | xargs; }
+# La sidebar ahora se revela con un clic en la flecha del borde (ya no por hover).
+reveal() { xdotool mousemove 700 400; sleep 0.6; [[ "$(e "$X S._collapsed ? 'SI' : 'NO'")" == *SI* ]] || return 0; read -r ax ay <<< "$(arrow_xy)"; xdotool mousemove "$ax" "$ay"; sleep 0.3; xdotool click 1; sleep 0.8; }
 
 # FS-20 con clics reales: tras usar el lanzador y pasar por el Overview, un
 # clic en la zona donde estaba el lanzador debe llegar a la ventana de atras.

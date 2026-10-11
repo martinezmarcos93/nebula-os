@@ -175,7 +175,18 @@ $cian:    #22d3ee;
 }
 .bar-rec:hover { color: #fca5a5; }
 
-/* --- Barra lateral: submenus, buscador, resultados (Fase UX) ---------- */
+.trigger-btn {
+  background-color: rgba(10, 10, 20, 0.4);
+  color: $violeta;
+  font-size: 20px;
+  border-radius: 0 8px 8px 0;
+  
+  &:hover {
+    background-color: $violeta;
+    color: $bg;
+  }
+}
+
 window { background-color: transparent; }
 
 .search {

@@ -135,10 +135,18 @@ def test_flatpak_requiere_el_desktop_de_ese_app_id(tmp_path, monkeypatch):
     # `flatpak` esta en el PATH pero la app puntual NO: antes daba "instalada".
     _ejecutable(tmp_path / "bin" / "flatpak")
     monkeypatch.setenv("PATH", str(tmp_path / "bin"))
+    
+    # Mockear las rutas de desktop para que solo miren nuestro tmp_path
+    fake_data = tmp_path / "fake_data"
+    monkeypatch.setattr(nc, "_desktop_dirs", lambda: [fake_data / "applications"])
+    
     assert not nc.installed("flatpak run com.discordapp.Discord")
-    desk = tmp_path / "home/.local/share/flatpak/exports/share/applications/com.discordapp.Discord.desktop"
+    
+    # Crear el desktop en nuestra ruta fake
+    desk = fake_data / "applications" / "com.discordapp.Discord.desktop"
     desk.parent.mkdir(parents=True)
     desk.write_text("[Desktop Entry]\n")
+    
     assert nc.installed("flatpak run com.discordapp.Discord")
     assert nc.installed("flatpak run --branch=stable com.discordapp.Discord")
 

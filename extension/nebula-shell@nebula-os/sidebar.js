@@ -42,7 +42,8 @@ const SIDEBAR_WIDTH = 236;    // px de ancho (superpuesta: no reserva area de tr
 const CAT_ICON = 16;
 const CLOCK_TICK_S = 15;
 const REPOPULATE_DEBOUNCE_MS = 1500;
-const HOT_EDGE_W = 6;         // franja reactiva pegada al borde para revelar
+const EDGE_ARROW_W = 18;      // flechita que despliega la sidebar (clic)
+const EDGE_ARROW_H = 64;
 const AUTO_COLLAPSE_MS = 350; // gracia tras salir el puntero antes de retraer
 const REVEAL_MS = 180;        // duracion de la animacion mostrar/ocultar
 const FIRST_COLLAPSE_MS = 1600; // se retrae sola al arrancar si el puntero no esta encima
@@ -66,7 +67,7 @@ export class NebulaSidebar {
         this._collapsed = false;
         this._inFullscreen = false;
         this._autoCollapseId = 0;
-        this._hotEdge = null;
+        this._edgeArrow = null;
 
         this._launcher = this._settings.get_boolean('enable-launcher')
             ? new NebulaLauncher(
@@ -160,21 +161,22 @@ export class NebulaSidebar {
         // que esta visible todo el tiempo.
         this._unredirectSignalId = this._unredirect.track(this._sidebar);
 
-        // Franja invisible pegada al borde izquierdo: al pasar el puntero por
-        // encima con la sidebar retraida, la vuelve a mostrar. No reserva espacio.
-        this._hotEdge = new St.Widget({
-            style_class: 'nebula-hot-edge',
+        // Flechita pegada al borde izquierdo, visible solo con la sidebar
+        // retraida: un clic la despliega. Acercar el puntero al borde NO hace
+        // nada (se pedia control manual). No reserva espacio.
+        this._edgeArrow = new St.Button({
+            style_class: 'nebula-edge-arrow',
+            label: '›',
             reactive: true,
+            can_focus: false,
             track_hover: true,
+            visible: this._collapsed,
         });
-        Main.layoutManager.addChrome(this._hotEdge, {
+        Main.layoutManager.addChrome(this._edgeArrow, {
             affectsStruts: false,
             affectsInputRegion: true,
         });
-        this._connect(this._hotEdge, 'notify::hover', () => {
-            if (this._hotEdge.hover)
-                this._expand();
-        });
+        this._connect(this._edgeArrow, 'clicked', () => this._expand());
         this._connect(this._sidebar, 'notify::hover', () => this._onSidebarHover());
     }
 
@@ -210,8 +212,8 @@ export class NebulaSidebar {
         this._sidebar.set_size(SIDEBAR_WIDTH, height);
         this._sidebar.translation_x = this._collapsed ? -SIDEBAR_WIDTH : 0;
 
-        this._hotEdge?.set_position(m.x, top);
-        this._hotEdge?.set_size(HOT_EDGE_W, height);
+        this._edgeArrow?.set_position(m.x, top + Math.round((height - EDGE_ARROW_H) / 2));
+        this._edgeArrow?.set_size(EDGE_ARROW_W, EDGE_ARROW_H);
         this._fitToHeight();
     }
 
@@ -472,9 +474,10 @@ export class NebulaSidebar {
             this._cancelAutoCollapse();
             this._launcher?.close('fullscreen');
             this._sidebar.hide();
-            this._hotEdge?.hide();
+            this._edgeArrow?.hide();
         } else {
-            this._hotEdge?.show();
+            if (this._edgeArrow)
+                this._edgeArrow.visible = this._collapsed;
             if (!this._collapsed)
                 this._sidebar.show();
         }
@@ -486,6 +489,7 @@ export class NebulaSidebar {
         if (!this._collapsed || this._inFullscreen)
             return;
         this._collapsed = false;
+        this._edgeArrow?.hide();
         this._sidebar.show();
         // Recien al mostrarse los estilos estan resueltos del todo: las medidas
         // tomadas al construir pueden quedar largas y ocultar bloques de mas.
@@ -537,6 +541,8 @@ export class NebulaSidebar {
         if (this._collapsed || this._pinned())
             return;
         this._collapsed = true;
+        if (this._edgeArrow && !this._inFullscreen)
+            this._edgeArrow.show();
         this._launcher?.close('sidebar-collapse');
         this._sidebar.ease({
             translation_x: -SIDEBAR_WIDTH,
@@ -572,7 +578,7 @@ export class NebulaSidebar {
         this._cancelAutoCollapse();
         this._autoCollapseId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, AUTO_COLLAPSE_MS, () => {
             this._autoCollapseId = 0;
-            if (!this._sidebar?.hover && !this._hotEdge?.hover && !this._launcher?.visible)
+            if (!this._sidebar?.hover && !this._launcher?.visible)
                 this._collapse();
             return GLib.SOURCE_REMOVE;
         });
@@ -684,10 +690,10 @@ export class NebulaSidebar {
         this._launcher?.destroy();
         this._launcher = null;
 
-        if (this._hotEdge) {
-            Main.layoutManager.removeChrome(this._hotEdge);
-            this._hotEdge.destroy();
-            this._hotEdge = null;
+        if (this._edgeArrow) {
+            Main.layoutManager.removeChrome(this._edgeArrow);
+            this._edgeArrow.destroy();
+            this._edgeArrow = null;
         }
         if (this._sidebar) {
             // Desconectar y liberar el unredirect ANTES de destruir el actor:
