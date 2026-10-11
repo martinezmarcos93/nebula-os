@@ -26,9 +26,10 @@ Hace:
 - **Sidebar ancha** (~236 px) en el borde izquierdo del monitor primario, con
   **auto-colapso**: se retrae sola 1.6 s después de iniciar si el puntero no
   está encima (`FIRST_COLLAPSE_MS`), y de nuevo 350 ms después de que el
-  puntero se aleja (`AUTO_COLLAPSE_MS`); se revela acercando el puntero a una
-  franja de 6 px pegada al borde (`HOT_EDGE_W`) — mismo patrón de *hot edge*
-  que `nebula-edge-sidebar` en el núcleo bspwm, no una ventana siempre fija.
+  puntero se aleja (`AUTO_COLLAPSE_MS`); se revela con un **clic en una
+  flechita** (`›`, `EDGE_ARROW_W`×`EDGE_ARROW_H`) pegada al borde izquierdo,
+  visible solo con la sidebar retraída. Acercar el puntero al borde ya no la
+  despliega (antes era una franja *hot edge* de 6 px).
   Se superpone al escritorio **sin reservar espacio** (sin `struts`, BUG-33):
   desplegarla no cambia el área de trabajo, así que ni los iconos del
   escritorio ni las ventanas maximizadas se reacomodan. Contenido:

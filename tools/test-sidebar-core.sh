@@ -70,7 +70,7 @@ check 'estado inicial coherente (visible <=> no colapsada)' "S._sidebar.visible 
 e "$X S._expand(); 1" >/dev/null; sleep .6
 # BUG-33: desplegar/colapsar no debe tocar el area de trabajo (DING reubica los
 # iconos y las ventanas maximizadas se redimensionan en cada workareas-changed).
-check 'la sidebar no reserva struts (BUG-33)' "!Main.layoutManager._trackedActors.some(t => t.affectsStruts && (t.actor === S._sidebar || t.actor === S._hotEdge || t.actor === L._panel))"
+check 'la sidebar no reserva struts (BUG-33)' "!Main.layoutManager._trackedActors.some(t => t.affectsStruts && (t.actor === S._sidebar || t.actor === S._edgeArrow || t.actor === L._panel))"
 WA="(() => { const r = global.workspace_manager.get_active_workspace().get_work_area_for_monitor(Main.layoutManager.primaryIndex); return [r.x, r.y, r.width, r.height].join(','); })()"
 # El Ubuntu Dock tambien reserva struts y se acomoda asincronicamente al
 # iniciar: esperar a que el area de trabajo se estabilice antes de medir.
@@ -174,7 +174,7 @@ check 'barra: va arriba, en el lugar de la barra de GNOME' "(() => { $B return B
 check 'barra: la barra superior de GNOME queda oculta' "!$PB.visible"
 e "Main.overview.show(); 1" >/dev/null; sleep 1.5; e "Main.overview.hide(); 1" >/dev/null; sleep 1.5
 check 'barra: el Overview no resucita la barra de GNOME' "!$PB.visible"
-check 'barra: solo meters, sistema y reloj, sin accesos duplicados ni modo/tema' "(() => { $B return !!B._metersButton && !!B._systemButton && !!B._clockButton && B._clockButton.get_parent().get_n_children() === 3; })()"
+check 'barra: solo meters, sistema y reloj, sin accesos duplicados ni modo/tema' "(() => { $B return !!B._metersButton && !!B._systemButton && !!B._clockButton && B._clockButton.get_parent().get_children().filter(c => c.visible).length === 3; })()"
 e "$X $B B._toggleMeters(); 1" >/dev/null; sleep 1.2
 check 'barra: el boton de meters despliega el bloque SISTEMA debajo de la barra' "(() => { $B const [, y] = B._metersMenu.actor.get_transformed_position(); return B._metersMenu.isOpen && B._meters.actor.mapped && y >= B._bar.y + B._bar.height - 1; })()"
 check 'barra: el logo ASCII de Nebula va a la izquierda de los meters, con su mismo alto aproximado' "(() => { $B const L = B._metersLogo; const M = B._meters.actor; const [lx] = L.get_transformed_position(); const [mx] = M.get_transformed_position(); return L.mapped && L.text.split(String.fromCharCode(10)).length === 18 && lx + L.width <= mx + 1 && L.height > M.height * 0.6 && L.height < M.height * 1.4; })()"
@@ -281,7 +281,8 @@ $XT -geometry 90x45+240+100 -T izquierda >/dev/null 2>&1 &
 sleep 1.5
 e "Main.overview.hide(); 1" >/dev/null; sleep 1
 cat_xy(){ e "$X (() => { const b=S._catButtons[$1]; const [x,y]=b.get_transformed_position(); const [w,h]=b.get_transformed_size(); return Math.round(x+w/2)+' '+Math.round(y+h/2); })()" | tr -dc '0-9 ' | xargs; }
-reveal(){ xdotool mousemove 700 400; sleep .5; xdotool mousemove 1 400; sleep 1; }
+arrow_xy(){ e "$X (() => { const b=S._edgeArrow; const [x,y]=b.get_transformed_position(); const [w,h]=b.get_transformed_size(); return Math.round(x+w/2)+' '+Math.round(y+h/2); })()" | tr -dc '0-9 ' | xargs; }
+reveal(){ xdotool mousemove 700 400; sleep .5; [[ "$(e "$X S._collapsed ? 'SI' : 'NO'")" == *SI* ]] || return 0; read -r ax ay <<< "$(arrow_xy)"; xdotool mousemove "$ax" "$ay"; sleep .3; xdotool click 1; sleep 1; }
 okc=0
 for _ in 1 2 3; do
   reveal; read -r cx cy <<< "$(cat_xy 0)"
