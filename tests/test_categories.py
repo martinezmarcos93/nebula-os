@@ -286,3 +286,24 @@ def test_search_cli_json_y_exec(tmp_path):
     r = subprocess.run([sys.executable, str(SCRIPT), "search", "zzqq", "--format", "exec", "--toml", str(toml)],
                        capture_output=True, text=True, env=env)
     assert r.returncode == 1 and r.stdout == ""
+
+
+def test_las_terminales_abren_ventana_nueva_en_cada_clic():
+    """`multi = true` en el .toml: la extension de GNOME abre una ventana nueva
+    en vez de traer al frente la ya abierta (solo las terminales lo necesitan)."""
+    import json
+
+    datos = json.loads(subprocess.check_output(
+        [sys.executable, str(SCRIPT), "json", "--toml", str(REPO / "dotfiles/nebula/categories.toml")],
+        text=True))
+    terminales = {"alacritty", "kitty", "wezterm", "gnome-terminal", "tilix", "konsole", "xterm"}
+    multi, otras = set(), []
+    for cat in datos["categoria"]:
+        for app in cat.get("app", []):
+            programa = app["exec"].split()[0]
+            if app.get("multi") is True:
+                multi.add(programa)
+            elif programa in terminales and " -e " not in app["exec"]:
+                otras.append(app["nombre"])
+    assert terminales <= multi, f"terminales sin multi: {terminales - multi}"
+    assert not otras, f"terminal sin multi = true: {otras}"

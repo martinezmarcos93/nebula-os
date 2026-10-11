@@ -18,6 +18,10 @@
 # es provisional (sera una lista de pins del usuario) y "Configuracion" abre los
 # ajustes del sistema.
 #
+# `multi = true` marca las apps de las que se quieren varias ventanas a la vez
+# (terminales): en la extension de GNOME un clic abre SIEMPRE una ventana nueva,
+# en vez de traer al frente la que ya esta abierta (lo normal para el resto).
+#
 # Tras editar:
 #   - extension:  bash extension/build.sh        (regenera categories.json)
 #   - bspwm:      nebula-gen-panel               (o Super+Shift+C)
@@ -33,6 +37,7 @@ icono  = "star"
 nombre = "Terminal"
 exec   = "alacritty"
 icono  = "terminal"
+multi  = true
 
 [[categoria.app]]
 nombre = "Navegador web"
@@ -63,37 +68,43 @@ icono  = "terminal"
 nombre = "Alacritty"
 exec   = "alacritty"
 icono  = "terminal"
+multi  = true
 
 [[categoria.app]]
 nombre = "Kitty"
 exec   = "kitty"
 icono  = "terminal"
+multi  = true
 
 [[categoria.app]]
 nombre = "WezTerm"
 exec   = "wezterm"
 icono  = "terminal"
+multi  = true
 
 [[categoria.app]]
 nombre = "GNOME Terminal"
 exec   = "gnome-terminal"
 icono  = "terminal"
+multi  = true
 
 [[categoria.app]]
 nombre = "Tilix"
 exec   = "tilix"
 icono  = "terminal"
+multi  = true
 
 [[categoria.app]]
 nombre = "Konsole"
 exec   = "konsole"
 icono  = "terminal"
+multi  = true
 
 [[categoria.app]]
 nombre = "xterm"
 exec   = "xterm"
 icono  = "terminal"
-
+multi  = true
 
 [[categoria]]
 nombre = "Navegadores"
@@ -153,6 +164,7 @@ icono  = "code"
 nombre = "Terminal"
 exec   = "alacritty"
 icono  = "terminal"
+multi  = true
 
 [[categoria.app]]
 nombre = "VS Code"

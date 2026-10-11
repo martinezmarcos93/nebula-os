@@ -176,6 +176,11 @@ e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').pat
 sleep 2
 check "Otras aplicaciones: incluye la app sin categoria, al final del panel" "JSON.parse(globalThis.__ot).names.includes('Nebula Test App') && JSON.parse(globalThis.__ot).last === 'Otras aplicaciones'"
 check "Otras aplicaciones: no repite apps que ya estan en otra categoria" "JSON.parse(globalThis.__ot).dup === 0"
+# Terminales (multi): un clic abre ventana nueva; el resto sigue trayendo al frente la abierta.
+e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__mw = [m.shouldOpenNewWindow({multi: true}), m.shouldOpenNewWindow({multi: false}), m.shouldOpenNewWindow({}), m.shouldOpenNewWindow({}, true)].join(','); }); 1" >/dev/null
+sleep 1
+check "multi: terminales abren ventana nueva; el resto trae la abierta al frente" "globalThis.__mw === 'true,false,false,true'"
+
 # Mapa ejecutable -> .desktop: gana la app visible sobre la oculta que comparte ejecutable.
 e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__dd = [1, 2, 3, 4, 5, 6, 7, 8].map(n => m.descForApp({exec: 'nebtestdup' + n})).join(','); }); 1" >/dev/null
 sleep 1

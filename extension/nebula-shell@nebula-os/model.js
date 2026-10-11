@@ -126,7 +126,11 @@ export function launch(exec, newWindow = false) {
     const desktopId = flatId
         ? `${flatId}.desktop`
         : (argv.length === 1 ? execInfoMap().get(firstToken(exec))?.id : null);
-    const app = desktopId ? appSystem.lookup_app(desktopId) : null;
+    let app = desktopId ? appSystem.lookup_app(desktopId) : null;
+    // Pidieron ventana nueva y la app ya tiene una pero no sabe abrir otra:
+    // se lanza otra instancia (AppInfo) en vez de activar la existente.
+    if (app && newWindow && app.get_n_windows() > 0 && !app.can_open_new_window())
+        app = null;
     if (app) {
         try {
             // Sin evento en curso (p. ej. llamada diferida) get_current_time()
@@ -458,7 +462,13 @@ export function launchEntry(entry, newWindow = false) {
         openLocation(entry);
         return 'location';
     }
-    return launch(entry.exec, newWindow);
+    return launch(entry.exec, shouldOpenNewWindow(entry, newWindow));
+}
+
+/** Un clic normal trae al frente la ventana de la app si ya esta abierta (BUG-34);
+ * las apps `multi` del .toml (terminales) abren siempre una ventana nueva. */
+export function shouldOpenNewWindow(entry, newWindow = false) {
+    return newWindow || entry?.multi === true;
 }
 // --- "Otras aplicaciones": todo lo que muestra el grid de GNOME y no esta en
 // ninguna categoria del .toml, para que nada instalado quede fuera de Nebula.
@@ -600,6 +610,7 @@ export function buildModel(extensionPath) {
                 icono: iconForApp(a),
                 desc: a.desc ?? descForApp(a),
                 categoria: effectiveCat,
+                multi: a.multi === true,
             });
         }
     }
