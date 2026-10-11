@@ -140,13 +140,19 @@ check "FS-16: 5 repoblados no acumulan senales" "(() => { const n = S._signalIds
 e "$X S._expand(); L.open(0); 1" >/dev/null; sleep 1
 WAYLAND_DISPLAY="$(ls "$XDG_RUNTIME_DIR" | grep -m1 '^wayland-[0-9]*$')" gjs "$FSWIN" >/dev/null 2>&1 &
 sleep 3
-check "fullscreen: sidebar, borde y lanzador ocultos" "S._monitor().inFullscreen && !S._sidebar.visible && !S._hotEdge.visible && !L._panel.visible"
+check "fullscreen: sidebar, borde y lanzador ocultos" "S._monitor().inFullscreen && !S._sidebar.visible && !S._edgeArrow.visible && !L._panel.visible"
 check "fullscreen: 0 holds (scanout directo para juegos)" "G._count === 0"
 e "$X S._expand(); 1" >/dev/null; sleep 0.5
 check "fullscreen: rozar el borde no revela la sidebar" "!S._sidebar.visible"
 sleep 4
-check "fin del fullscreen: vuelve la franja de borde"   "!S._monitor().inFullscreen && S._hotEdge.visible"
+check "fin del fullscreen: la flecha refleja el estado (visible solo retraida)" "!S._monitor().inFullscreen && S._edgeArrow.visible === S._collapsed"
 check "fin del fullscreen: la sidebar respeta su estado" "S._sidebar.visible === !S._collapsed"
+
+# Flecha manual del borde: aparece solo con la sidebar retraida y su clic la despliega.
+e "$X S._collapse(); 1" >/dev/null; sleep 0.6
+check "flecha: con la sidebar retraida la flecha se ve" "S._collapsed && S._edgeArrow.visible && !S._sidebar.visible"
+e "$X S._edgeArrow.emit('clicked', 0); 1" >/dev/null; sleep 0.6
+check "flecha: el clic despliega la sidebar y se oculta" "!S._collapsed && S._sidebar.visible && !S._edgeArrow.visible"
 
 # launch() (R-309): sin argumentos -> Shell.App del .desktop; con argumentos
 # -> AppInfo desde la linea de comandos (conserva los argumentos).

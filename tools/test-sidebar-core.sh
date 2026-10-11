@@ -70,7 +70,7 @@ check 'estado inicial coherente (visible <=> no colapsada)' "S._sidebar.visible 
 e "$X S._expand(); 1" >/dev/null; sleep .6
 # BUG-33: desplegar/colapsar no debe tocar el area de trabajo (DING reubica los
 # iconos y las ventanas maximizadas se redimensionan en cada workareas-changed).
-check 'la sidebar no reserva struts (BUG-33)' "!Main.layoutManager._trackedActors.some(t => t.affectsStruts && (t.actor === S._sidebar || t.actor === S._hotEdge || t.actor === L._panel))"
+check 'la sidebar no reserva struts (BUG-33)' "!Main.layoutManager._trackedActors.some(t => t.affectsStruts && (t.actor === S._sidebar || t.actor === S._edgeArrow || t.actor === L._panel))"
 WA="(() => { const r = global.workspace_manager.get_active_workspace().get_work_area_for_monitor(Main.layoutManager.primaryIndex); return [r.x, r.y, r.width, r.height].join(','); })()"
 # El Ubuntu Dock tambien reserva struts y se acomoda asincronicamente al
 # iniciar: esperar a que el area de trabajo se estabilice antes de medir.
