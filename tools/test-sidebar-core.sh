@@ -281,7 +281,8 @@ $XT -geometry 90x45+240+100 -T izquierda >/dev/null 2>&1 &
 sleep 1.5
 e "Main.overview.hide(); 1" >/dev/null; sleep 1
 cat_xy(){ e "$X (() => { const b=S._catButtons[$1]; const [x,y]=b.get_transformed_position(); const [w,h]=b.get_transformed_size(); return Math.round(x+w/2)+' '+Math.round(y+h/2); })()" | tr -dc '0-9 ' | xargs; }
-reveal(){ xdotool mousemove 700 400; sleep .5; xdotool mousemove 1 400; sleep 1; }
+arrow_xy(){ e "$X (() => { const b=S._edgeArrow; const [x,y]=b.get_transformed_position(); const [w,h]=b.get_transformed_size(); return Math.round(x+w/2)+' '+Math.round(y+h/2); })()" | tr -dc '0-9 ' | xargs; }
+reveal(){ xdotool mousemove 700 400; sleep .5; [[ "$(e "$X S._collapsed ? 'SI' : 'NO'")" == *SI* ]] || return 0; read -r ax ay <<< "$(arrow_xy)"; xdotool mousemove "$ax" "$ay"; sleep .3; xdotool click 1; sleep 1; }
 okc=0
 for _ in 1 2 3; do
   reveal; read -r cx cy <<< "$(cat_xy 0)"

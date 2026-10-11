@@ -227,7 +227,9 @@ sleep 2
 e "Main.overview.hide(); 1" >/dev/null; sleep 1.5
 focus() { xdotool getwindowfocus getwindowname 2>/dev/null; }
 cat_xy() { e "$X (() => { const b = S._catButtons[$1]; const [x, y] = b.get_transformed_position(); const [w, h] = b.get_transformed_size(); return Math.round(x + w/2) + ' ' + Math.round(y + h/2); })()" | tr -dc '0-9 ' | xargs; }
-reveal() { xdotool mousemove 700 400; sleep 1.2; xdotool mousemove 1 400; sleep 0.8; }
+arrow_xy() { e "$X (() => { const b = S._edgeArrow; const [x, y] = b.get_transformed_position(); const [w, h] = b.get_transformed_size(); return Math.round(x + w/2) + ' ' + Math.round(y + h/2); })()" | tr -dc '0-9 ' | xargs; }
+# La sidebar ahora se revela con un clic en la flecha del borde (ya no por hover).
+reveal() { xdotool mousemove 700 400; sleep 0.6; [[ "$(e "$X S._collapsed ? 'SI' : 'NO'")" == *SI* ]] || return 0; read -r ax ay <<< "$(arrow_xy)"; xdotool mousemove "$ax" "$ay"; sleep 0.3; xdotool click 1; sleep 0.8; }
 
 # FS-20 con clics reales: tras usar el lanzador y pasar por el Overview, un
 # clic en la zona donde estaba el lanzador debe llegar a la ventana de atras.
