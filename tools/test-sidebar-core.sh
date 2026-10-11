@@ -65,8 +65,9 @@ check 'sidebar creada' "!!S && !!S._sidebar && S._model.length > 0"
 check 'launcher creado' "!!L && !!L._panel"
 # La sidebar arranca desplegada y se retrae sola a los 350 ms si el puntero no
 # esta encima: segun cuanto tarde el Shell en responder ya puede estar
-# colapsada. Lo que no puede pasar es que el actor y el estado no coincidan.
-check 'estado inicial coherente (visible <=> no colapsada)' "S._sidebar.visible === !S._collapsed"
+# colapsada. Lo que no puede pasar es que el actor y el estado no coincidan
+# (salvo durante los 180 ms de la animacion de retraer: ya colapsada, aun visible).
+check 'estado inicial coherente (visible <=> no colapsada)' "S._sidebar.visible === !S._collapsed || (S._collapsed && (S._sidebar.get_transition('translation_x') !== null || S._sidebar.translation_x < 0))"
 e "$X S._expand(); 1" >/dev/null; sleep .6
 # BUG-33: desplegar/colapsar no debe tocar el area de trabajo (DING reubica los
 # iconos y las ventanas maximizadas se redimensionan en cada workareas-changed).

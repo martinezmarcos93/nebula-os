@@ -187,9 +187,16 @@ function execInfoMap() {
         if (!exe)
             continue;
         const base = exe.split('/').pop();
-        if (!base || _execInfoCache.has(base))
+        if (!base)
+            continue;
+        // Varios .desktop pueden compartir ejecutable (gnome-terminal ->
+        // "Terminal" y "Terminal Preferences", esta NoDisplay). Gana una app
+        // visible sobre una oculta; entre iguales, la primera.
+        const prev = _execInfoCache.get(base);
+        if (prev && (prev.visible || !info.should_show()))
             continue;
         _execInfoCache.set(base, {
+            visible: info.should_show(),
             id: info.get_id?.() ?? null,
             icon: info.get_icon?.() ?? null,
             file: info.get_filename?.() ?? null,

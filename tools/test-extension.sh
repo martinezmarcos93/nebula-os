@@ -70,6 +70,16 @@ EOF
 chmod +x "$T/bin/nebtestapp"
 printf '[Desktop Entry]\nType=Application\nName=Nebula Test App\nExec=%s\n' "$T/bin/nebtestapp" \
     > "$XDG_DATA_HOME/applications/nebtestapp.desktop"
+# Pares de .desktop con el mismo ejecutable (como gnome-terminal / Terminal
+# Preferences): uno oculto y uno visible. Gio.AppInfo.get_all() los entrega en
+# orden de hash, asi que con 8 pares alguno trae el oculto primero seguro.
+for n in 1 2 3 4 5 6 7 8; do
+    printf '#!/bin/sh\nexit 0\n' > "$T/bin/nebtestdup$n"; chmod +x "$T/bin/nebtestdup$n"
+    printf '[Desktop Entry]\nType=Application\nName=Dup%s Oculto\nComment=desc-oculta\nNoDisplay=true\nExec=nebtestdup%s --preferences\n' "$n" "$n" \
+        > "$XDG_DATA_HOME/applications/nebtestdup$n-prefs.desktop"
+    printf '[Desktop Entry]\nType=Application\nName=Dup%s Visible\nComment=desc-visible\nExec=nebtestdup%s\n' "$n" "$n" \
+        > "$XDG_DATA_HOME/applications/nebtestdup$n.desktop"
+done
 export PATH="$T/bin:$PATH"
 
 cat > "$T/common.sh" <<'SCEN'
@@ -166,6 +176,10 @@ e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').pat
 sleep 2
 check "Otras aplicaciones: incluye la app sin categoria, al final del panel" "JSON.parse(globalThis.__ot).names.includes('Nebula Test App') && JSON.parse(globalThis.__ot).last === 'Otras aplicaciones'"
 check "Otras aplicaciones: no repite apps que ya estan en otra categoria" "JSON.parse(globalThis.__ot).dup === 0"
+# Mapa ejecutable -> .desktop: gana la app visible sobre la oculta que comparte ejecutable.
+e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__dd = [1, 2, 3, 4, 5, 6, 7, 8].map(n => m.descForApp({exec: 'nebtestdup' + n})).join(','); }); 1" >/dev/null
+sleep 1
+check "icono/descripcion: un .desktop oculto no le gana al visible del mismo ejecutable" "globalThis.__dd === Array(8).fill('desc-visible').join(',')"
 if grep -qx -- '--con-args' "$T/launched.txt" 2>/dev/null && grep -qx '' "$T/launched.txt" 2>/dev/null; then
     ok "launch(): la app corrio las dos veces y conservo los argumentos"
 else
