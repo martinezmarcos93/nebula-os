@@ -453,6 +453,91 @@ export function launchEntry(entry, newWindow = false) {
     }
     return launch(entry.exec, newWindow);
 }
+// --- "Otras aplicaciones": todo lo que muestra el grid de GNOME y no esta en
+// ninguna categoria del .toml, para que nada instalado quede fuera de Nebula.
+
+const OTHERS_CATEGORY = 'Otras aplicaciones';
+
+function argvOf(exec) {
+    try {
+        return GLib.shell_parse_argv(exec)[1];
+    } catch (_e) {
+        return String(exec).trim().split(/\s+/);
+    }
+}
+
+const baseName = path => String(path).split('/').pop();
+
+/** Linea de comandos de un .desktop lista para lanzar: sin codigos de campo
+ * (%U, %f...), con `flatpak` y los ejecutables del PATH sin ruta absoluta (asi
+ * el `exec` coincide con el de las entradas del .toml y launch() puede usar
+ * Shell.App). */
+function cleanCommandline(commandline) {
+    if (!commandline)
+        return '';
+    const argv = argvOf(commandline).filter(t => !/^%[a-zA-Z%]$/.test(t));
+    if (argv.length && argv[0].startsWith('/') &&
+        GLib.find_program_in_path(baseName(argv[0])) === argv[0])
+        argv[0] = baseName(argv[0]);
+    return argv.map(t => (/^[A-Za-z0-9_@%+=:,./-]+$/.test(t) ? t : GLib.shell_quote(t))).join(' ');
+}
+
+/** Claves con las que se reconoce una app: ejecutable (sin `env VAR=..`),
+ * programa tras `-e` ("alacritty -e btop") o id de Flatpak. */
+function execKeys(exec) {
+    const keys = new Set();
+    const argv = argvOf(exec);
+    let i = 0;
+    if (argv[0] === 'env')
+        for (i = 1; i < argv.length && argv[i].includes('='); i++);
+    const first = argv[i];
+    if (!first)
+        return keys;
+    if (first === 'flatpak' && argv[i + 1] === 'run') {
+        const id = argv.slice(i + 2).find(t => !t.startsWith('-'));
+        if (id)
+            keys.add(`fp:${id}`);
+        return keys;
+    }
+    keys.add(baseName(first));
+    const e = argv.indexOf('-e');
+    if (e >= 0 && argv[e + 1])
+        keys.add(baseName(argv[e + 1]));
+    return keys;
+}
+
+/** Apps del grid de GNOME que ninguna entrada de `rawCats` cubre. */
+function uncategorizedApps(rawCats) {
+    const known = new Set();
+    for (const cat of rawCats)
+        for (const a of (Array.isArray(cat.app) ? cat.app : []))
+            if (a?.exec)
+                execKeys(a.exec).forEach(k => known.add(k));
+    // "gimp" cubre a "gimp-2.10"; "remmina" a "remmina-file-wrapper".
+    const prefixes = [...known].filter(k => k.length >= 4 && !k.startsWith('fp:'));
+    const covered = keys => [...keys].some(k =>
+        known.has(k) || prefixes.some(p => k.startsWith(`${p}-`)));
+
+    const seen = new Set();
+    const out = [];
+    for (const info of Gio.AppInfo.get_all()) {
+        if (!info.should_show())
+            continue;
+        const exec = cleanCommandline(info.get_commandline());
+        if (!exec || seen.has(exec))
+            continue;
+        const keys = execKeys(exec);
+        const id = info.get_id?.() ?? '';
+        if (id.endsWith('.desktop'))
+            keys.add(`fp:${id.slice(0, -'.desktop'.length)}`);
+        if (covered(keys))
+            continue;
+        seen.add(exec);
+        out.push({info, exec});
+    }
+    return out;
+}
+
 export function buildModel(extensionPath) {
     const rawCats = loadCategories(extensionPath);
     const knownNames = new Set(rawCats.map(c => c.nombre ?? '?'));
@@ -510,6 +595,33 @@ export function buildModel(extensionPath) {
                 categoria: effectiveCat,
             });
         }
+    }
+
+    // Lo que el grid de GNOME muestra y el .toml no nombra: va a "Otras
+    // aplicaciones" (salvo ocultas o movidas por el usuario a otra categoria).
+    const others = [];
+    for (const {info, exec} of uncategorizedApps(rawCats)) {
+        if (isHidden(exec))
+            continue;
+        const override = categoryOverride(exec);
+        const target = (override && knownNames.has(override)) ? override : OTHERS_CATEGORY;
+        const entry = {
+            nombre: displayName(exec) ?? info.get_display_name() ?? firstToken(exec),
+            exec,
+            icono: info.get_icon?.() ?? new Gio.ThemedIcon({name: 'application-x-executable-symbolic'}),
+            desc: info.get_description() || info.get_generic_name() || '',
+            categoria: target,
+        };
+        if (target === OTHERS_CATEGORY)
+            others.push(entry);
+        else
+            buckets.get(target).push(entry);
+    }
+    if (others.length > 0) {
+        others.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        rawCats.push({nombre: OTHERS_CATEGORY, icono: 'apps', tipo: 'otras'});
+        knownNames.add(OTHERS_CATEGORY);
+        buckets.set(OTHERS_CATEGORY, others);
     }
 
     // Capturamos las aplicaciones disponibles antes de inyectar categorias

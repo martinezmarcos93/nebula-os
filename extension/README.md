@@ -71,6 +71,11 @@ Hace:
   tema GTK de las aplicaciones.
 - Lee `categories.json` (generado desde `dotfiles/nebula/categories.toml`),
   oculta apps no instaladas y categorías vacías, lanza al clic.
+- **Otras aplicaciones**: última categoría, armada sola en cada reconstrucción
+  del modelo con las apps que muestra el grid de GNOME (`Gio.AppInfo`,
+  `should_show()`) y que ninguna entrada del `.toml` nombra (se reconocen por
+  ejecutable, programa tras `-e` o id de Flatpak). Así nada instalado queda
+  fuera de Nebula. Respeta apps ocultas y movidas por el usuario.
 - Estética Cosmic Dark en sus propios widgets (`stylesheet.css`).
 
 No hace todavía: wallpaper / tema GTK / iconos morados (6), stage de instalador

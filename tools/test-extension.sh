@@ -159,6 +159,13 @@ check "flecha: el clic despliega la sidebar y se oculta" "!S._collapsed && S._si
 e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__nl = [m.launch('nebtestapp'), m.launch('nebtestapp --con-args')].join(','); }); 1" >/dev/null
 sleep 2
 check "launch(): sin argumentos usa Shell.App; con argumentos, AppInfo" "globalThis.__nl === 'app,appinfo'"
+
+# "Otras aplicaciones": una app del grid que el .toml no nombra (nebtestapp) cae
+# ahi, con un exec unico y lanzable; las del .toml no se repiten ahi.
+e "import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { const model = m.buildModel(Main.extensionManager.lookup('nebula-shell@nebula-os').path); const o = model.find(c => c.nombre === 'Otras aplicaciones'); const resto = new Set(model.filter(c => c !== o && c.nombre !== 'Favoritos' && c.nombre !== 'Recientes').flatMap(c => c.apps.map(a => a.exec))); globalThis.__ot = JSON.stringify({names: o ? o.apps.map(a => a.nombre) : [], last: model[model.length - 1].nombre, dup: o ? o.apps.filter(a => resto.has(a.exec)).length : 0}); }); 1" >/dev/null
+sleep 2
+check "Otras aplicaciones: incluye la app sin categoria, al final del panel" "JSON.parse(globalThis.__ot).names.includes('Nebula Test App') && JSON.parse(globalThis.__ot).last === 'Otras aplicaciones'"
+check "Otras aplicaciones: no repite apps que ya estan en otra categoria" "JSON.parse(globalThis.__ot).dup === 0"
 if grep -qx -- '--con-args' "$T/launched.txt" 2>/dev/null && grep -qx '' "$T/launched.txt" 2>/dev/null; then
     ok "launch(): la app corrio las dos veces y conservo los argumentos"
 else
