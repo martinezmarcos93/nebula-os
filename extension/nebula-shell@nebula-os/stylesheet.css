@@ -357,6 +357,10 @@
     border: 1px solid rgba(167, 139, 250, 0.85);
 }
 
+.nebula-edge-hint {
+    background-color: rgba(167, 139, 250, 0.55);
+}
+
 .nebula-desk-label {
     color: #ffffff;
     font-size: 9pt;

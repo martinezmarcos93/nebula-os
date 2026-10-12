@@ -30,6 +30,12 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 ## [No publicado]
 
 ### Agregado
+- **Empujar iconos al escritorio vecino por el borde**: arrastrando un icono o
+  un grupo contra el borde derecho (o izquierdo) del monitor y quedandose 0,6 s
+  se pasa al escritorio siguiente sin soltar (una franja violeta avisa). Hay que
+  apartarse del borde para volver a empujar y no crea escritorios. Al soltar,
+  los archivos viajan de la carpeta del escritorio de origen a la del actual y
+  quedan en la celda elegida.
 - **Arrastre de grupos en el escritorio**: lo seleccionado se mueve junto,
   conservando las distancias entre iconos (`placeGroup`, con pruebas); soltado
   sobre el boton de otro escritorio pasa todo a su carpeta. El menu contextual

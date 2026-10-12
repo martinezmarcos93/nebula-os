@@ -270,16 +270,37 @@ check_wait 'escritorios: sin la clave no hay capa de iconos' "!X._desktopIcons"
 e "globalThis.__bgN = $BG.get_n_children(); 1" >/dev/null
 e "$X X._settings.set_boolean('workspace-icons', true); 1" >/dev/null; sleep .8
 check_wait 'escritorios: con la clave la capa vive en el fondo, debajo de las ventanas' "(() => { $DI return !!DI && DI._layer.get_parent() === $BG; })()"
-check_wait 'escritorios: el escritorio 1 muestra su carpeta' "(() => { $DI return DI._workspace === 0 && DI._items.map(i => i.name).join() === 'uno.txt' && DI._boxes.size === 1; })()"
+check_wait 'escritorios: el escritorio 1 muestra su carpeta' "(() => { $DI return DI._workspace === 0 && DI._items.filter(i => !i.virtual).map(i => i.name).join() === 'uno.txt' && DI._boxes.size === 2; })()"
 goto_ws 1
-check_wait 'escritorios: el escritorio 2 muestra otros iconos' "(() => { $DI return DI._workspace === 1 && DI._items.map(i => i.name).join() === 'dos.txt,tres.txt'; })()"
-e "$X $DI DI.sendToWorkspace(DI._items[0], 2); 1" >/dev/null; sleep .8
+check_wait 'escritorios: el escritorio 2 muestra otros iconos' "(() => { $DI return DI._workspace === 1 && DI._items.filter(i => !i.virtual).map(i => i.name).join() === 'dos.txt,tres.txt'; })()"
+e "$X $DI DI.sendToWorkspace(DI._items.find(i => i.name === 'dos.txt'), 2); 1" >/dev/null; sleep .8
 check_wait 'escritorios: mover un icono a otro escritorio lo pasa de carpeta' "imports.gi.GLib.file_test(imports.gi.GLib.get_user_data_dir() + '/nebula/escritorios/3/dos.txt', imports.gi.GLib.FileTest.EXISTS) && !imports.gi.GLib.file_test(imports.gi.GLib.get_user_data_dir() + '/nebula/escritorios/2/dos.txt', imports.gi.GLib.FileTest.EXISTS)"
-check_wait 'escritorios: el icono movido desaparece del escritorio de origen' "(() => { $DI return DI._items.map(i => i.name).join() === 'tres.txt'; })()"
-e "$X $DI DI._dropAt(DI._items[0], DI._layer.get_transformed_position()[0] + 12 + 96 * 2 + 5, DI._layer.get_transformed_position()[1] + 12 + 104 * 1 + 5); 1" >/dev/null; sleep .4
+check_wait 'escritorios: el icono movido desaparece del escritorio de origen' "(() => { $DI return DI._items.filter(i => !i.virtual).map(i => i.name).join() === 'tres.txt'; })()"
+check_wait 'escritorios: la Carpeta personal esta tambien en el escritorio 2' "(() => { $DI return DI._items.some(i => i.virtual && i.name === '/personal') && DI._boxes.has('/personal'); })()"
+e "$X $DI const it = DI._items.find(i => i.name === 'tres.txt'); DI._dropGroup([it], it, DI._workspace, new Map(), -1, DI._layer.get_transformed_position()[0] + 12 + 96 * 2 + 5, DI._layer.get_transformed_position()[1] + 12 + 104 * 1 + 5); 1" >/dev/null; sleep .4
 check_wait 'escritorios: soltar un icono lo deja en la celda elegida' "(() => { $DI const b = DI._boxes.get('tres.txt'); return b.x === 12 + 96 * 2 && b.y === 12 + 104 * 1; })()"
 goto_ws 0
-check_wait 'escritorios: volver al 1 no hereda la posicion del 2' "(() => { $DI const b = DI._boxes.get('uno.txt'); return b.x === 12 && b.y === 12; })()"
+check_wait 'escritorios: volver al 1 no hereda la posicion del 2' "(() => { $DI const b = DI._boxes.get('uno.txt'); return b.x === 12 && b.y === 12 + 104; })()"
+# Seleccion multiple y grupos (sobre el escritorio 1: Carpeta personal + uno.txt).
+check_wait 'escritorios: la Carpeta personal ocupa la primera celda' "(() => { $DI const b = DI._boxes.get('/personal'); return b.x === 12 && b.y === 12; })()"
+e "$X $DI DI._setSelection(['uno.txt', '/personal'], 'uno.txt'); 1" >/dev/null
+check 'seleccion: varios iconos quedan marcados a la vez' "(() => { $DI return DI._selection.size === 2 && DI._boxes.get('uno.txt').has_style_pseudo_class('selected') && DI._boxes.get('/personal').has_style_pseudo_class('selected'); })()"
+e "$X $DI const g = DI._selectedItems(); DI._dropGroup(g, g.find(i => i.name === 'uno.txt'), 0, new Map([['/personal', [0, 0]], ['uno.txt', [0, 1]]]), -1, DI._layer.get_transformed_position()[0] + 12 + 96 * 3 + 5, DI._layer.get_transformed_position()[1] + 12 + 104 * 2 + 5); 1" >/dev/null; sleep .4
+check_wait 'grupo: soltar dos iconos los mueve juntos conservando la distancia' "(() => { $DI const a = DI._boxes.get('uno.txt'), h = DI._boxes.get('/personal'); return a.x === 12 + 96 * 3 && a.y === 12 + 104 * 2 && h.x === 12 + 96 * 3 && h.y === 12 + 104 * 1; })()"
+e "$X $DI DI._setSelection([], null); 1" >/dev/null
+check 'seleccion: vaciarla desmarca los iconos' "(() => { $DI return DI._selection.size === 0 && !DI._boxes.get('uno.txt').has_style_pseudo_class('selected'); })()"
+# Empujar contra el borde: pasa al escritorio vecino sin soltar y, al soltar,
+# el archivo viaja a la carpeta de ese escritorio.
+MON="Main.layoutManager.primaryMonitor"
+e "$X $DI globalThis.__it = DI._items.find(i => i.name === 'uno.txt'); DI._onDragMove($MON.x + $MON.width - 1, $MON.y + 100); 1" >/dev/null
+check_wait 'borde: quedarse contra el borde derecho pasa al escritorio siguiente' "(() => { $DI return DI._workspace === 1; })()"
+e "$X $DI DI._onDragMove($MON.x + $MON.width - 1, $MON.y + 101); 1" >/dev/null; sleep 1.4
+check 'borde: sin apartarse del borde no sigue de largo' "(() => { $DI return DI._workspace === 1; })()"
+e "$X $DI DI._onDragEnd(); DI._dropGroup([globalThis.__it], globalThis.__it, 0, new Map([['uno.txt', [3, 2]]]), -1, DI._layer.get_transformed_position()[0] + 12 + 96 * 1 + 5, DI._layer.get_transformed_position()[1] + 12 + 104 * 3 + 5); 1" >/dev/null; sleep .8
+check_wait 'borde: el archivo soltado en el escritorio nuevo viaja a su carpeta' "imports.gi.GLib.file_test(imports.gi.GLib.get_user_data_dir() + '/nebula/escritorios/2/uno.txt', imports.gi.GLib.FileTest.EXISTS) && !imports.gi.GLib.file_test(imports.gi.GLib.get_home_dir() + '/Desktop/uno.txt', imports.gi.GLib.FileTest.EXISTS)"
+check_wait 'borde: queda en la celda donde se solto, en el escritorio nuevo' "(() => { $DI const b = DI._boxes.get('uno.txt'); return DI._workspace === 1 && !!b && b.x === 12 + 96 * 1 && b.y === 12 + 104 * 3; })()"
+goto_ws 0
+check_wait 'borde: el escritorio de origen ya no lo muestra' "(() => { $DI return !DI._boxes.has('uno.txt'); })()"
 e "$X X._settings.set_boolean('workspace-icons', false); 1" >/dev/null; sleep .5
 check_wait 'escritorios: apagar la clave quita la capa del fondo' "!X._desktopIcons && $BG.get_n_children() === globalThis.__bgN"
 

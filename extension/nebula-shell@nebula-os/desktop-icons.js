@@ -35,6 +35,8 @@ const MARGIN = 12;
 const ICON_SIZE = 48;
 const FADE_MS = 160;
 const REFRESH_DEBOUNCE_MS = 200;
+const EDGE_PX = 3;            // franja del borde de la pantalla que cuenta como "empujar"
+const EDGE_DWELL_MS = 600;    // cuanto hay que quedarse ahi para cambiar de escritorio
 const MAX_ENTRIES = 400;
 // Clave del icono virtual de la carpeta personal. Un archivo real no puede
 // llamarse asi (un nombre de archivo no lleva '/'), asi que no choca en la
@@ -76,6 +78,7 @@ export class NebulaDesktopIcons {
         this._selection = new Set();   // nombres seleccionados
         this._anchor = null;           // referencia de Shift+clic
         this._band = null;             // rectangulo de seleccion mientras se arrastra
+        this._edge = {side: 0, timer: 0, armed: true, hint: null};   // empujar contra el borde
         this._drag = null;
         this._workspace = global.workspace_manager.get_active_workspace_index();
 
@@ -443,9 +446,62 @@ export class NebulaDesktopIcons {
         });
     }
 
-    // Ganchos del arrastre de iconos (el cambio de escritorio por el borde).
-    _onDragMove(_x, _y) {}
-    _onDragEnd() {}
+    // --- empujar contra el borde -------------------------------------
+    //
+    // Arrastrando un icono (o un grupo) contra el borde derecho/izquierdo del
+    // monitor primario y quedandose un momento, se pasa al escritorio vecino sin
+    // soltar. Una vez cambiado hay que apartarse del borde antes de poder
+    // volver a empujar: asi un arrastre pasa de a un escritorio. No crea
+    // escritorios nuevos. Al soltar, _dropGroup trae los archivos de la carpeta
+    // del escritorio de origen.
+
+    _onDragMove(x, y) {
+        const mon = Main.layoutManager.primaryMonitor;
+        const inside = mon && y >= mon.y && y < mon.y + mon.height;
+        const side = !inside ? 0
+            : x >= mon.x + mon.width - EDGE_PX ? 1
+                : x <= mon.x + EDGE_PX ? -1 : 0;
+        const edge = this._edge;
+        if (side === 0) {
+            this._edgeCancel();
+            edge.armed = true;
+            return;
+        }
+        if (!edge.armed || (edge.timer && edge.side === side))
+            return;
+        this._edgeCancel();
+        edge.side = side;
+        edge.hint = new St.Widget({style_class: 'nebula-edge-hint', reactive: false});
+        edge.hint.set_size(6, mon.height);
+        edge.hint.set_position(side > 0 ? mon.x + mon.width - 6 : mon.x, mon.y);
+        Main.layoutManager.uiGroup.add_child(edge.hint);
+        edge.timer = this._addTimeout(EDGE_DWELL_MS, () => {
+            edge.timer = 0;
+            this._edgeCancel();
+            const next = this._workspace + side;
+            if (next < 0 || next >= global.workspace_manager.get_n_workspaces())
+                return;
+            edge.armed = false;
+            global.workspace_manager.get_workspace_by_index(next).activate(global.get_current_time());
+        });
+    }
+
+    _edgeCancel() {
+        const edge = this._edge;
+        if (edge.timer) {
+            GLib.source_remove(edge.timer);
+            this._timeoutIds.delete(edge.timer);
+            edge.timer = 0;
+        }
+        edge.hint?.destroy();
+        edge.hint = null;
+        edge.side = 0;
+    }
+
+    _onDragEnd() {
+        this._edgeCancel();
+        this._edge.armed = true;
+    }
 
     _workspaceAt(x, y) {
         for (const bar of this._getBars()) {
@@ -678,6 +734,7 @@ export class NebulaDesktopIcons {
 
     destroy() {
         this._destroyed = true;
+        this._edgeCancel();
         this._drag?.cancel();
         this._drag = null;
         this._closeMenu();
