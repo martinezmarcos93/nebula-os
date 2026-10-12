@@ -59,7 +59,6 @@ nombre = "Configuracion del sistema"
 exec   = "gnome-control-center"
 icono  = "settings"
 
-
 [[categoria]]
 nombre = "Terminales"
 icono  = "terminal"
@@ -71,20 +70,20 @@ icono  = "terminal"
 multi  = true
 
 [[categoria.app]]
+nombre = "GNOME Terminal"
+exec   = "gnome-terminal"
+icono  = "terminal"
+multi  = true
+
+[[categoria.app]]
 nombre = "Kitty"
 exec   = "kitty"
 icono  = "terminal"
 multi  = true
 
 [[categoria.app]]
-nombre = "WezTerm"
-exec   = "wezterm"
-icono  = "terminal"
-multi  = true
-
-[[categoria.app]]
-nombre = "GNOME Terminal"
-exec   = "gnome-terminal"
+nombre = "Konsole"
+exec   = "konsole"
 icono  = "terminal"
 multi  = true
 
@@ -95,8 +94,8 @@ icono  = "terminal"
 multi  = true
 
 [[categoria.app]]
-nombre = "Konsole"
-exec   = "konsole"
+nombre = "WezTerm"
+exec   = "wezterm"
 icono  = "terminal"
 multi  = true
 
@@ -111,19 +110,9 @@ nombre = "Navegadores"
 icono  = "globe"
 
 [[categoria.app]]
-nombre = "Firefox"
-exec   = "firefox"
-icono  = "firefox"
-
-[[categoria.app]]
-nombre = "LibreWolf"
-exec   = "librewolf"
-icono  = "librewolf"
-
-[[categoria.app]]
-nombre = "Google Chrome"
-exec   = "google-chrome-stable"
-icono  = "chrome"
+nombre = "Brave"
+exec   = "brave-browser"
+icono  = "brave"
 
 [[categoria.app]]
 nombre = "Chromium"
@@ -131,15 +120,24 @@ exec   = "chromium"
 icono  = "chromium"
 
 [[categoria.app]]
-nombre = "Brave"
-exec   = "brave-browser"
-icono  = "brave"
+nombre = "Firefox"
+exec   = "firefox"
+icono  = "firefox"
+
+[[categoria.app]]
+nombre = "Google Chrome"
+exec   = "google-chrome-stable"
+icono  = "chrome"
+
+[[categoria.app]]
+nombre = "LibreWolf"
+exec   = "librewolf"
+icono  = "librewolf"
 
 [[categoria.app]]
 nombre = "Vivaldi"
 exec   = "vivaldi-stable"
 icono  = "vivaldi"
-
 
 [[categoria]]
 nombre = "Comunicacion"
@@ -155,25 +153,28 @@ nombre = "Thunderbird"
 exec   = "thunderbird"
 icono  = "mail"
 
-
 [[categoria]]
 nombre = "Desarrollo"
 icono  = "code"
 
 [[categoria.app]]
-nombre = "Terminal"
-exec   = "alacritty"
-icono  = "terminal"
-multi  = true
+nombre = "Base de datos"
+exec   = "dbeaver"
+icono  = "database"
 
 [[categoria.app]]
-nombre = "VS Code"
-exec   = "code"
-icono  = "vscode"
+nombre = "Docker TUI"
+exec   = "alacritty -e lazydocker"
+icono  = "docker"
 
 [[categoria.app]]
 nombre = "Editor (nvim)"
 exec   = "alacritty -e nvim"
+icono  = "edit"
+
+[[categoria.app]]
+nombre = "Editor (vim)"
+exec   = "alacritty -e vim"
 icono  = "edit"
 
 [[categoria.app]]
@@ -187,39 +188,58 @@ exec   = "alacritty -e lazygit"
 icono  = "git"
 
 [[categoria.app]]
-nombre = "Docker TUI"
-exec   = "alacritty -e lazydocker"
-icono  = "docker"
+nombre = "IDLE (Python 3.12)"
+exec   = "idle-python3.12"
+icono  = "code"
 
 [[categoria.app]]
-nombre = "Base de datos"
-exec   = "dbeaver"
-icono  = "database"
+nombre = "IDLE (Python)"
+exec   = "idle"
+icono  = "code"
 
+[[categoria.app]]
+nombre = "VS Code"
+exec   = "code"
+icono  = "vscode"
 
 [[categoria]]
 nombre = "Multimedia"
 icono  = "play"
 
 [[categoria.app]]
-nombre = "Video (mpv)"
-exec   = "mpv --player-operation-mode=pseudo-gui"
-icono  = "film"
+nombre = "Camara"
+exec   = "snapshot"
+icono  = "camera"
 
 [[categoria.app]]
-nombre = "VLC"
-exec   = "vlc"
-icono  = "vlc"
+nombre = "Control de audio"
+exec   = "pavucontrol"
+icono  = "volume"
 
 [[categoria.app]]
-nombre = "Videos (Totem)"
-exec   = "totem"
+nombre = "Grabadora de sonidos"
+exec   = "flatpak run org.gnome.SoundRecorder"
+icono  = "music"
+
+[[categoria.app]]
+nombre = "Kdenlive"
+exec   = "flatpak run org.kde.kdenlive"
 icono  = "film"
 
 [[categoria.app]]
 nombre = "Musica (cmus)"
 exec   = "alacritty -e cmus"
 icono  = "music"
+
+[[categoria.app]]
+nombre = "OBS Studio"
+exec   = "obs"
+icono  = "obs"
+
+[[categoria.app]]
+nombre = "Perfiles de streaming"
+exec   = "nebula-streaming-profile"
+icono  = "tv"
 
 [[categoria.app]]
 nombre = "Rhythmbox"
@@ -232,44 +252,23 @@ exec   = "spotify"
 icono  = "spotify"
 
 [[categoria.app]]
-nombre = "OBS Studio"
-exec   = "obs"
-icono  = "obs"
+nombre = "Video (mpv)"
+exec   = "mpv --player-operation-mode=pseudo-gui"
+icono  = "film"
 
 [[categoria.app]]
-nombre = "Control de audio"
-exec   = "pavucontrol"
-icono  = "volume"
+nombre = "Videos (Totem)"
+exec   = "totem"
+icono  = "film"
 
 [[categoria.app]]
-nombre = "Perfiles de streaming"
-exec   = "nebula-streaming-profile"
-icono  = "tv"
-
+nombre = "VLC"
+exec   = "vlc"
+icono  = "vlc"
 
 [[categoria]]
 nombre = "Graficos"
 icono  = "image"
-
-[[categoria.app]]
-nombre = "GIMP"
-exec   = "gimp"
-icono  = "gimp"
-
-[[categoria.app]]
-nombre = "Krita"
-exec   = "krita"
-icono  = "krita"
-
-[[categoria.app]]
-nombre = "Inkscape"
-exec   = "inkscape"
-icono  = "vector"
-
-[[categoria.app]]
-nombre = "Darktable"
-exec   = "darktable"
-icono  = "camera"
 
 [[categoria.app]]
 nombre = "Blender"
@@ -277,29 +276,53 @@ exec   = "blender"
 icono  = "blender"
 
 [[categoria.app]]
-nombre = "Visor de imagenes"
-exec   = "nsxiv -t ."
-icono  = "eye"
+nombre = "Darktable"
+exec   = "darktable"
+icono  = "camera"
+
+[[categoria.app]]
+nombre = "GIMP"
+exec   = "gimp"
+icono  = "gimp"
+
+[[categoria.app]]
+nombre = "ImageMagick (display)"
+exec   = "display-im6.q16"
+icono  = "image"
+
+[[categoria.app]]
+nombre = "Inkscape"
+exec   = "inkscape"
+icono  = "vector"
+
+[[categoria.app]]
+nombre = "Krita"
+exec   = "krita"
+icono  = "krita"
 
 [[categoria.app]]
 nombre = "Shotwell"
 exec   = "shotwell"
 icono  = "image"
 
+[[categoria.app]]
+nombre = "Visor de imagenes"
+exec   = "nsxiv -t ."
+icono  = "eye"
+
+[[categoria.app]]
+nombre = "Visor de imagenes (Ojo de GNOME)"
+exec   = "eog"
+icono  = "eye"
 
 [[categoria]]
 nombre = "Ofimatica"
 icono  = "document"
 
 [[categoria.app]]
-nombre = "LibreOffice"
-exec   = "libreoffice"
-icono  = "office"
-
-[[categoria.app]]
-nombre = "Writer"
-exec   = "libreoffice --writer"
-icono  = "writer"
+nombre = "Apostrophe (Markdown)"
+exec   = "flatpak run org.gnome.gitlab.somas.Apostrophe"
+icono  = "notes"
 
 [[categoria.app]]
 nombre = "Calc"
@@ -307,14 +330,29 @@ exec   = "libreoffice --calc"
 icono  = "calc"
 
 [[categoria.app]]
+nombre = "Draw"
+exec   = "libreoffice --draw"
+icono  = "office"
+
+[[categoria.app]]
 nombre = "Impress"
 exec   = "libreoffice --impress"
 icono  = "impress"
 
 [[categoria.app]]
-nombre = "Visor de PDF"
-exec   = "evince"
-icono  = "pdf"
+nombre = "LibreOffice"
+exec   = "libreoffice"
+icono  = "office"
+
+[[categoria.app]]
+nombre = "Math"
+exec   = "libreoffice --math"
+icono  = "office"
+
+[[categoria.app]]
+nombre = "MComix (comics)"
+exec   = "mcomix"
+icono  = "image"
 
 [[categoria.app]]
 nombre = "Notas (Obsidian)"
@@ -326,15 +364,19 @@ nombre = "ONLYOFFICE"
 exec   = "flatpak run org.onlyoffice.desktopeditors"
 icono  = "office"
 
+[[categoria.app]]
+nombre = "Visor de PDF"
+exec   = "evince"
+icono  = "pdf"
+
+[[categoria.app]]
+nombre = "Writer"
+exec   = "libreoffice --writer"
+icono  = "writer"
 
 [[categoria]]
 nombre = "IA Local"
 icono  = "brain"
-
-[[categoria.app]]
-nombre = "Iniciar Ollama"
-exec   = "nebula-ai-chat --serve"
-icono  = "server"
 
 [[categoria.app]]
 nombre = "Chat con modelo"
@@ -351,20 +393,29 @@ nombre = "Estado GPU"
 exec   = "alacritty -e watch -n2 nvidia-smi"
 icono  = "gpu"
 
+[[categoria.app]]
+nombre = "Iniciar Ollama"
+exec   = "nebula-ai-chat --serve"
+icono  = "server"
 
 [[categoria]]
 nombre = "Gaming"
 icono  = "gamepad"
 
 [[categoria.app]]
-nombre = "Steam"
-exec   = "steam"
-icono  = "steam"
+nombre = "Epic Games Store"
+exec   = "flatpak run net.lutris.Lutris lutris:rungameid/1"
+icono  = "gamepad"
 
 [[categoria.app]]
-nombre = "Lutris"
-exec   = "flatpak run net.lutris.Lutris"
-icono  = "lutris"
+nombre = "Goverlay"
+exec   = "flatpak run io.github.benjamimgois.goverlay"
+icono  = "gpu"
+
+[[categoria.app]]
+nombre = "Hero Editor"
+exec   = "gtk-launch 'wine-Programs-Hero Editor-Hero Editor V1.04'"
+icono  = "gamepad"
 
 [[categoria.app]]
 nombre = "Heroic"
@@ -372,9 +423,14 @@ exec   = "flatpak run com.heroicgameslauncher.hgl"
 icono  = "heroic"
 
 [[categoria.app]]
-nombre = "RetroArch"
-exec   = "retroarch"
-icono  = "retroarch"
+nombre = "Lutris"
+exec   = "flatpak run net.lutris.Lutris"
+icono  = "lutris"
+
+[[categoria.app]]
+nombre = "Modo Juego"
+exec   = "nebula-game-mode"
+icono  = "rocket"
 
 [[categoria.app]]
 nombre = "PrismLauncher"
@@ -382,10 +438,29 @@ exec   = "prismlauncher"
 icono  = "minecraft"
 
 [[categoria.app]]
-nombre = "Modo Juego"
-exec   = "nebula-game-mode"
-icono  = "rocket"
+nombre = "ProtonUp-Qt"
+exec   = "flatpak run net.davidotek.pupgui2"
+icono  = "download"
 
+[[categoria.app]]
+nombre = "Prueba de joysticks"
+exec   = "jstest-gtk"
+icono  = "gamepad"
+
+[[categoria.app]]
+nombre = "RetroArch"
+exec   = "retroarch"
+icono  = "retroarch"
+
+[[categoria.app]]
+nombre = "Steam"
+exec   = "steam"
+icono  = "steam"
+
+[[categoria.app]]
+nombre = "Winetricks"
+exec   = "winetricks --gui"
+icono  = "wrench"
 
 [[categoria]]
 nombre = "Mis discos y nubes"
@@ -397,10 +472,19 @@ nombre = "Accesos rapidos"
 icono  = "folder"
 tipo   = "accesos"
 
-
 [[categoria]]
 nombre = "Sistema"
 icono  = "cog"
+
+[[categoria.app]]
+nombre = "Actualizador de firmware"
+exec   = "firmware-updater"
+icono  = "package"
+
+[[categoria.app]]
+nombre = "Actualizador de software"
+exec   = "update-manager"
+icono  = "package"
 
 [[categoria.app]]
 nombre = "Archivos"
@@ -413,6 +497,41 @@ exec   = "thunar"
 icono  = "folder"
 
 [[categoria.app]]
+nombre = "Captura de pantalla"
+exec   = "nebula-screenshot region"
+icono  = "camera"
+
+[[categoria.app]]
+nombre = "Compositor (picom)"
+exec   = "picom"
+icono  = "cog"
+
+[[categoria.app]]
+nombre = "Creador de discos de arranque"
+exec   = "usb-creator-gtk"
+icono  = "disk"
+
+[[categoria.app]]
+nombre = "Energia (bloquear / salir)"
+exec   = "nebula-powermenu"
+icono  = "power"
+
+[[categoria.app]]
+nombre = "Grabacion de pantalla"
+exec   = "nebula-screenrecord"
+icono  = "video"
+
+[[categoria.app]]
+nombre = "HUD de recursos"
+exec   = "nebula-resource-hud"
+icono  = "activity"
+
+[[categoria.app]]
+nombre = "Modo Foco"
+exec   = "nebula-focus-mode"
+icono  = "rocket"
+
+[[categoria.app]]
 nombre = "Monitor de recursos"
 exec   = "alacritty -e btop"
 icono  = "activity"
@@ -423,24 +542,14 @@ exec   = "gnome-system-monitor"
 icono  = "activity"
 
 [[categoria.app]]
-nombre = "Discos"
-exec   = "gnome-disks"
-icono  = "disk"
+nombre = "Monitor htop"
+exec   = "alacritty -e htop"
+icono  = "activity"
 
 [[categoria.app]]
-nombre = "Red"
-exec   = "alacritty -e nmtui"
-icono  = "wifi"
-
-[[categoria.app]]
-nombre = "Captura de pantalla"
-exec   = "nebula-screenshot region"
-icono  = "camera"
-
-[[categoria.app]]
-nombre = "Grabacion de pantalla"
-exec   = "nebula-screenrecord"
-icono  = "video"
+nombre = "Papelera"
+exec   = "nautilus trash:///"
+icono  = "trash"
 
 [[categoria.app]]
 nombre = "Portapapeles"
@@ -448,14 +557,14 @@ exec   = "copyq toggle"
 icono  = "clipboard"
 
 [[categoria.app]]
-nombre = "Configuracion de GPU (NVIDIA)"
-exec   = "nvidia-settings"
-icono  = "gpu"
+nombre = "Red"
+exec   = "alacritty -e nmtui"
+icono  = "wifi"
 
 [[categoria.app]]
-nombre = "Copias de seguridad (Deja Dup)"
-exec   = "deja-dup"
-icono  = "backup"
+nombre = "Regenerar panel de categorias"
+exec   = "nebula-gen-panel"
+icono  = "cog"
 
 [[categoria.app]]
 nombre = "Rescatar entorno"
@@ -463,20 +572,33 @@ exec   = "nebula-rescue"
 icono  = "lifebuoy"
 
 [[categoria.app]]
-nombre = "Energia (bloquear / salir)"
-exec   = "nebula-powermenu"
-icono  = "power"
+nombre = "Rofi"
+exec   = "rofi -show"
+icono  = "cog"
 
 [[categoria.app]]
-nombre = "Papelera"
-exec   = "nautilus trash:///"
-icono  = "trash"
+nombre = "Selector de tema de Rofi"
+exec   = "rofi-theme-selector"
+icono  = "cog"
 
-
+[[categoria.app]]
+nombre = "Sincronizar la sesion"
+exec   = "nebula-sync"
+icono  = "backup"
 
 [[categoria]]
 nombre = "Herramientas"
 icono  = "wrench"
+
+[[categoria.app]]
+nombre = "Ajustes avanzados"
+exec   = "gnome-tweaks"
+icono  = "tweaks"
+
+[[categoria.app]]
+nombre = "Ayuda"
+exec   = "yelp"
+icono  = "settings"
 
 [[categoria.app]]
 nombre = "Calculadora"
@@ -489,49 +611,9 @@ exec   = "gnome-calendar"
 icono  = "calendar"
 
 [[categoria.app]]
-nombre = "Registros del sistema"
-exec   = "gnome-logs"
-icono  = "activity"
-
-[[categoria.app]]
-nombre = "Escaner de documentos"
-exec   = "simple-scan"
-icono  = "scan"
-
-[[categoria.app]]
-nombre = "Escritorio remoto (Remmina)"
-exec   = "remmina"
-icono  = "remote"
-
-[[categoria.app]]
-nombre = "Transmission (BitTorrent)"
-exec   = "transmission-gtk"
-icono  = "download"
-
-[[categoria.app]]
-nombre = "Gestor de archivos comprimidos"
-exec   = "file-roller"
-icono  = "archive"
-
-[[categoria.app]]
-nombre = "Editor de particiones"
-exec   = "gparted"
-icono  = "disk"
-
-[[categoria.app]]
-nombre = "Uso de disco"
-exec   = "baobab"
-icono  = "chart"
-
-[[categoria.app]]
-nombre = "Ajustes avanzados"
-exec   = "gnome-tweaks"
-icono  = "tweaks"
-
-[[categoria.app]]
-nombre = "Editor de dconf"
-exec   = "dconf-editor"
-icono  = "settings"
+nombre = "Centro de aplicaciones (Snap)"
+exec   = "snap-store"
+icono  = "store"
 
 [[categoria.app]]
 nombre = "Contrasenas y claves"
@@ -544,18 +626,92 @@ exec   = "timeshift-gtk"
 icono  = "backup"
 
 [[categoria.app]]
-nombre = "Tienda de software"
-exec   = "gnome-software"
-icono  = "store"
+nombre = "Copias de seguridad (Deja Dup)"
+exec   = "deja-dup"
+icono  = "backup"
+
+[[categoria.app]]
+nombre = "Editor de dconf"
+exec   = "dconf-editor"
+icono  = "settings"
+
+[[categoria.app]]
+nombre = "Editor de particiones"
+exec   = "gparted"
+icono  = "disk"
+
+[[categoria.app]]
+nombre = "Escaner de documentos"
+exec   = "simple-scan"
+icono  = "scan"
+
+[[categoria.app]]
+nombre = "Escritorio remoto (Remmina)"
+exec   = "remmina"
+icono  = "remote"
+
+[[categoria.app]]
+nombre = "Gestor de archivos comprimidos"
+exec   = "file-roller"
+icono  = "archive"
+
+[[categoria.app]]
+nombre = "Registros del sistema"
+exec   = "gnome-logs"
+icono  = "activity"
 
 [[categoria.app]]
 nombre = "Synaptic"
 exec   = "synaptic-pkexec"
 icono  = "package"
 
+[[categoria.app]]
+nombre = "Tienda de software"
+exec   = "gnome-software"
+icono  = "store"
+
+[[categoria.app]]
+nombre = "Transmission (BitTorrent)"
+exec   = "transmission-gtk"
+icono  = "download"
+
+[[categoria.app]]
+nombre = "Uso de disco"
+exec   = "baobab"
+icono  = "chart"
+
+[[categoria.app]]
+nombre = "Visor de fuentes"
+exec   = "gnome-font-viewer"
+icono  = "font"
 
 [[categoria]]
 nombre = "Configuracion"
+icono  = "settings"
+
+[[categoria.app]]
+nombre = "Aplicaciones al inicio"
+exec   = "gnome-session-properties"
+icono  = "settings"
+
+[[categoria.app]]
+nombre = "Caracteres"
+exec   = "gnome-characters"
+icono  = "font"
+
+[[categoria.app]]
+nombre = "Configuracion de GPU (NVIDIA)"
+exec   = "nvidia-settings"
+icono  = "gpu"
+
+[[categoria.app]]
+nombre = "Configuracion de red"
+exec   = "nm-connection-editor"
+icono  = "wifi"
+
+[[categoria.app]]
+nombre = "Configuracion del sistema"
+exec   = "gnome-control-center"
 icono  = "settings"
 
 [[categoria.app]]
@@ -564,19 +720,24 @@ exec   = "software-properties-gtk --open-tab=4"
 icono  = "settings"
 
 [[categoria.app]]
-nombre = "Configuracion de red"
-exec   = "nm-connection-editor"
-icono  = "wifi"
-
-[[categoria.app]]
 nombre = "CPU-X"
 exec   = "cpu-x"
 icono  = "cpu"
 
 [[categoria.app]]
-nombre = "Caracteres"
-exec   = "gnome-characters"
+nombre = "Estadisticas de energia"
+exec   = "gnome-power-statistics"
+icono  = "battery"
+
+[[categoria.app]]
+nombre = "Idioma del sistema"
+exec   = "gnome-language-selector"
 icono  = "font"
+
+[[categoria.app]]
+nombre = "Impresoras"
+exec   = "system-config-printer"
+icono  = "settings"
 
 [[categoria.app]]
 nombre = "Relojes"
@@ -584,12 +745,6 @@ exec   = "gnome-clocks"
 icono  = "clock"
 
 [[categoria.app]]
-nombre = "Neovim"
-exec   = "alacritty -e nvim"
-icono  = "edit"
-
-[[categoria.app]]
-nombre = "Estadisticas de energia"
-exec   = "gnome-power-statistics"
-icono  = "battery"
-
+nombre = "Software y actualizaciones"
+exec   = "software-properties-gtk"
+icono  = "settings"

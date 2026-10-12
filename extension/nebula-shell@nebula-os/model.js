@@ -516,6 +516,11 @@ function execKeys(exec) {
             keys.add(`fp:${id}`);
         return keys;
     }
+    if (first === 'gtk-launch' && argv[i + 1]) {
+        // Apps de Wine y similares: se lanzan por id de .desktop.
+        keys.add(`fp:${argv[i + 1].replace(/\.desktop$/, '')}`);
+        return keys;
+    }
     keys.add(baseName(first));
     const e = argv.indexOf('-e');
     if (e >= 0 && argv[e + 1])
@@ -530,6 +535,8 @@ function uncategorizedApps(rawCats) {
         for (const a of (Array.isArray(cat.app) ? cat.app : []))
             if (a?.exec)
                 execKeys(a.exec).forEach(k => known.add(k));
+    // "Mis discos y nubes" ya ofrece el gestor de discos (categoria dinamica).
+    known.add('gnome-disks');
     // "gimp" cubre a "gimp-2.10"; "remmina" a "remmina-file-wrapper".
     const prefixes = [...known].filter(k => k.length >= 4 && !k.startsWith('fp:'));
     const covered = keys => [...keys].some(k =>
@@ -694,6 +701,10 @@ export function buildModel(extensionPath) {
         // montajes (p. ej. una unidad externa desconectada).
         if (apps.length === 0 && !['Mis discos y nubes', 'Accesos rapidos'].includes(catName))
             continue;
+        // Alfabetico por defecto (sin tildes ni mayusculas). Favoritos y
+        // Recientes conservan su orden propio; las ubicaciones se arman solas.
+        if (catName !== 'Favoritos' && !['recientes', 'ubicaciones', 'accesos'].includes(cat.tipo))
+            apps.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', {sensitivity: 'base'}));
         const order = appOrder(catName);
         if (order.length) {
             const positions = new Map(order.map((exec, i) => [exec, i]));
