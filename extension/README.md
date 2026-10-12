@@ -35,9 +35,11 @@ Hace:
   escritorio ni las ventanas maximizadas se reacomodan. Contenido:
   - cabecera: marca (`brand-mark.png`) + "NEBULA OS" + "cosmic minimalism";
   - reloj en vivo (fecha en español + hora grande);
-  - lista de las 13 categorías (icono de línea simbólico + nombre); clic → abre
-    el lanzador filtrado a esa categoría;
-  - recuadro "Buscar aplicaciones..." al pie (si entra en el alto de la pantalla).
+  - lista de categorías (icono de línea simbólico + nombre); clic → abre el
+    lanzador filtrado a esa categoría. Es lo último de la sidebar: el recuadro
+    de búsqueda y el indicador de batería del pie se quitaron (en la pantalla de
+    768 px nunca llegaban a verse; el buscador es `Super+B` o escribir en el
+    lanzador, la batería está en el menú de sistema de GNOME).
   La fila de botones de energía se quitó: apagar, reiniciar y cerrar sesión
   están en el menú de sistema de GNOME que abre la barra de Nebula.
 - **Bloque SISTEMA** (`meters.js`), desplegable desde un botón de la barra de
@@ -53,6 +55,11 @@ Hace:
   (sin consumirlo: llega a la ventana de atrás) o abrir el Overview (R-303,
   `_installOutsideWatch()` en `launcher.js`). La descripción sale de
   `Gio.AppInfo` cuando se puede resolver el `exec`.
+  **Reordenar con el puntero:** en una categoría (sin texto en el buscador) se
+  arrastra una fila; las demás se corren para abrirle el hueco y al soltar queda
+  guardado (`state.js`, `moveAppTo`). Cerca del borde de la lista se desplaza
+  sola. **Mover a categoría** (clic derecho sobre una app) abre un panel a la
+  derecha del lanzador, no un submenú hacia abajo que se salía de la pantalla.
 - **Barra de Nebula** (`bottombar.js`), franja full-width **arriba**, en el lugar
   de la barra superior de GNOME, que se oculta (clave `bar-position`; `bottom`
   la manda al pie y vuelve a mostrar la de GNOME). Reserva su alto con
@@ -63,8 +70,23 @@ Hace:
   Settings de GNOME** (wifi, bluetooth, volumen, brillo, apagar) anclado sobre
   esta barra; desde el indicador de la barra superior sigue abriendo arriba.
   Los escritorios de GNOME separan **ventanas**, no iconos: los iconos del
-  escritorio (DING) son los mismos en todos. La bandeja real (StatusNotifier)
+  escritorio (DING) son los mismos en todos; para tener iconos propios en cada
+  uno ver **Iconos por escritorio** más abajo. Una ventana de la lista se
+  arrastra hasta el botón de otro escritorio y se va para allá sin llevarte.
+  La bandeja real (StatusNotifier)
   la sigue mostrando `ubuntu-appindicators` en la barra superior.
+- **Iconos por escritorio** (`desktop-icons.js`, clave `workspace-icons`,
+  apagada por defecto): cada escritorio virtual muestra los archivos de su
+  propia carpeta, como las pantallas de un celular. El 1 usa el Escritorio del
+  usuario; el N usa `~/.local/share/nebula/escritorios/N`. Los iconos se
+  arrastran para acomodarlos en la grilla (se recuerda por escritorio) o hasta el
+  botón de otro escritorio de la barra para pasarlos a su carpeta; doble clic
+  abre, clic derecho ofrece abrir / mover a escritorio / papelera. La capa vive
+  en el fondo del Shell, bajo las ventanas y sin struts (BUG-33). **Reemplaza a
+  DING**: con los dos activos se ven duplicados, así que `bin/nebula-escritorios
+  on|off|status` los cambia juntos (solo reactiva DING si lo apagó él). Solo
+  monitor primario. Mientras Mutter anima el cambio de escritorio los iconos no
+  se ven y aparecen con un fundido al terminar.
 - **Acento violeta del Shell** (`accent.js`, clave `violet-accent`): carga la
   variante `Yaru-purple` del tema de GNOME Shell en lugar del naranja de Ubuntu
   (interruptores, deslizadores, Quick Settings, calendario, dock). No toca el
@@ -92,6 +114,8 @@ que se decida un *shell theme*.
 | `nebula-shell@nebula-os/launcher.js` | Panel "Buscar aplicaciones...": búsqueda + lista plana icono/nombre/descripción |
 | `nebula-shell@nebula-os/meters.js` | Bloque SISTEMA: CPU/RAM/SWAP/GPU/Disco/Red en vivo + sparkline (Cairo); lo despliega un botón de la barra |
 | `nebula-shell@nebula-os/bottombar.js` | Barra de Nebula (arriba o al pie): escritorios + taskbar + MPRIS (DBus) + menú de sistema de GNOME + reloj |
+| `nebula-shell@nebula-os/desktop-icons.js` / `desktop-grid.js` | Iconos por escritorio virtual (capa en el fondo del Shell) y su grilla (lógica pura, probada con gjs) |
+| `nebula-shell@nebula-os/pointer-drag.js` | Arrastre con el puntero (captured-event del stage) y copia flotante |
 | `nebula-shell@nebula-os/accent.js` | Acento violeta del Shell (hoja de tema `Yaru-purple`) |
 | `nebula-shell@nebula-os/model.js` | Carga `categories.json`, detección `GLib.find_program_in_path`, lanzamiento, iconos + descripciones (`Gio.AppInfo`), `flatApps`/`filterApps` |
 | `nebula-shell@nebula-os/stylesheet.css` | Paleta Cosmic Dark, scopeada a `.nebula-*` |
@@ -248,6 +272,8 @@ Aspecto y convivencia con GNOME:
       de Nebula (`style-top-panel`);
 - [x] el Ubuntu Dock deja el borde izquierdo (abajo, o a la derecha si la barra
       de Nebula está al pie) y vuelve al deshabilitar; no salta al bloquear;
+- [ ] iconos por escritorio (`nebula-escritorios on`): doble clic abre, arrastrar acomoda, soltar sobre el botón de otro escritorio lo pasa, y DING no queda duplicando;
+- [ ] arrastrar una app del lanzador para reordenarla, y "Mover a categoría" con el panel al costado (probado en el Shell headless, falta a mano real);
 - [ ] multi-monitor: enchufar/desenchufar una segunda pantalla y pantalla completa
       (la máquina de referencia usa una sola pantalla: no se puede validar ahí);
 - [v] los discos externos funcionan;

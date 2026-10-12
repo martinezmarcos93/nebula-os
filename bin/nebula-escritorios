@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# nebula-escritorios - Iconos propios en cada escritorio virtual de Nebula.
+#
+#   on      Nebula dibuja los iconos (uno por escritorio) y apaga DING
+#   off     vuelve a DING y apaga los iconos de Nebula
+#   status  muestra cual de los dos esta activo
+#
+# El escritorio 1 usa el Escritorio del usuario; los demas, una carpeta cada
+# uno en ~/.local/share/nebula/escritorios/N. DING dibuja los mismos iconos en
+# todos los escritorios, por eso no pueden convivir: este comando los cambia
+# juntos. Se aplica en vivo, sin reiniciar la sesion.
+set -uo pipefail
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" || $# -eq 0 ]]; then
+    sed -n '2,11p' "$0"
+    exit 0
+fi
+
+EXT_UUID="nebula-shell@nebula-os"
+DING_UUID="ding@rastersoft.com"
+SCHEMA="org.gnome.shell.extensions.nebula-shell"
+SCHEMA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/gnome-shell/extensions/$EXT_UUID/schemas"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/nebula-os"
+DING_FLAG="$STATE_DIR/ding-apagado-por-nebula"
+
+setting() {
+    gsettings --schemadir "$SCHEMA_DIR" "$@"
+}
+
+nebula_icons_on() {
+    [[ "$(setting get "$SCHEMA" workspace-icons 2>/dev/null)" == "true" ]]
+}
+
+ding_on() {
+    gnome-extensions list --enabled 2>/dev/null | grep -qx "$DING_UUID"
+}
+
+case "$1" in
+    on)
+        if [[ ! -d "$SCHEMA_DIR" ]]; then
+            echo "nebula-escritorios: la extension $EXT_UUID no esta instalada." >&2
+            exit 1
+        fi
+        if ding_on; then
+            mkdir -p "$STATE_DIR" && : > "$DING_FLAG"
+            gnome-extensions disable "$DING_UUID" || exit 1
+        fi
+        setting set "$SCHEMA" workspace-icons true || exit 1
+        echo "Iconos por escritorio: activados (DING apagado)."
+        ;;
+    off)
+        setting set "$SCHEMA" workspace-icons false 2>/dev/null
+        # Solo se vuelve a encender DING si lo apago este comando.
+        if [[ -e "$DING_FLAG" ]]; then
+            gnome-extensions enable "$DING_UUID" && rm -f "$DING_FLAG"
+        fi
+        echo "Iconos por escritorio: desactivados."
+        ;;
+    status)
+        if nebula_icons_on; then
+            echo "Nebula dibuja los iconos (un conjunto por escritorio)."
+        elif ding_on; then
+            echo "DING dibuja los iconos (los mismos en todos los escritorios)."
+        else
+            echo "Nadie dibuja los iconos del escritorio."
+        fi
+        if nebula_icons_on && ding_on; then
+            echo "AVISO: DING tambien esta activo; se ven iconos duplicados. Corre: nebula-escritorios on" >&2
+        fi
+        ;;
+    *)
+        echo "uso: nebula-escritorios on|off|status" >&2
+        exit 2
+        ;;
+esac

@@ -51,6 +51,11 @@
       <summary>Punto de montaje que mide el meter de disco</summary>
       <description>Por ejemplo el volumen de datos. Si la ruta no existe, la fila queda sin valor.</description>
     </key>
+    <key name="workspace-icons" type="b">
+      <default>false</default>
+      <summary>Iconos propios en cada escritorio virtual</summary>
+      <description>Nebula dibuja los archivos de una carpeta distinta por escritorio (el 1 usa el Escritorio del usuario). Requiere apagar DING (ding@rastersoft.com): con los dos activos se ven iconos duplicados. bin/nebula-escritorios hace ambas cosas. Se aplica en vivo.</description>
+    </key>
     <key name="debug" type="b">
       <default>false</default>
       <summary>Logs de diagnostico [Nebula] en el journal</summary>

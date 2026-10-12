@@ -26,6 +26,7 @@ import {applyAppearance, clearAppearance} from './appearance.js';
 import {setDebug} from './debug.js';
 import {moveDockAway, restoreDock} from './dock.js';
 import {applyAccent, clearAccent} from './accent.js';
+import {NebulaDesktopIcons} from './desktop-icons.js';
 import St from 'gi://St';
 
 export default class NebulaShellExtension extends Extension {
@@ -43,6 +44,7 @@ export default class NebulaShellExtension extends Extension {
                 () => setDebug(this._settings.get_boolean('debug'))),
             this._settings.connect('changed::style-top-panel', () => this._syncPanelStyle()),
             this._settings.connect('changed::violet-accent', () => this._syncAccent()),
+            this._settings.connect('changed::workspace-icons', () => this._syncDesktopIcons()),
             ...['enable-launcher', 'enable-meters', 'enable-bottombar', 'bar-position', 'disk-path'].map(key =>
                 this._settings.connect(`changed::${key}`, () => {
                     if (!this._enabled)
@@ -84,6 +86,17 @@ export default class NebulaShellExtension extends Extension {
                 this._bottomBars.push(new NebulaBottomBar(i, this.path, this._barAtTop(), this._settings));
         }
         this._syncGnomePanel();
+        this._syncDesktopIcons();
+    }
+
+    // Iconos propios por escritorio virtual (clave workspace-icons). Se
+    // recrean junto con las superficies porque necesitan las barras para
+    // saber sobre que boton de escritorio se suelta un icono.
+    _syncDesktopIcons() {
+        this._desktopIcons?.destroy();
+        this._desktopIcons = null;
+        if (this._enabled && this._settings?.get_boolean('workspace-icons'))
+            this._desktopIcons = new NebulaDesktopIcons(() => this._bottomBars ?? []);
     }
 
     _barAtTop() {
@@ -163,6 +176,8 @@ export default class NebulaShellExtension extends Extension {
             Main.layoutManager.disconnect(this._monitorSignalId);
             this._monitorSignalId = 0;
         }
+        this._desktopIcons?.destroy();
+        this._desktopIcons = null;
         this._sidebars?.forEach(s => s.destroy());
         this._bottomBars?.forEach(b => b.destroy());
         this._sidebars = [];

@@ -36,6 +36,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import {taskbarPinnedApps, launchEntry} from './model.js';
 import {NebulaMeters} from './meters.js';
+import {armDrag, createDragGhost} from './pointer-drag.js';
 
 export const BAR_HEIGHT = 34;
 const CLOCK_TICK_S = 15;
@@ -355,6 +356,30 @@ export class NebulaBottomBar {
         this._updateWsActive();
     }
 
+    /** Indice del escritorio cuyo boton esta bajo (x, y), o -1. Destino de soltado
+     * para iconos y ventanas arrastrados. */
+    workspaceAt(x, y) {
+        for (let i = 0; i < this._wsButtons.length; i++) {
+            const b = this._wsButtons[i];
+            if (!b.visible || !b.mapped)
+                continue;
+            const [bx, by] = b.get_transformed_position();
+            if (x >= bx && x < bx + b.width && y >= by && y < by + b.height)
+                return i;
+        }
+        return -1;
+    }
+
+    /** Resalta el boton de escritorio sobre el que se va a soltar (-1: ninguno). */
+    highlightWorkspace(index) {
+        this._wsButtons.forEach((b, i) => {
+            if (i === index)
+                b.add_style_pseudo_class('drop');
+            else
+                b.remove_style_pseudo_class('drop');
+        });
+    }
+
     _updateWsActive() {
         const active = global.workspace_manager.get_active_workspace_index();
         this._wsButtons.forEach((b, i) =>
@@ -417,17 +442,57 @@ export class NebulaBottomBar {
                 style_class: 'nebula-window-label',
             }));
             button.set_child(box);
-            button.connect('clicked', () => toggleTaskWindow(window));
+            button.connect('clicked', () => {
+                // Soltar un arrastre sobre el propio boton no es un clic.
+                if (this._suppressWindowClick) {
+                    this._suppressWindowClick = false;
+                    return;
+                }
+                toggleTaskWindow(window);
+            });
             button.connect('button-press-event', (_actor, event) => {
                 if (event.get_button() === 3) {
                     this._openWindowMenu(button, window);
                     return Clutter.EVENT_STOP;
+                }
+                if (event.get_button() === 1) {
+                    this._suppressWindowClick = false;
+                    this._armWindowDrag(window, label, event);
                 }
                 return Clutter.EVENT_PROPAGATE;
             });
             this._windowBox.add_child(button);
             this._windowButtons.push(button);
         }
+    }
+
+    // Arrastrar una ventana de la barra hasta el boton de otro escritorio la
+    // manda alla sin llevar al usuario. Se arrastra una copia flotante: la lista
+    // de ventanas se reconstruye con cada cambio y no puede romper el arrastre.
+    _armWindowDrag(window, label, event) {
+        let ghost = null;
+        this._windowDrag = armDrag(event, {
+            onStart: () => {
+                ghost = createDragGhost(windowIcon(window), label);
+            },
+            onMove: (x, y) => {
+                ghost?.move(x, y);
+                this.highlightWorkspace(this.workspaceAt(x, y));
+            },
+            onEnd: (x, y, moved) => {
+                ghost?.destroy();
+                this.highlightWorkspace(-1);
+                this._windowDrag = null;
+                if (!moved)
+                    return;
+                this._suppressWindowClick = true;
+                const target = this.workspaceAt(x, y);
+                if (target >= 0) {
+                    moveWindowToWorkspace(window,
+                        global.workspace_manager.get_workspace_by_index(target), false);
+                }
+            },
+        });
     }
 
     _openWindowMenu(source, window) {
@@ -613,6 +678,8 @@ export class NebulaBottomBar {
     }
 
     destroy() {
+        this._windowDrag?.cancel();
+        this._windowDrag = null;
         if (this._clockId) {
             GLib.source_remove(this._clockId);
             this._clockId = 0;

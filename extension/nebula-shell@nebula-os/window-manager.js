@@ -107,14 +107,18 @@ export function toggleMaximizeWindow(window) {
         window.maximize(Meta.MaximizeFlags.BOTH);
 }
 
-export function moveWindowToWorkspace(window, workspace) {
+/** Pasa la ventana a otro escritorio. Con `follow` (menu contextual) el usuario
+ * va con ella; sin `follow` (arrastrar al boton del escritorio) la ventana se
+ * va y el usuario se queda donde esta, como pasar una app a otra pantalla. */
+export function moveWindowToWorkspace(window, workspace, follow = true) {
     if (!window || !workspace || !window.get_workspace)
         return;
     try {
         if (window.get_workspace() === workspace)
             return;
         window.change_workspace(workspace);
-        workspace.activate(global.get_current_time());
+        if (follow)
+            workspace.activate(global.get_current_time());
     } catch (e) {
         console.error(`Nebula Shell: no se pudo mover ventana de escritorio: ${e}`);
     }

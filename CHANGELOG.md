@@ -30,6 +30,18 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 ## [No publicado]
 
 ### Agregado
+- **Iconos por escritorio virtual** (`desktop-icons.js`, clave
+  `workspace-icons`, apagada por defecto; `bin/nebula-escritorios on|off|status`
+  cambia entre esto y DING): cada escritorio tiene su propia carpeta de iconos,
+  acomodables con el puntero y pasables de un escritorio a otro arrastrandolos
+  al boton del escritorio en la barra.
+- Arrastrar una ventana de la lista de la barra al boton de otro escritorio la
+  manda alla sin llevar al usuario.
+- Lanzador: reordenar las apps de una categoria arrastrandolas (con
+  autodesplazamiento) y "Mover a categoria" como panel a la derecha del
+  lanzador, no como submenu que se salia de la pantalla.
+- `pointer-drag.js` (arrastre reutilizable) y `desktop-grid.js` (grilla, con
+  `tools/test-desktop-grid.mjs`); `moveAppTo` en `state.js`.
 - `dotfiles/fastfetch/`: logo ASCII de Nebula (anillo + espiral) y
   configuracion de fastfetch con la paleta violeta. Por ahora se copia a mano
   a `~/.config/fastfetch/`; el instalador todavia no lo despliega ni instala
@@ -51,6 +63,9 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
   escritorio. Ahora trae la ventana al escritorio actual.
 
 ### Quitado
+- Sidebar: el indicador de bateria (`battery.js`) y el recuadro "Buscar
+  aplicaciones..." del pie, con su logica de ocultarlos por falta de alto. En la
+  pantalla de 768 px nunca se veian y el lanzador ya se abre con `Super+B`.
 - Fila de botones de energia de la sidebar: apagar, reiniciar y cerrar sesion
   ya estan en el menu de sistema de GNOME que abre la barra.
 
