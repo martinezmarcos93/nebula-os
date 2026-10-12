@@ -30,6 +30,12 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 ## [No publicado]
 
 ### Agregado
+- **Arrastre de grupos en el escritorio**: lo seleccionado se mueve junto,
+  conservando las distancias entre iconos (`placeGroup`, con pruebas); soltado
+  sobre el boton de otro escritorio pasa todo a su carpeta. El menu contextual
+  (Abrir, Mover a escritorio, Papelera) actua sobre toda la seleccion. El
+  refresco por cambios en la carpeta espera a que termine el arrastre en vez de
+  perderse.
 - **Seleccion multiple en el escritorio** (`desktop-icons.js`): clic, Ctrl+clic
   (suma o quita), Shift+clic (rango) y rectangulo arrastrando sobre el fondo
   (con Ctrl o Shift suma a lo ya elegido). El fondo sigue sin ser reactivo: el

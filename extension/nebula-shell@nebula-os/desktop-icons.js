@@ -27,7 +27,7 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 import {armDrag, createDragGhost} from './pointer-drag.js';
 import {desktopIconCells, setDesktopIconCell, clearDesktopIconCell} from './state.js';
-import {assignCells, nearestFreeCell, rectsIntersect, rangeBetween} from './desktop-grid.js';
+import {assignCells, nearestFreeCell, rectsIntersect, rangeBetween, placeGroup} from './desktop-grid.js';
 
 const CELL_W = 96;
 const CELL_H = 104;
@@ -404,20 +404,31 @@ export class NebulaDesktopIcons {
     }
 
     _armDrag(box, item, event, collapse = false) {
+        const originWs = this._workspace;
+        const group = this._selectedItems();
+        if (!group.some(i => i.name === item.name))
+            group.push(item);
+        const {cols, rows} = this._grid();
+        // Donde estaba cada uno al agarrarlos: el escritorio puede cambiar
+        // (borde de pantalla) y entonces this._items ya no es el de origen.
+        const originCells = assignCells(this._items.map(i => i.name), desktopIconCells(originWs), cols, rows);
         let ghost = null;
         this._drag = armDrag(event, {
             onStart: () => {
-                ghost = createDragGhost(item.icon, item.label);
-                box.opacity = 90;
+                ghost = createDragGhost(item.icon, group.length > 1 ? `${group.length} elementos` : item.label);
+                for (const g of group)
+                    this._boxes.get(g.name)?.set_opacity(90);
             },
             onMove: (x, y) => {
                 ghost?.move(x, y);
                 this._highlightWorkspace(this._workspaceAt(x, y));
+                this._onDragMove(x, y);
             },
             onEnd: (x, y, moved) => {
                 ghost?.destroy();
                 if (this._destroyed)
                     return;
+                this._onDragEnd();
                 this._highlightWorkspace(-1);
                 this._drag = null;
                 if (!moved) {
@@ -425,22 +436,16 @@ export class NebulaDesktopIcons {
                         this._setSelection([item.name], item.name);
                     return;
                 }
-                box.opacity = 255;
                 const target = this._workspaceAt(x, y);
                 // Fuera del dispatch del evento: reconstruir destruye los actores.
-                this._addIdle(() => {
-                    // El icono virtual ya esta en todos los escritorios: soltarlo
-                    // sobre otro no lo mueve, solo vuelve a su lugar.
-                    if (item.virtual && target >= 0 && target !== this._workspace)
-                        this._refresh(false);
-                    else if (target >= 0 && target !== this._workspace)
-                        this.sendToWorkspace(item, target);
-                    else
-                        this._dropAt(item, x, y);
-                });
+                this._addIdle(() => this._dropGroup(group, item, originWs, originCells, target, x, y));
             },
         });
     }
+
+    // Ganchos del arrastre de iconos (el cambio de escritorio por el borde).
+    _onDragMove(_x, _y) {}
+    _onDragEnd() {}
 
     _workspaceAt(x, y) {
         for (const bar of this._getBars()) {
@@ -456,35 +461,87 @@ export class NebulaDesktopIcons {
             bar.highlightWorkspace?.(index);
     }
 
-    /** Deja el icono en la celda mas cercana al punto (x, y) de la pantalla. */
-    _dropAt(item, x, y) {
+    /** Celda de la grilla bajo el punto (x, y) de la pantalla. */
+    _cellAt(x, y) {
         const [lx, ly] = this._layer.get_transformed_position();
-        const {cols, rows} = this._grid();
-        const want = [
+        return [
             Math.floor((x - lx - MARGIN) / CELL_W),
             Math.floor((y - ly - MARGIN) / CELL_H),
         ];
-        const cells = assignCells(this._items.map(i => i.name), desktopIconCells(this._workspace), cols, rows);
-        const occupied = new Set([...cells].filter(([n]) => n !== item.name).map(([, c]) => `${c[0]},${c[1]}`));
-        const cell = nearestFreeCell(want, occupied, cols, rows);
-        if (cell)
-            setDesktopIconCell(this._workspace, item.name, cell);
-        this._refresh(false);
     }
 
-    /** Mueve el archivo a la carpeta de otro escritorio. Devuelve false si falla. */
-    sendToWorkspace(item, workspace) {
+    /**
+     * Suelta un grupo. Tres casos:
+     *  - sobre el boton de otro escritorio: los archivos pasan a su carpeta;
+     *  - en este escritorio y venian de el: se reacomodan en la grilla;
+     *  - en este escritorio pero venian de otro (el borde de pantalla cambio el
+     *    escritorio a mitad del arrastre): los archivos se traen de la carpeta
+     *    de origen y se colocan donde se soltaron.
+     * Los virtuales (Carpeta personal) estan en todos los escritorios: no
+     * cambian de carpeta, solo de lugar.
+     */
+    _dropGroup(group, anchor, originWs, originCells, target, x, y) {
+        if (this._destroyed)
+            return;
+        const real = group.filter(i => !i.virtual);
+
+        if (target >= 0 && target !== this._workspace) {
+            for (const g of real)
+                this.sendToWorkspace(g, target, originWs);
+            this._refresh(false);
+            return;
+        }
+
+        const {cols, rows} = this._grid();
+        const moving = group.map(g => g.name);
+        const arrivals = new Map();   // nombre en origen -> nombre aqui
+        if (originWs !== this._workspace) {
+            for (const g of real) {
+                const name = this._moveFile(g, this._workspace);
+                if (name)
+                    arrivals.set(g.name, name);
+            }
+            for (const g of group.filter(i => i.virtual))
+                arrivals.set(g.name, g.name);
+        } else {
+            for (const g of group)
+                arrivals.set(g.name, g.name);
+        }
+        const here = assignCells(this._items.map(i => i.name), desktopIconCells(this._workspace), cols, rows);
+        const stay = moving.filter(n => originWs !== this._workspace ? n === HOME_KEY : true);
+        const occupied = new Set([...here].filter(([n]) => !stay.includes(n)).map(([, c]) => `${c[0]},${c[1]}`));
+        const placed = placeGroup([...arrivals.keys()], anchor.name, this._cellAt(x, y),
+            new Map([...arrivals.keys()].map(n => [n, originCells.get(n) ?? this._cellAt(x, y)])),
+            occupied, cols, rows);
+        for (const [orig, cell] of placed) {
+            setDesktopIconCell(this._workspace, arrivals.get(orig), cell);
+            if (originWs !== this._workspace && orig !== HOME_KEY)
+                clearDesktopIconCell(originWs, orig);
+        }
+        this._refresh(false);
+        this._setSelection([...arrivals.values()], arrivals.get(anchor.name) ?? null);
+    }
+
+    /** Mueve un archivo a la carpeta de un escritorio. Devuelve su nombre alli, o null si falla. */
+    _moveFile(item, workspace) {
         if (item.virtual)
-            return false;
+            return null;
         try {
-            const dest = Gio.File.new_for_path(uniqueDestination(workspaceFolder(workspace), item.name));
-            item.file.move(dest, Gio.FileCopyFlags.NONE, null, null);
-            clearDesktopIconCell(this._workspace, item.name);
-            return true;
+            const destPath = uniqueDestination(workspaceFolder(workspace), item.name);
+            item.file.move(Gio.File.new_for_path(destPath), Gio.FileCopyFlags.NONE, null, null);
+            return GLib.path_get_basename(destPath);
         } catch (e) {
             console.error(`Nebula Shell: no se pudo mover ${item.name} al escritorio ${workspace + 1}: ${e}`);
-            return false;
+            return null;
         }
+    }
+
+    /** Pasa el archivo a otro escritorio. Devuelve false si falla (o si es virtual). */
+    sendToWorkspace(item, workspace, fromWorkspace = this._workspace) {
+        if (!this._moveFile(item, workspace))
+            return false;
+        clearDesktopIconCell(fromWorkspace, item.name);
+        return true;
     }
 
     trashItem(item) {
@@ -507,31 +564,36 @@ export class NebulaDesktopIcons {
         Main.panel.menuManager.addMenu(menu);
         this._menu = menu;
 
-        const open = new PopupMenu.PopupMenuItem('Abrir');
-        open.connect('activate', () => this.openItem(item));
+        // Sobre un icono de la seleccion, el menu actua sobre toda ella.
+        const group = this._selectedItems();
+        const targets = group.some(i => i.name === item.name) ? group : [item];
+        const real = targets.filter(i => !i.virtual);
+
+        const open = new PopupMenu.PopupMenuItem(targets.length > 1 ? `Abrir (${targets.length})` : 'Abrir');
+        open.connect('activate', () => targets.forEach(t => this.openItem(t)));
         menu.addMenuItem(open);
 
-        if (item.virtual) {
-            this._bindMenuClose(menu);
-            menu.open(BoxPointer.PopupAnimation.FULL);
-            return;
-        }
+        if (real.length > 0) {
+            const moveMenu = new PopupMenu.PopupSubMenuMenuItem('Mover a escritorio');
+            const n = global.workspace_manager.get_n_workspaces();
+            for (let i = 0; i < n; i++) {
+                if (i === this._workspace)
+                    continue;
+                const entry = new PopupMenu.PopupMenuItem(`Escritorio ${i + 1}`);
+                entry.connect('activate', () => this._addIdle(() => {
+                    real.forEach(t => this.sendToWorkspace(t, i));
+                    this._refresh(false);
+                }));
+                moveMenu.menu.addMenuItem(entry);
+            }
+            menu.addMenuItem(moveMenu);
 
-        const moveMenu = new PopupMenu.PopupSubMenuMenuItem('Mover a escritorio');
-        const n = global.workspace_manager.get_n_workspaces();
-        for (let i = 0; i < n; i++) {
-            if (i === this._workspace)
-                continue;
-            const entry = new PopupMenu.PopupMenuItem(`Escritorio ${i + 1}`);
-            entry.connect('activate', () => this._addIdle(() => this.sendToWorkspace(item, i)));
-            moveMenu.menu.addMenuItem(entry);
+            menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+            const trash = new PopupMenu.PopupMenuItem(
+                real.length > 1 ? `Mover a la papelera (${real.length})` : 'Mover a la papelera');
+            trash.connect('activate', () => this._addIdle(() => real.forEach(t => this.trashItem(t))));
+            menu.addMenuItem(trash);
         }
-        menu.addMenuItem(moveMenu);
-
-        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        const trash = new PopupMenu.PopupMenuItem('Mover a la papelera');
-        trash.connect('activate', () => this._addIdle(() => this.trashItem(item)));
-        menu.addMenuItem(trash);
 
         this._bindMenuClose(menu);
         menu.open(BoxPointer.PopupAnimation.FULL);
@@ -581,7 +643,9 @@ export class NebulaDesktopIcons {
             return;
         this._refreshId = this._addTimeout(REFRESH_DEBOUNCE_MS, () => {
             this._refreshId = 0;
-            if (!this._drag)
+            if (this._drag)
+                this._scheduleRefresh();   // no reconstruir en pleno arrastre: esperar
+            else
                 this._refresh(false);
         });
     }

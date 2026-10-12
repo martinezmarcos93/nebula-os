@@ -277,6 +277,7 @@ Aspecto y convivencia con GNOME:
       de Nebula está al pie) y vuelve al deshabilitar; no salta al bloquear;
 - [ ] iconos por escritorio (`nebula-escritorios on`): doble clic abre, arrastrar acomoda, soltar sobre el botón de otro escritorio lo pasa, y DING no queda duplicando;
 - [ ] seleccion multiple: rectangulo sobre el fondo, Ctrl+clic suma/quita, Shift+clic elige un rango, clic en el fondo deselecciona, y con una ventana encima el rectangulo no arranca;
+- [ ] arrastre de grupos: elegir 3 iconos y arrastrar uno mueve los tres manteniendo la forma; soltar sobre el boton 2 los pasa; clic derecho > Papelera actua sobre los tres;
 - [ ] la Carpeta personal aparece en los 4 escritorios, abre `$HOME` con doble clic, su clic derecho solo ofrece Abrir y arrastrarla al botón de otro escritorio la deja en su lugar;
 - [ ] arrastrar una app del lanzador para reordenarla, y "Mover a categoría" con el panel al costado (probado en el Shell headless, falta a mano real);
 - [ ] multi-monitor: enchufar/desenchufar una segunda pantalla y pantalla completa
