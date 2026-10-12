@@ -355,8 +355,9 @@ export class NebulaDesktopIcons {
     // --- seleccion con el rectangulo ---------------------------------
 
     _isBackground(source) {
-        // Si nada del fondo es reactivo el clic llega con el stage como origen.
-        if (source === global.stage)
+        // El fondo no es reactivo: un clic que no cae sobre ningun actor reactivo
+        // (el escritorio vacio) llega sin origen (null) o con el stage.
+        if (!source || source === global.stage)
             return true;
         for (let a = source; a; a = a.get_parent()) {
             if (a === this._content)
