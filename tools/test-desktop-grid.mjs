@@ -36,4 +36,13 @@ if (Math.abs(near[0] - 1) + Math.abs(near[1] - 1) !== 1)
 same(nearestFreeCell([9, 9], new Set(), 3, 2), [2, 1], 'fuera de rango: se acota');
 same(nearestFreeCell([0, 0], new Set(['0,0', '0,1']), 1, 2), null, 'sin lugar');
 
+// Icono virtual de la carpeta personal: la clave '/personal' va primero, toma
+// la primera celda y su posicion guardada se respeta como la de cualquier otro.
+const home = assignCells(['/personal', 'a', 'b'], {}, 3, 2);
+same(home.get('/personal'), [0, 0], 'la carpeta personal toma la primera celda');
+same(home.get('a'), [0, 1], 'los archivos fluyen despues de ella');
+const moved = assignCells(['/personal', 'a'], {'/personal': [2, 1]}, 3, 2);
+same(moved.get('/personal'), [2, 1], 'la carpeta personal conserva su lugar');
+same(moved.get('a'), [0, 0], 'el archivo ocupa la celda que ella dejo');
+
 print('DESKTOP_GRID_OK');

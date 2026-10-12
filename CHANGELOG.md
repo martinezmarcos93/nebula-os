@@ -30,6 +30,9 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 ## [No publicado]
 
 ### Agregado
+- **Carpeta personal en el escritorio** (`desktop-icons.js`): icono virtual, igual en
+  los cuatro escritorios, que abre `$HOME`. Recupera lo que DING mostraba con
+  `show-home` y se perdio al reemplazarlo por la capa propia.
 - **Iconos por escritorio virtual** (`desktop-icons.js`, clave
   `workspace-icons`, apagada por defecto; `bin/nebula-escritorios on|off|status`
   cambia entre esto y DING): cada escritorio tiene su propia carpeta de iconos,

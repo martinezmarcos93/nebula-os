@@ -36,6 +36,10 @@ const ICON_SIZE = 48;
 const FADE_MS = 160;
 const REFRESH_DEBOUNCE_MS = 200;
 const MAX_ENTRIES = 400;
+// Clave del icono virtual de la carpeta personal. Un archivo real no puede
+// llamarse asi (un nombre de archivo no lleva '/'), asi que no choca en la
+// grilla ni en las posiciones guardadas.
+const HOME_KEY = '/personal';
 const ATTRS = 'standard::name,standard::display-name,standard::icon,standard::is-hidden,thumbnail::path';
 
 /** Carpeta de un escritorio (0 = Escritorio del usuario). La crea si falta. */
@@ -169,6 +173,16 @@ export class NebulaDesktopIcons {
                 console.error(`Nebula Shell: no se pudo leer el escritorio ${this._workspace + 1}: ${e}`);
         }
         items.sort((a, b) => a.label.localeCompare(b.label, 'es'));
+        // Icono virtual (no es un archivo del escritorio): aparece igual en todos
+        // los escritorios y abre siempre la carpeta personal. Va primero para
+        // ocupar la primera celda mientras el usuario no lo mueva.
+        items.unshift({
+            name: HOME_KEY,
+            file: Gio.File.new_for_path(GLib.get_home_dir()),
+            label: 'Carpeta personal',
+            icon: new Gio.ThemedIcon({names: ['user-home', 'folder']}),
+            virtual: true,
+        });
         return items;
     }
 
@@ -303,7 +317,11 @@ export class NebulaDesktopIcons {
                 const target = this._workspaceAt(x, y);
                 // Fuera del dispatch del evento: reconstruir destruye los actores.
                 this._addIdle(() => {
-                    if (target >= 0 && target !== this._workspace)
+                    // El icono virtual ya esta en todos los escritorios: soltarlo
+                    // sobre otro no lo mueve, solo vuelve a su lugar.
+                    if (item.virtual && target >= 0 && target !== this._workspace)
+                        this._refresh(false);
+                    else if (target >= 0 && target !== this._workspace)
                         this.sendToWorkspace(item, target);
                     else
                         this._dropAt(item, x, y);
@@ -344,6 +362,8 @@ export class NebulaDesktopIcons {
 
     /** Mueve el archivo a la carpeta de otro escritorio. Devuelve false si falla. */
     sendToWorkspace(item, workspace) {
+        if (item.virtual)
+            return false;
         try {
             const dest = Gio.File.new_for_path(uniqueDestination(workspaceFolder(workspace), item.name));
             item.file.move(dest, Gio.FileCopyFlags.NONE, null, null);
@@ -356,6 +376,8 @@ export class NebulaDesktopIcons {
     }
 
     trashItem(item) {
+        if (item.virtual)
+            return;
         try {
             item.file.trash(null);
             clearDesktopIconCell(this._workspace, item.name);
@@ -377,6 +399,12 @@ export class NebulaDesktopIcons {
         open.connect('activate', () => this.openItem(item));
         menu.addMenuItem(open);
 
+        if (item.virtual) {
+            this._bindMenuClose(menu);
+            menu.open(BoxPointer.PopupAnimation.FULL);
+            return;
+        }
+
         const moveMenu = new PopupMenu.PopupSubMenuMenuItem('Mover a escritorio');
         const n = global.workspace_manager.get_n_workspaces();
         for (let i = 0; i < n; i++) {
@@ -393,13 +421,17 @@ export class NebulaDesktopIcons {
         trash.connect('activate', () => this._addIdle(() => this.trashItem(item)));
         menu.addMenuItem(trash);
 
+        this._bindMenuClose(menu);
+        menu.open(BoxPointer.PopupAnimation.FULL);
+    }
+
+    _bindMenuClose(menu) {
         menu.connect('open-state-changed', (_m, isOpen) => {
             if (!isOpen && this._menu === menu) {
                 this._menu = null;
                 menu.destroy();
             }
         });
-        menu.open(BoxPointer.PopupAnimation.FULL);
     }
 
     _closeMenu() {
