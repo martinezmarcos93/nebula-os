@@ -35,6 +35,7 @@ import {
 const CELL_W = 96;
 const CELL_H = 104;
 const MARGIN = 12;
+const CELL_GAP = 8;           // CELL_W/CELL_H menos el tamano real del icono
 const ICON_SIZE = 48;
 const FADE_MS = 160;
 const REFRESH_DEBOUNCE_MS = 200;
@@ -162,9 +163,11 @@ export class NebulaDesktopIcons {
 
     _grid() {
         const a = this._area();
+        // El ultimo icono no necesita el hueco de CELL_GAP a su derecha/abajo:
+        // sin sumarlo se perdia la ultima columna/fila cuando sobraba justo un icono.
         return {
-            cols: Math.max(1, Math.floor(((a?.width ?? 1024) - 2 * MARGIN) / CELL_W)),
-            rows: Math.max(1, Math.floor(((a?.height ?? 720) - 2 * MARGIN) / CELL_H)),
+            cols: Math.max(1, Math.floor(((a?.width ?? 1024) - 2 * MARGIN + CELL_GAP) / CELL_W)),
+            rows: Math.max(1, Math.floor(((a?.height ?? 720) - 2 * MARGIN + CELL_GAP) / CELL_H)),
         };
     }
 
@@ -262,8 +265,8 @@ export class NebulaDesktopIcons {
             style_class: 'nebula-desk-icon',
             reactive: true,
             track_hover: true,
-            width: CELL_W - 8,
-            height: CELL_H - 8,
+            width: CELL_W - CELL_GAP,
+            height: CELL_H - CELL_GAP,
         });
         box.add_child(new St.Icon({
             gicon: item.icon,
