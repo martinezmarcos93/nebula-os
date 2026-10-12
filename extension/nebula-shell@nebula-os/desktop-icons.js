@@ -355,8 +355,8 @@ export class NebulaDesktopIcons {
     // --- seleccion con el rectangulo ---------------------------------
 
     _isBackground(source) {
-        // El fondo no es reactivo: un clic que no cae sobre ningun actor reactivo
-        // (el escritorio vacio) llega sin origen (null) o con el stage.
+        // Sin actor reactivo bajo el puntero (escritorio vacio) no hay nada mas
+        // que mirar.
         if (!source || source === global.stage)
             return true;
         for (let a = source; a; a = a.get_parent()) {
@@ -390,10 +390,11 @@ export class NebulaDesktopIcons {
         }
         if (Main.overview.visible || Main.modalCount > 0 || Main.sessionMode.isLocked)
             return Clutter.EVENT_PROPAGATE;
-        if (!this._isBackground(ev.get_source())) {
-            console.debug(`Nebula Shell: clic fuera del fondo, origen ${ev.get_source()}`);
+        // En 'captured-event' el origen de un clic de puntero llega vacio (null)
+        // siempre, caiga donde caiga: hay que preguntar que hay bajo el puntero.
+        const [px, py] = ev.get_coords();
+        if (!this._isBackground(global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE, px, py)))
             return Clutter.EVENT_PROPAGATE;
-        }
 
         this._closeMenu();
         this._takeDesktopFocus();
