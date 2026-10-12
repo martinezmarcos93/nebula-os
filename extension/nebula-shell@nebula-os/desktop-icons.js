@@ -355,6 +355,9 @@ export class NebulaDesktopIcons {
     // --- seleccion con el rectangulo ---------------------------------
 
     _isBackground(source) {
+        // Si nada del fondo es reactivo el clic llega con el stage como origen.
+        if (source === global.stage)
+            return true;
         for (let a = source; a; a = a.get_parent()) {
             if (a === this._content)
                 return false;   // un icono: lo maneja su propio button-press
@@ -386,8 +389,10 @@ export class NebulaDesktopIcons {
         }
         if (Main.overview.visible || Main.modalCount > 0 || Main.sessionMode.isLocked)
             return Clutter.EVENT_PROPAGATE;
-        if (!this._isBackground(ev.get_source()))
+        if (!this._isBackground(ev.get_source())) {
+            console.debug(`Nebula Shell: clic fuera del fondo, origen ${ev.get_source()}`);
             return Clutter.EVENT_PROPAGATE;
+        }
 
         this._closeMenu();
         this._takeDesktopFocus();
