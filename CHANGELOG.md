@@ -30,6 +30,10 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 ## [No publicado]
 
 ### Agregado
+- **Seleccion multiple en el escritorio** (`desktop-icons.js`): clic, Ctrl+clic
+  (suma o quita), Shift+clic (rango) y rectangulo arrastrando sobre el fondo
+  (con Ctrl o Shift suma a lo ya elegido). El fondo sigue sin ser reactivo: el
+  clic se lee desde el escenario, asi el menu del Shell no se tapa.
 - **Carpeta personal en el escritorio** (`desktop-icons.js`): icono virtual, igual en
   los cuatro escritorios, que abre `$HOME`. Recupera lo que DING mostraba con
   `show-home` y se perdio al reemplazarlo por la capa propia.

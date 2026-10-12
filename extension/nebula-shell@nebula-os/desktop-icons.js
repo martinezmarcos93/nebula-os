@@ -27,7 +27,7 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 
 import {armDrag, createDragGhost} from './pointer-drag.js';
 import {desktopIconCells, setDesktopIconCell, clearDesktopIconCell} from './state.js';
-import {assignCells, nearestFreeCell} from './desktop-grid.js';
+import {assignCells, nearestFreeCell, rectsIntersect, rangeBetween} from './desktop-grid.js';
 
 const CELL_W = 96;
 const CELL_H = 104;
@@ -73,7 +73,9 @@ export class NebulaDesktopIcons {
         this._menu = null;
         this._items = [];
         this._boxes = new Map();    // nombre -> actor
-        this._selected = null;
+        this._selection = new Set();   // nombres seleccionados
+        this._anchor = null;           // referencia de Shift+clic
+        this._band = null;             // rectangulo de seleccion mientras se arrastra
         this._drag = null;
         this._workspace = global.workspace_manager.get_active_workspace_index();
 
@@ -91,6 +93,10 @@ export class NebulaDesktopIcons {
         // los iconos del escritorio equivocado.
         for (const signal of ['workspace-switched', 'active-workspace-changed'])
             this._connect(global.workspace_manager, signal, () => this._syncWorkspace());
+        // Clic en el fondo: el grupo de fondo no recibe eventos (la capa no es
+        // reactiva para no tapar el menu del Shell), asi que se miran desde el
+        // escenario y se propagan siempre.
+        this._connect(global.stage, 'captured-event', (_a, ev) => this._onStageEvent(ev));
         this._place();
         this._watchFolder();
         this._refresh(false);
@@ -101,6 +107,8 @@ export class NebulaDesktopIcons {
         if (active === this._workspace)
             return;
         this._workspace = active;
+        this._selection.clear();
+        this._anchor = null;
         this._closeMenu();
         this._watchFolder();
         this._refresh(true);
@@ -187,7 +195,6 @@ export class NebulaDesktopIcons {
     }
 
     _refresh(fade) {
-        this._selected = null;
         this._boxes.clear();
         this._content.destroy_all_children();
         this._items = this._readItems();
@@ -203,6 +210,9 @@ export class NebulaDesktopIcons {
             this._content.add_child(box);
             this._boxes.set(item.name, box);
         }
+        // La seleccion sobrevive a la reconstruccion, salvo lo que ya no existe.
+        this._selection = new Set([...this._selection].filter(n => this._boxes.has(n)));
+        this._applySelection();
         if (fade) {
             this._content.opacity = 0;
             this._content.ease({
@@ -247,14 +257,24 @@ export class NebulaDesktopIcons {
         return box;
     }
 
-    _select(item) {
-        this._selected = item?.name ?? null;
+    _setSelection(names, anchor = this._anchor) {
+        this._selection = new Set(names);
+        this._anchor = anchor;
+        this._applySelection();
+    }
+
+    _applySelection() {
         for (const [name, box] of this._boxes) {
-            if (name === this._selected)
+            if (this._selection.has(name))
                 box.add_style_pseudo_class('selected');
             else
                 box.remove_style_pseudo_class('selected');
         }
+    }
+
+    /** Los items seleccionados, en el orden en que se ven. */
+    _selectedItems() {
+        return this._items.filter(i => this._selection.has(i.name));
     }
 
     // --- interaccion -------------------------------------------------
@@ -263,19 +283,108 @@ export class NebulaDesktopIcons {
         const button = event.get_button();
         this._closeMenu();
         if (button === 3) {
-            this._select(item);
+            if (!this._selection.has(item.name))
+                this._setSelection([item.name], item.name);
             this._openMenu(box, item);
             return Clutter.EVENT_STOP;
         }
         if (button !== 1)
             return Clutter.EVENT_PROPAGATE;
-        this._select(item);
+
+        const mods = event.get_state?.() ?? 0;
+        if (mods & Clutter.ModifierType.CONTROL_MASK) {
+            const next = new Set(this._selection);
+            if (!next.delete(item.name))
+                next.add(item.name);
+            this._setSelection(next, item.name);
+            return Clutter.EVENT_STOP;
+        }
+        if (mods & Clutter.ModifierType.SHIFT_MASK) {
+            const from = this._anchor ?? item.name;
+            this._setSelection(rangeBetween(this._items.map(i => i.name), from, item.name), from);
+            return Clutter.EVENT_STOP;
+        }
+
+        // Clic simple sobre un icono de una seleccion grande: no la rompe de
+        // entrada (podria ser el comienzo de arrastrar el grupo); si fue solo un
+        // clic, al soltar queda ese icono solo.
+        const collapse = this._selection.has(item.name) && this._selection.size > 1;
+        if (!this._selection.has(item.name))
+            this._setSelection([item.name], item.name);
         if (event.get_click_count?.() === 2) {
             this.openItem(item);
             return Clutter.EVENT_STOP;
         }
-        this._armDrag(box, item, event);
+        this._armDrag(box, item, event, collapse);
         return Clutter.EVENT_PROPAGATE;
+    }
+
+    // --- seleccion con el rectangulo ---------------------------------
+
+    _isBackground(source) {
+        for (let a = source; a; a = a.get_parent()) {
+            if (a === this._content)
+                return false;   // un icono: lo maneja su propio button-press
+            if (a === Main.layoutManager._backgroundGroup)
+                return true;
+        }
+        return false;
+    }
+
+    _onStageEvent(ev) {
+        if (this._destroyed || this._drag || ev.type() !== Clutter.EventType.BUTTON_PRESS ||
+            ev.get_button() !== 1)
+            return Clutter.EVENT_PROPAGATE;
+        if (Main.overview.visible || Main.modalCount > 0 || Main.sessionMode.isLocked)
+            return Clutter.EVENT_PROPAGATE;
+        if (!this._isBackground(ev.get_source()))
+            return Clutter.EVENT_PROPAGATE;
+
+        this._closeMenu();
+        const mods = ev.get_state?.() ?? 0;
+        const additive = !!(mods & (Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.SHIFT_MASK));
+        const base = additive ? new Set(this._selection) : new Set();
+        if (!additive)
+            this._setSelection([], null);
+        this._armBand(ev, base);
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    _armBand(event, base) {
+        const [x0, y0] = event.get_coords();
+        this._drag = armDrag(event, {
+            threshold: 4,
+            onStart: () => {
+                if (this._destroyed)
+                    return;
+                this._band = new St.Widget({style_class: 'nebula-desk-band', reactive: false});
+                this._layer.add_child(this._band);
+            },
+            onMove: (x, y) => {
+                if (this._destroyed || !this._band)
+                    return;
+                const [lx, ly] = this._layer.get_transformed_position();
+                const rect = {
+                    x: Math.min(x0, x) - lx, y: Math.min(y0, y) - ly,
+                    w: Math.abs(x - x0), h: Math.abs(y - y0),
+                };
+                this._band.set_position(rect.x, rect.y);
+                this._band.set_size(rect.w, rect.h);
+                const hits = [];
+                for (const [name, box] of this._boxes) {
+                    if (rectsIntersect(rect, {x: box.x, y: box.y, w: box.width, h: box.height}))
+                        hits.push(name);
+                }
+                this._setSelection([...base, ...hits], this._anchor);
+            },
+            onEnd: () => {
+                if (this._destroyed)
+                    return;
+                this._band?.destroy();
+                this._band = null;
+                this._drag = null;
+            },
+        });
     }
 
     openItem(item) {
@@ -294,7 +403,7 @@ export class NebulaDesktopIcons {
         }
     }
 
-    _armDrag(box, item, event) {
+    _armDrag(box, item, event, collapse = false) {
         let ghost = null;
         this._drag = armDrag(event, {
             onStart: () => {
@@ -311,8 +420,11 @@ export class NebulaDesktopIcons {
                     return;
                 this._highlightWorkspace(-1);
                 this._drag = null;
-                if (!moved)
+                if (!moved) {
+                    if (collapse)
+                        this._setSelection([item.name], item.name);
                     return;
+                }
                 box.opacity = 255;
                 const target = this._workspaceAt(x, y);
                 // Fuera del dispatch del evento: reconstruir destruye los actores.
