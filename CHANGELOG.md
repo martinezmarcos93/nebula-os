@@ -30,6 +30,14 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 ## [No publicado]
 
 ### Agregado
+- **Interacciones basicas del escritorio de Nebula** (completan el reemplazo de
+  DING): teclado (Supr a la papelera, Enter abre, F2 renombra, flechas mueven la
+  seleccion, Ctrl+A/C/X/V, Esc), solo cuando el ultimo clic fue en el escritorio y
+  ninguna ventana tiene el foco; menu del clic derecho en el fondo (Carpeta nueva,
+  Pegar, Seleccionar todo, Cambiar el fondo, Pantalla, Configuracion); y en el menu
+  de un icono, Copiar, Cortar y Renombrar. El portapapeles usa
+  `x-special/gnome-copied-files`, el mismo que Archivos. **No implementado**:
+  arrastrar archivos desde otras aplicaciones hacia el escritorio.
 - **Empujar iconos al escritorio vecino por el borde**: arrastrando un icono o
   un grupo contra el borde derecho (o izquierdo) del monitor y quedandose 0,6 s
   se pasa al escritorio siguiente sin soltar (una franja violeta avisa). Hay que
@@ -72,6 +80,9 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
   `dotfiles/fastfetch/nebula.txt`).
 
 ### Cambiado
+- `tools/test-sidebar-core.sh` fija 4 escritorios (no dinamicos): con los dinamicos
+  el Shell borraba el escritorio vacio y volvia al 1 a mitad de la prueba, y daba
+  falsos fallos (el commit anterior fallaba 5 de esas pruebas).
 - El bloque SISTEMA (CPU/RAM/SWAP/GPU/Disco/Red) sale de la sidebar y se
   despliega desde un boton nuevo de la barra de Nebula; solo sondea mientras
   esta abierto. En pantallas de 768 px no entraba en la sidebar y no se veia.

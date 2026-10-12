@@ -1,4 +1,4 @@
-import {assignCells, nearestFreeCell, rectsIntersect, rangeBetween, placeGroup} from '../extension/nebula-shell@nebula-os/desktop-grid.js';
+import {assignCells, nearestFreeCell, rectsIntersect, rangeBetween, placeGroup, neighborInDirection} from '../extension/nebula-shell@nebula-os/desktop-grid.js';
 
 const same = (a, b, msg) => {
     if (JSON.stringify(a) !== JSON.stringify(b))
@@ -72,5 +72,14 @@ for (const c of g3.values())
         throw new Error(`fuera de la grilla: ${c}`);
 // Entre escritorios: las celdas de origen no importan para el destino.
 same(placeGroup(['x'], 'x', [1, 1], new Map([['x', [7, 7]]]), new Set(), 3, 3).get('x'), [1, 1], 'ancla en otro escritorio');
+
+// Flechas: el vecino mas cercano en esa direccion.
+const nav = new Map([['a', [0, 0]], ['b', [0, 1]], ['c', [1, 0]], ['d', [2, 2]]]);
+same(neighborInDirection(nav, 'a', 'down'), 'b', 'abajo');
+same(neighborInDirection(nav, 'a', 'right'), 'c', 'derecha');
+same(neighborInDirection(nav, 'a', 'up'), null, 'arriba de todo: nadie');
+same(neighborInDirection(nav, 'c', 'left'), 'a', 'izquierda');
+same(neighborInDirection(nav, 'b', 'right'), 'c', 'a igual distancia, el mas alineado');
+same(neighborInDirection(nav, 'x', 'down'), null, 'origen desconocido');
 
 print('DESKTOP_GRID_OK');

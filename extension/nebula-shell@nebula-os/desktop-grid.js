@@ -97,3 +97,32 @@ export function placeGroup(moving, anchor, target, cells, occupied, cols, rows) 
     }
     return result;
 }
+
+/**
+ * El vecino de `from` en la direccion `dir` ('left' | 'right' | 'up' | 'down')
+ * segun las celdas, o null si no hay nadie en ese sentido. Prefiere el que
+ * esta mas cerca en esa direccion y, a igual distancia, el mas alineado.
+ */
+export function neighborInDirection(cells, from, dir) {
+    const origin = cells.get(from);
+    if (!origin)
+        return null;
+    const horizontal = dir === 'left' || dir === 'right';
+    const sign = dir === 'left' || dir === 'up' ? -1 : 1;
+    let best = null;
+    let bestScore = null;
+    for (const [name, cell] of cells) {
+        if (name === from)
+            continue;
+        const along = (horizontal ? cell[0] - origin[0] : cell[1] - origin[1]) * sign;
+        const across = Math.abs(horizontal ? cell[1] - origin[1] : cell[0] - origin[0]);
+        if (along <= 0)
+            continue;
+        const score = [along, across];
+        if (!bestScore || score[0] < bestScore[0] || (score[0] === bestScore[0] && score[1] < bestScore[1])) {
+            best = name;
+            bestScore = score;
+        }
+    }
+    return best;
+}

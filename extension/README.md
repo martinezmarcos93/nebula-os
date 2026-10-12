@@ -279,6 +279,7 @@ Aspecto y convivencia con GNOME:
 - [ ] seleccion multiple: rectangulo sobre el fondo, Ctrl+clic suma/quita, Shift+clic elige un rango, clic en el fondo deselecciona, y con una ventana encima el rectangulo no arranca;
 - [ ] arrastre de grupos: elegir 3 iconos y arrastrar uno mueve los tres manteniendo la forma; soltar sobre el boton 2 los pasa; clic derecho > Papelera actua sobre los tres;
 - [ ] borde: arrastrar un icono contra el borde derecho de la pantalla, esperar un instante (franja violeta), pasa al escritorio 2; soltar lo deja alli; el borde izquierdo vuelve;
+- [ ] teclado: clic en un icono y Supr lo manda a la papelera, F2 lo renombra, flechas y Ctrl+A cambian la seleccion, Ctrl+C/Ctrl+V copia entre escritorios, y con una ventana con foco nada de esto la molesta; clic derecho en el fondo abre el menu con Carpeta nueva;
 - [ ] la Carpeta personal aparece en los 4 escritorios, abre `$HOME` con doble clic, su clic derecho solo ofrece Abrir y arrastrarla al botón de otro escritorio la deja en su lugar;
 - [ ] arrastrar una app del lanzador para reordenarla, y "Mover a categoría" con el panel al costado (probado en el Shell headless, falta a mano real);
 - [ ] multi-monitor: enchufar/desenchufar una segunda pantalla y pantalla completa

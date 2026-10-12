@@ -251,6 +251,10 @@ fi
 # Iconos propios por escritorio (clave workspace-icons, apagada por defecto).
 # Cambiar de escritorio y esperar a que Mutter lo haga de verdad (con la
 # maquina cargada tarda mas de un instante).
+# Cuatro escritorios fijos, como en la maquina de Marcos: con los dinamicos el
+# Shell borra el escritorio vacio en el que se esta y vuelve al 1 a mitad de la
+# prueba (era una fuente de falsos fallos).
+e "const m = new imports.gi.Gio.Settings({schema_id: 'org.gnome.mutter'}); m.set_boolean('dynamic-workspaces', false); new imports.gi.Gio.Settings({schema_id: 'org.gnome.desktop.wm.preferences'}).set_int('num-workspaces', 4); 1" >/dev/null; sleep 1
 goto_ws(){
   local i
   for i in $(seq 1 20); do
@@ -289,6 +293,14 @@ e "$X $DI const g = DI._selectedItems(); DI._dropGroup(g, g.find(i => i.name ===
 check_wait 'grupo: soltar dos iconos los mueve juntos conservando la distancia' "(() => { $DI const a = DI._boxes.get('uno.txt'), h = DI._boxes.get('/personal'); return a.x === 12 + 96 * 3 && a.y === 12 + 104 * 2 && h.x === 12 + 96 * 3 && h.y === 12 + 104 * 1; })()"
 e "$X $DI DI._setSelection([], null); 1" >/dev/null
 check 'seleccion: vaciarla desmarca los iconos' "(() => { $DI return DI._selection.size === 0 && !DI._boxes.get('uno.txt').has_style_pseudo_class('selected'); })()"
+# Teclado y menu del fondo (barrido 5).
+check 'teclado: sin clic previo en el escritorio las teclas no se roban' "(() => { $DI return DI._deskFocus === false; })()"
+e "$X $DI DI._setSelection(['/personal'], '/personal'); DI._deskFocus = true; DI._moveSelection('down'); 1" >/dev/null
+check 'teclado: las flechas mueven la seleccion a un vecino' "(() => { $DI return DI._selection.size === 1 && DI._anchor !== '/personal'; })()"
+e "$X $DI DI._deskFocus = false; DI._openBackgroundMenu(300, 300); 1" >/dev/null; sleep .5
+check 'fondo: el clic derecho abre el menu propio del escritorio' "(() => { $DI return !!DI._menu && DI._menu.isOpen; })()"
+e "$X $DI DI._closeMenu(); 1" >/dev/null; sleep .3
+check 'fondo: cerrarlo no deja el menu colgado' "(() => { $DI return !DI._menu; })()"
 # Empujar contra el borde: pasa al escritorio vecino sin soltar y, al soltar,
 # el archivo viaja a la carpeta de ese escritorio.
 MON="Main.layoutManager.primaryMonitor"

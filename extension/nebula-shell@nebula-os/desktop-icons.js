@@ -24,10 +24,13 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
+import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 
 import {armDrag, createDragGhost} from './pointer-drag.js';
 import {desktopIconCells, setDesktopIconCell, clearDesktopIconCell} from './state.js';
-import {assignCells, nearestFreeCell, rectsIntersect, rangeBetween, placeGroup} from './desktop-grid.js';
+import {
+    assignCells, nearestFreeCell, rectsIntersect, rangeBetween, placeGroup, neighborInDirection,
+} from './desktop-grid.js';
 
 const CELL_W = 96;
 const CELL_H = 104;
@@ -42,6 +45,7 @@ const MAX_ENTRIES = 400;
 // llamarse asi (un nombre de archivo no lleva '/'), asi que no choca en la
 // grilla ni en las posiciones guardadas.
 const HOME_KEY = '/personal';
+const CLIP_MIME = 'x-special/gnome-copied-files';   // el que usan Archivos y DING
 const ATTRS = 'standard::name,standard::display-name,standard::icon,standard::is-hidden,thumbnail::path';
 
 /** Carpeta de un escritorio (0 = Escritorio del usuario). La crea si falta. */
@@ -64,6 +68,21 @@ function uniqueDestination(folder, name) {
     return GLib.build_filenamev([folder, candidate]);
 }
 
+/** Copia un archivo o carpeta (Gio.File.copy no baja a las carpetas). */
+function copyTree(src, dst) {
+    const info = src.query_info('standard::type', Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+    if (info.get_file_type() === Gio.FileType.DIRECTORY) {
+        dst.make_directory_with_parents(null);
+        const en = src.enumerate_children('standard::name', Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
+        let child;
+        while ((child = en.next_file(null)))
+            copyTree(src.get_child(child.get_name()), dst.get_child(child.get_name()));
+        en.close(null);
+    } else {
+        src.copy(dst, Gio.FileCopyFlags.NOFOLLOW_SYMLINKS | Gio.FileCopyFlags.ALL_METADATA, null, null);
+    }
+}
+
 export class NebulaDesktopIcons {
     /** @param {function(): Array} getBars  barras de Nebula (para soltar sobre sus botones de escritorio) */
     constructor(getBars = () => []) {
@@ -79,6 +98,8 @@ export class NebulaDesktopIcons {
         this._anchor = null;           // referencia de Shift+clic
         this._band = null;             // rectangulo de seleccion mientras se arrastra
         this._edge = {side: 0, timer: 0, armed: true, hint: null};   // empujar contra el borde
+        this._deskFocus = false;       // el ultimo clic fue en el escritorio (teclado)
+        this._dialog = null;           // dialogo abierto (renombrar / carpeta nueva)
         this._drag = null;
         this._workspace = global.workspace_manager.get_active_workspace_index();
 
@@ -100,6 +121,11 @@ export class NebulaDesktopIcons {
         // reactiva para no tapar el menu del Shell), asi que se miran desde el
         // escenario y se propagan siempre.
         this._connect(global.stage, 'captured-event', (_a, ev) => this._onStageEvent(ev));
+        // Con una ventana con foco el teclado es de ella, no del escritorio.
+        this._connect(global.display, 'notify::focus-window', () => {
+            if (global.display.focus_window)
+                this._deskFocus = false;
+        });
         this._place();
         this._watchFolder();
         this._refresh(false);
@@ -294,6 +320,7 @@ export class NebulaDesktopIcons {
         if (button !== 1)
             return Clutter.EVENT_PROPAGATE;
 
+        this._takeDesktopFocus();
         const mods = event.get_state?.() ?? 0;
         if (mods & Clutter.ModifierType.CONTROL_MASK) {
             const next = new Set(this._selection);
@@ -335,15 +362,40 @@ export class NebulaDesktopIcons {
     }
 
     _onStageEvent(ev) {
-        if (this._destroyed || this._drag || ev.type() !== Clutter.EventType.BUTTON_PRESS ||
-            ev.get_button() !== 1)
+        if (this._destroyed)
             return Clutter.EVENT_PROPAGATE;
+        const type = ev.type();
+        if (type === Clutter.EventType.KEY_PRESS)
+            return this._onKey(ev);
+        if (type !== Clutter.EventType.BUTTON_PRESS)
+            return Clutter.EVENT_PROPAGATE;
+        const button = ev.get_button();
+        if (button !== 1 && button !== 3)
+            return Clutter.EVENT_PROPAGATE;
+        // Un arrastre en curso sigue; uno que nunca se movio y quedo armado
+        // (se perdio el soltar) no debe tragarse el clic nuevo ni bloquear los
+        // refrescos para siempre.
+        if (this._drag) {
+            if (this._drag.moved)
+                return Clutter.EVENT_PROPAGATE;
+            this._drag.cancel();
+            this._drag = null;
+        }
         if (Main.overview.visible || Main.modalCount > 0 || Main.sessionMode.isLocked)
             return Clutter.EVENT_PROPAGATE;
         if (!this._isBackground(ev.get_source()))
             return Clutter.EVENT_PROPAGATE;
 
         this._closeMenu();
+        this._takeDesktopFocus();
+        if (button === 3) {
+            // Menu propio: el del Shell (cambiar fondo, pantalla) sigue en el
+            // nuestro, mas lo que pide un escritorio de archivos.
+            this._setSelection([], null);
+            const [x, y] = ev.get_coords();
+            this._openBackgroundMenu(x, y);
+            return Clutter.EVENT_STOP;
+        }
         const mods = ev.get_state?.() ?? 0;
         const additive = !!(mods & (Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.SHIFT_MASK));
         const base = additive ? new Set(this._selection) : new Set();
@@ -351,6 +403,16 @@ export class NebulaDesktopIcons {
             this._setSelection([], null);
         this._armBand(ev, base);
         return Clutter.EVENT_PROPAGATE;
+    }
+
+    /** El teclado pasa a ser del escritorio: se suelta el foco de la ventana. */
+    _takeDesktopFocus() {
+        this._deskFocus = true;
+        try {
+            global.display.unset_input_focus?.(global.get_current_time());
+        } catch (e) {
+            console.error(`Nebula Shell: no se pudo soltar el foco de la ventana: ${e}`);
+        }
     }
 
     _armBand(event, base) {
@@ -630,6 +692,18 @@ export class NebulaDesktopIcons {
         menu.addMenuItem(open);
 
         if (real.length > 0) {
+            const copy = new PopupMenu.PopupMenuItem('Copiar');
+            copy.connect('activate', () => this._copySelection(false));
+            menu.addMenuItem(copy);
+            const cut = new PopupMenu.PopupMenuItem('Cortar');
+            cut.connect('activate', () => this._copySelection(true));
+            menu.addMenuItem(cut);
+            if (targets.length === 1) {
+                const rename = new PopupMenu.PopupMenuItem('Renombrar…');
+                rename.connect('activate', () => this._addIdle(() => this._renameDialog(real[0])));
+                menu.addMenuItem(rename);
+            }
+
             const moveMenu = new PopupMenu.PopupSubMenuMenuItem('Mover a escritorio');
             const n = global.workspace_manager.get_n_workspaces();
             for (let i = 0; i < n; i++) {
@@ -672,6 +746,209 @@ export class NebulaDesktopIcons {
         menu.destroy();
     }
 
+    // --- teclado -----------------------------------------------------
+
+    /** Teclas del escritorio. Solo si el ultimo clic fue en el escritorio y ninguna ventana tiene el foco. */
+    _onKey(ev) {
+        if (!this._deskFocus || global.display.focus_window || this._dialog ||
+            Main.overview.visible || Main.modalCount > 0 || Main.sessionMode.isLocked)
+            return Clutter.EVENT_PROPAGATE;
+        const key = ev.get_key_symbol();
+        const ctrl = !!((ev.get_state?.() ?? 0) & Clutter.ModifierType.CONTROL_MASK);
+        const sel = this._selectedItems();
+        const real = sel.filter(i => !i.virtual);
+
+        if (ctrl) {
+            if (key === Clutter.KEY_a || key === Clutter.KEY_A)
+                this._setSelection(this._items.map(i => i.name), this._anchor);
+            else if (key === Clutter.KEY_c || key === Clutter.KEY_C)
+                this._copySelection(false);
+            else if (key === Clutter.KEY_x || key === Clutter.KEY_X)
+                this._copySelection(true);
+            else if (key === Clutter.KEY_v || key === Clutter.KEY_V)
+                this._paste();
+            else
+                return Clutter.EVENT_PROPAGATE;
+            return Clutter.EVENT_STOP;
+        }
+        switch (key) {
+        case Clutter.KEY_Delete:
+            if (real.length === 0)
+                return Clutter.EVENT_PROPAGATE;
+            this._addIdle(() => real.forEach(t => this.trashItem(t)));
+            return Clutter.EVENT_STOP;
+        case Clutter.KEY_Return:
+        case Clutter.KEY_KP_Enter:
+            sel.forEach(t => this.openItem(t));
+            return Clutter.EVENT_STOP;
+        case Clutter.KEY_F2:
+            if (sel.length !== 1 || sel[0].virtual)
+                return Clutter.EVENT_PROPAGATE;
+            this._renameDialog(sel[0]);
+            return Clutter.EVENT_STOP;
+        case Clutter.KEY_Escape:
+            this._setSelection([], null);
+            return Clutter.EVENT_STOP;
+        case Clutter.KEY_Left:
+            return this._moveSelection('left');
+        case Clutter.KEY_Right:
+            return this._moveSelection('right');
+        case Clutter.KEY_Up:
+            return this._moveSelection('up');
+        case Clutter.KEY_Down:
+            return this._moveSelection('down');
+        default:
+            return Clutter.EVENT_PROPAGATE;
+        }
+    }
+
+    /** Flechas: la seleccion pasa al vecino mas cercano (sin nada elegido, al primero). */
+    _moveSelection(dir) {
+        if (this._items.length === 0)
+            return Clutter.EVENT_PROPAGATE;
+        const {cols, rows} = this._grid();
+        const cells = assignCells(this._items.map(i => i.name), desktopIconCells(this._workspace), cols, rows);
+        const from = this._anchor && cells.has(this._anchor) ? this._anchor : null;
+        const next = from ? neighborInDirection(cells, from, dir) : this._items[0].name;
+        if (next)
+            this._setSelection([next], next);
+        return Clutter.EVENT_STOP;
+    }
+
+    // --- portapapeles de archivos ------------------------------------
+
+    _copySelection(cut) {
+        const real = this._selectedItems().filter(i => !i.virtual);
+        if (real.length === 0)
+            return;
+        const text = `${cut ? 'cut' : 'copy'}\n${real.map(i => i.file.get_uri()).join('\n')}`;
+        St.Clipboard.get_default().set_content(
+            St.ClipboardType.CLIPBOARD, CLIP_MIME, new GLib.Bytes(new TextEncoder().encode(text)));
+    }
+
+    /** Trae al escritorio actual lo que haya en el portapapeles (copiado o cortado en Archivos o aqui). */
+    _paste() {
+        St.Clipboard.get_default().get_content(St.ClipboardType.CLIPBOARD, CLIP_MIME, (_c, bytes) => {
+            if (this._destroyed || !bytes)
+                return;
+            const [mode, ...uris] = new TextDecoder().decode(bytes.get_data()).split('\n').filter(l => l.trim());
+            const folder = this._folderPath();
+            for (const uri of uris) {
+                try {
+                    const src = Gio.File.new_for_uri(uri);
+                    const dest = Gio.File.new_for_path(uniqueDestination(folder, src.get_basename()));
+                    if (mode === 'cut')
+                        src.move(dest, Gio.FileCopyFlags.NONE, null, null);
+                    else
+                        copyTree(src, dest);
+                } catch (e) {
+                    console.error(`Nebula Shell: no se pudo pegar ${uri}: ${e}`);
+                }
+            }
+        });
+    }
+
+    // --- dialogos: renombrar y carpeta nueva -------------------------
+
+    /** Dialogo modal con un campo de texto; llama a onAccept(texto) si se confirma. */
+    _askName(title, initial, okLabel, onAccept) {
+        if (this._dialog)
+            return;
+        const dialog = new ModalDialog.ModalDialog({destroyOnClose: true, styleClass: 'prompt-dialog'});
+        this._dialog = dialog;
+        const box = new St.BoxLayout({vertical: true, style: 'spacing: 8px; min-width: 20em;'});
+        box.add_child(new St.Label({text: title, style_class: 'prompt-dialog-headline'}));
+        const entry = new St.Entry({text: initial, can_focus: true});
+        box.add_child(entry);
+        dialog.contentLayout.add_child(box);
+        const accept = () => {
+            const text = entry.get_text().trim();
+            dialog.close();
+            if (text && !text.includes('/') && text !== initial)
+                this._addIdle(() => onAccept(text));
+        };
+        dialog.addButton({label: 'Cancelar', action: () => dialog.close(), key: Clutter.KEY_Escape});
+        dialog.addButton({label: okLabel, action: accept, default: true});
+        entry.clutter_text.connect('activate', accept);
+        dialog.connect('closed', () => {
+            if (this._dialog === dialog)
+                this._dialog = null;
+        });
+        dialog.open();
+        dialog.setInitialKeyFocus(entry.clutter_text);
+        // Renombrar un archivo con extension: el nombre sin ella queda elegido.
+        const dot = initial.lastIndexOf('.');
+        entry.clutter_text.set_selection(0, dot > 0 ? dot : -1);
+    }
+
+    _renameDialog(item) {
+        if (item.virtual)
+            return;
+        this._askName(`Renombrar «${item.label}»`, item.name, 'Renombrar', name => {
+            try {
+                const old = item.name;
+                const renamed = item.file.set_display_name(name, null);
+                const cell = desktopIconCells(this._workspace)[old];
+                if (cell) {
+                    clearDesktopIconCell(this._workspace, old);
+                    setDesktopIconCell(this._workspace, renamed.get_basename(), cell);
+                }
+                this._refresh(false);
+                this._setSelection([renamed.get_basename()], renamed.get_basename());
+            } catch (e) {
+                console.error(`Nebula Shell: no se pudo renombrar ${item.name}: ${e}`);
+            }
+        });
+    }
+
+    _newFolderDialog() {
+        this._askName('Carpeta nueva', '', 'Crear', name => {
+            try {
+                Gio.File.new_for_path(uniqueDestination(this._folderPath(), name)).make_directory(null);
+            } catch (e) {
+                console.error(`Nebula Shell: no se pudo crear la carpeta ${name}: ${e}`);
+            }
+        });
+    }
+
+    // --- menu del fondo ----------------------------------------------
+
+    _openBackgroundMenu(x, y) {
+        // El menu necesita un actor de origen: uno de 1 px en el clic.
+        const anchor = new St.Widget({width: 1, height: 1, reactive: false});
+        Main.uiGroup.add_child(anchor);
+        anchor.set_position(Math.round(x), Math.round(y));
+        const menu = new PopupMenu.PopupMenu(anchor, 0, St.Side.TOP);
+        Main.uiGroup.add_child(menu.actor);
+        menu.actor.hide();
+        Main.panel.menuManager.addMenu(menu);
+        this._menu = menu;
+
+        const add = (label, fn) => {
+            const it = new PopupMenu.PopupMenuItem(label);
+            it.connect('activate', () => this._addIdle(fn));
+            menu.addMenuItem(it);
+        };
+        add('Carpeta nueva', () => this._newFolderDialog());
+        add('Pegar', () => this._paste());
+        add('Seleccionar todo', () => this._setSelection(this._items.map(i => i.name), this._anchor));
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        const control = panel => () => GLib.spawn_command_line_async(`gnome-control-center ${panel}`);
+        add('Cambiar el fondo…', control('background'));
+        add('Configuración de pantalla…', control('display'));
+        add('Configuración…', control(''));
+
+        menu.connect('open-state-changed', (_m, isOpen) => {
+            if (!isOpen) {
+                if (this._menu === menu)
+                    this._menu = null;
+                menu.destroy();
+                anchor.destroy();
+            }
+        });
+        menu.open(BoxPointer.PopupAnimation.FULL);
+    }
+
     // --- carpeta observada -------------------------------------------
 
     _watchFolder() {
@@ -699,7 +976,7 @@ export class NebulaDesktopIcons {
             return;
         this._refreshId = this._addTimeout(REFRESH_DEBOUNCE_MS, () => {
             this._refreshId = 0;
-            if (this._drag)
+            if (this._drag?.moved)
                 this._scheduleRefresh();   // no reconstruir en pleno arrastre: esperar
             else
                 this._refresh(false);
@@ -735,6 +1012,8 @@ export class NebulaDesktopIcons {
     destroy() {
         this._destroyed = true;
         this._edgeCancel();
+        this._dialog?.close();
+        this._dialog = null;
         this._drag?.cancel();
         this._drag = null;
         this._closeMenu();
