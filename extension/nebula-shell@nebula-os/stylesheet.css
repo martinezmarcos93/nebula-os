@@ -234,30 +234,6 @@
     margin-top: 2px;
 }
 
-/* ---- Bateria ----------------------------------------------------- */
-
-.nebula-battery {
-    padding: 6px 8px;
-    border-radius: 8px;
-}
-
-.nebula-battery:hover {
-    background-color: rgba(124, 58, 237, 0.18);
-}
-
-.nebula-battery-row {
-    spacing: 8px;
-}
-
-.nebula-battery-icon {
-    color: #9ca3af;
-}
-
-.nebula-battery-label {
-    font-size: 8.5pt;
-    color: #9ca3af;
-}
-
 /* ---- Lanzador con busqueda ("Buscar aplicaciones...") --------------- */
 
 .nebula-launcher {
@@ -332,6 +308,72 @@
     color: #9ca3af;
     font-size: 10pt;
     padding: 12px 10px;
+}
+
+/* ---- Reordenar con el puntero y panel lateral "Mover a categoria" ----- */
+
+.nebula-result-dragging,
+.nebula-result-dragging:hover {
+    background-color: rgba(124, 58, 237, 0.55);
+    box-shadow: 0 6px 18px 0 rgba(0, 0, 0, 0.55);
+}
+
+.nebula-picker {
+    padding: 12px;
+    spacing: 8px;
+}
+
+.nebula-picker-title {
+    color: #f3f4f6;
+    font-size: 10pt;
+    font-weight: 600;
+    padding: 2px 6px;
+}
+
+.nebula-picker-row {
+    color: #e5e7eb;
+    font-size: 10.5pt;
+    text-align: left;
+}
+
+/* ---- Iconos del escritorio (uno por escritorio virtual) ---------------- */
+
+.nebula-desk-icon {
+    border-radius: 8px;
+    padding: 4px 2px;
+    spacing: 4px;
+}
+
+.nebula-desk-icon:hover {
+    background-color: rgba(255, 255, 255, 0.10);
+}
+
+.nebula-desk-icon:selected {
+    background-color: rgba(124, 58, 237, 0.45);
+}
+
+.nebula-desk-label {
+    color: #ffffff;
+    font-size: 9pt;
+    text-align: center;
+    max-width: 88px;
+    max-height: 2.6em;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+}
+
+.nebula-drag-ghost {
+    background-color: rgba(12, 12, 22, 0.92);
+    border: 1px solid rgba(124, 58, 237, 0.7);
+    border-radius: 8px;
+    padding: 4px 10px;
+    spacing: 8px;
+    color: #f3f4f6;
+    font-size: 9.5pt;
+}
+
+.nebula-ws-btn:drop {
+    background-color: rgba(124, 58, 237, 0.65);
+    box-shadow: 0 0 0 2px rgba(167, 139, 250, 0.9);
 }
 
 /* ---- Ventanas / taskbar ---------------------------------------------- */

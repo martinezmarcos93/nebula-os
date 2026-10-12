@@ -9,7 +9,6 @@
 //   | CATEGORIAS           |
 //   |  > Favoritos         |   lista de categorias; clic -> lanzador (launcher.js)
 //   |  ...                 |   filtrado a esa categoria
-//   | [Buscar aplicaciones]|   al pie: disparador del lanzador
 //   +----------------------+
 //
 // El bloque SISTEMA (meters) vive en la barra de Nebula (bottombar.js) y
@@ -35,7 +34,6 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {debug} from './debug.js';
 import {buildModel, invalidateIconCache} from './model.js';
 import {NebulaLauncher} from './launcher.js';
-import {NebulaBattery} from './battery.js';
 import {BAR_HEIGHT} from './bottombar.js';
 
 const SIDEBAR_WIDTH = 236;    // px de ancho (superpuesta: no reserva area de trabajo)
@@ -82,13 +80,11 @@ export class NebulaSidebar {
                 unredirect,
             )
             : null;
-        this._battery = new NebulaBattery(St, Clutter);
 
         this._buildActors();
         this._place();
         this._populate();
         this._startClock();
-        this._addIdle(() => this._fitToHeight());   // con los estilos ya resueltos
         this._addKeybinding();
 
         this._connect(Main.layoutManager, 'monitors-changed', () => {
@@ -140,10 +136,6 @@ export class NebulaSidebar {
         this._catList = new St.BoxLayout({vertical: true, style_class: 'nebula-cat-list'});
         this._sidebar.add_child(this._catList);
 
-        this._sidebar.add_child(new St.Widget({y_expand: true}));   // empuja lo de abajo
-        this._sidebar.add_child(this._battery.actor);
-        if (this._launcher)
-            this._sidebar.add_child(this._buildQuickSearch());
 
         // SIN trackFullscreen (R-301, FS-20): con esa opcion LayoutManager
         // forzaba `visible = true` al cerrar el Overview o salir de pantalla
@@ -214,28 +206,6 @@ export class NebulaSidebar {
 
         this._edgeArrow?.set_position(m.x, top + Math.round((height - EDGE_ARROW_H) / 2));
         this._edgeArrow?.set_size(EDGE_ARROW_W, EDGE_ARROW_H);
-        this._fitToHeight();
-    }
-
-    // En pantallas bajas (768 px) las categorias ocupan casi todo el alto. Un
-    // bloque cortado por el borde se ve roto: lo que va al pie se muestra
-    // entero o no se muestra. Las categorias mandan; el recuadro de busqueda
-    // se sacrifica (el lanzador sigue con Super+B o una categoria).
-    _fitToHeight() {
-        if (!this._sidebar)
-            return;
-        const blocks = [this._quickSearch].filter(Boolean);
-        blocks.forEach(b => b.show());
-        const available = this._sidebar.height;
-        // Con el alto fijado el actor informa ese alto, no el de su contenido.
-        this._sidebar.set_height(-1);
-        for (const block of blocks) {
-            const [, natural] = this._sidebar.get_preferred_height(SIDEBAR_WIDTH);
-            if (natural <= available)
-                break;
-            block.hide();
-        }
-        this._sidebar.set_height(available);
     }
 
     // --- lista de categorias (se reconstruye) --------------------
@@ -290,7 +260,6 @@ export class NebulaSidebar {
                 style_class: 'nebula-cat-empty',
             }));
         }
-        this._fitToHeight();
     }
 
     _buildHead() {
@@ -358,28 +327,6 @@ export class NebulaSidebar {
                 console.error(`Nebula Shell: no se pudo abrir el calendario: ${fallbackError}`);
             }
         }
-    }
-
-    // Recuadro de busqueda permanente, arriba de la fila de energia. No
-    // duplica la logica de filtrado/resultados (que ya vive en
-    // launcher.js): es un disparador -- al tomar foco, abre el lanzador con
-    // TODAS las apps y le pasa el foco de teclado a su campo real. Como el
-    // foco se mueve ANTES de que el usuario llegue a tipear nada (se dispara
-    // en key-focus-in, no en el primer caracter), este campo nunca procesa
-    // texto el mismo: las teclas siguientes van directo al campo del
-    // lanzador, sin dos entradas peleando por el mismo tipeo.
-    _buildQuickSearch() {
-        this._quickSearch = new St.Entry({
-            style_class: 'nebula-search nebula-quick-search',
-            hint_text: 'Buscar aplicaciones...',
-            can_focus: true,
-            x_expand: true,
-        });
-        this._connect(this._quickSearch.clutter_text, 'key-focus-in', () => {
-            this._quickSearch.set_text('');   // nunca retiene texto: es un disparador, no un campo real
-            this._launcher.open(-1);
-        });
-        return this._quickSearch;
     }
 
     _brandIcon() {
@@ -491,9 +438,6 @@ export class NebulaSidebar {
         this._collapsed = false;
         this._edgeArrow?.hide();
         this._sidebar.show();
-        // Recien al mostrarse los estilos estan resueltos del todo: las medidas
-        // tomadas al construir pueden quedar largas y ocultar bloques de mas.
-        this._fitToHeight();
         // BUG-24 (docs/BUGS.md): show() no siempre alcanza para que el motor
         // de layout recalcule la region de input a tiempo -- un clic que
         // llega justo cuando se revela (el gesto real: acercar el mouse al
@@ -685,8 +629,6 @@ export class NebulaSidebar {
 
         this._removeKeybinding();
 
-        this._battery?.destroy();
-        this._battery = null;
         this._launcher?.destroy();
         this._launcher = null;
 
