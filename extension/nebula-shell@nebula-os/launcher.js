@@ -27,13 +27,22 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import {flatApps, filterApps, hiddenApps, createDesktopShortcut} from './model.js';
 import {runWithConfirmation} from './system-actions.js';
 import {debug} from './debug.js';
-import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride, isTaskbarPinned, toggleTaskbarPinned, displayName, setDisplayName, moveApp} from './state.js';
+import {isFavorite, toggleFavorite, setHidden, setCategoryOverride, categoryOverride, isTaskbarPinned, toggleTaskbarPinned, displayName, setDisplayName, moveApp, moveAppTo} from './state.js';
 import {buildModel, launchEntry} from './model.js';
 import {searchFiles} from './file-search.js';
 
 const PANEL_WIDTH = 380;
 const MAX_HEIGHT = 560;
 const TOP_INSET = 118;
+const PICKER_WIDTH = 240;       // panel lateral "Mover a categoria"
+const DRAG_THRESHOLD = 6;       // px antes de que un clic pase a ser arrastre
+const DRAG_EDGE = 36;           // px del borde de la lista que autodesplazan
+const DRAG_SCROLL_STEP = 14;
+const DRAG_SCROLL_MS = 30;
+// Categorias cuyo orden no es del usuario (se calculan solas).
+const FIXED_ORDER = new Set(['Recientes', 'Mis discos y nubes', 'Accesos rapidos']);
+// No son destino valido de "Mover a categoria": se llenan solas.
+const DYNAMIC_CATEGORIES = new Set(['Favoritos', 'Recientes', 'Mis discos y nubes', 'Accesos rapidos', 'Otras aplicaciones']);
 
 const SAFE_ACTIONS = [
     ['Captura de pantalla', 'captura screenshot pantalla', 'nebula-screenshot full', 'camera-photo-symbolic', 'Capturar la pantalla completa'],
@@ -95,6 +104,11 @@ export class NebulaLauncher {
         this._fileSearchProcess = null;
         this._fileSearchSerial = 0;
         this._fileResults = [];
+        this._rowApps = [];                 // entrada de cada fila de _rows, en el mismo orden
+        this._drag = null;                  // arrastre en curso (reordenar con el puntero)
+        this._suppressClick = false;        // el clic que cierra un arrastre no lanza la app
+        this._picker = null;                // panel lateral "Mover a categoria"
+        this._pickerIdleId = 0;
 
         this._build();
     }
@@ -241,6 +255,8 @@ export class NebulaLauncher {
             `visible=${this._panel?.visible}`
         );
         this._removeOutsideWatch();
+        this._closeCategoryPicker();
+        this._dragEnd(false);
         const wasOpen = this._isOpen;
         // El estado logico se sincroniza SIEMPRE, pase lo que pase con el actor.
         this._isOpen = false;
@@ -358,6 +374,10 @@ export class NebulaLauncher {
             const t = ev.type();
             if (t === Clutter.EventType.KEY_PRESS &&
                 ev.get_key_symbol() === Clutter.KEY_Escape) {
+                if (this._picker) {
+                    this._closeCategoryPicker();
+                    return Clutter.EVENT_STOP;
+                }
                 this.close('escape-stage');
                 return Clutter.EVENT_STOP;
             }
@@ -368,7 +388,10 @@ export class NebulaLauncher {
             const target = global.stage.get_event_actor
                 ? global.stage.get_event_actor(ev)
                 : ev.get_source();
-            if (this._isDescendant(this._panel, target) ||
+            if (this._picker && !this._isDescendant(this._picker, target))
+                this._closeCategoryPicker();
+            if (this._isDescendant(this._picker, target) ||
+                this._isDescendant(this._panel, target) ||
                 this._isDescendant(this._getGuardActor(), target))
                 return Clutter.EVENT_PROPAGATE;
 
@@ -400,6 +423,11 @@ export class NebulaLauncher {
     }
 
     // --- interno ------------------------------------------------
+
+    _monitor() {
+        const lm = Main.layoutManager;
+        return lm.primaryMonitor ?? lm.monitors?.[lm.primaryIndex] ?? lm.monitors?.[0] ?? null;
+    }
 
     _relayout() {
         // Igual que la sidebar: fallback en cadena, NUNCA salir sin posicionar.
@@ -502,7 +530,10 @@ export class NebulaLauncher {
             this._fileResults = [];
         }
         this._results.destroy_all_children();
+        this._dragEnd(false);
+        this._suppressClick = false;
         this._rows = [];
+        this._rowApps = [];
         this._firstApp = null;
 
         const query = this._entry.get_text();
@@ -560,6 +591,10 @@ export class NebulaLauncher {
                 box.add_child(txt);
                 btn.set_child(box);
                 btn.connect('clicked', () => {
+                    if (this._suppressClick) {
+                        this._suppressClick = false;
+                        return;
+                    }
                     if (app.archivo)
                         this._openUri(app.uri);
                     else if (app.ocultas)
@@ -571,13 +606,20 @@ export class NebulaLauncher {
                     this.close(app.archivo ? 'file-open' : 'app-launch');
                 });
                 btn.connect('button-press-event', (_actor, event) => {
-                    if (app.accion || app.archivo || app.ocultas || event.get_button() !== 3)
+                    if (app.accion || app.archivo || app.ocultas)
+                        return Clutter.EVENT_PROPAGATE;
+                    if (event.get_button() === 1 && this._canReorder()) {
+                        this._dragArm(btn, event);
+                        return Clutter.EVENT_PROPAGATE;   // el clic simple sigue lanzando la app
+                    }
+                    if (event.get_button() !== 3)
                         return Clutter.EVENT_PROPAGATE;
                     this._openAppMenu(btn, app);
                     return Clutter.EVENT_STOP;
                 });
                 this._results.add_child(btn);
                 this._rows.push(btn);
+                this._rowApps.push(app);
             }
         }
 
@@ -596,6 +638,238 @@ export class NebulaLauncher {
         }
     }
 
+    // --- panel lateral "Mover a categoria" ------------------------------
+
+    _addPickerIdle(cb) {
+        if (this._pickerIdleId)
+            GLib.source_remove(this._pickerIdleId);
+        this._pickerIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            this._pickerIdleId = 0;
+            if (this._isOpen)
+                cb();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _openCategoryPicker(source, app) {
+        this._closeCategoryPicker();
+        const picker = new St.BoxLayout({
+            vertical: true,
+            style_class: 'nebula-launcher nebula-picker',
+            reactive: true,
+            track_hover: true,
+            width: PICKER_WIDTH,
+        });
+        picker.add_child(new St.Label({
+            text: `Mover «${app.nombre}» a`,
+            style_class: 'nebula-picker-title',
+        }));
+        const scroll = new St.ScrollView({
+            style_class: 'nebula-results-scroll',
+            x_expand: true,
+            y_expand: true,
+        });
+        scroll.set_policy(St.PolicyType.NEVER, St.PolicyType.AUTOMATIC);
+        const list = new St.BoxLayout({vertical: true, style_class: 'nebula-results'});
+        scroll.add_child(list);
+        picker.add_child(scroll);
+
+        const choose = categoryName => this._addPickerIdle(() => {
+            this._closeCategoryPicker();
+            setCategoryOverride(app.exec, categoryName);
+            this.setModel(buildModel(this._ext.path));
+        });
+        const addRow = (text, current, onClick) => {
+            const row = new St.Button({
+                style_class: 'nebula-result nebula-picker-row',
+                can_focus: true,
+                x_expand: true,
+                label: current ? `✓  ${text}` : text,
+            });
+            row.connect('clicked', onClick);
+            list.add_child(row);
+        };
+        for (const category of this._model) {
+            if (DYNAMIC_CATEGORIES.has(category.nombre))
+                continue;
+            addRow(category.nombre, app.categoria === category.nombre,
+                () => choose(category.nombre));
+        }
+        if (categoryOverride(app.exec))
+            addRow('Restaurar categoría original', false, () => choose(null));
+
+        // A la derecha del lanzador, a la altura de la fila; si no entra hacia
+        // abajo se sube hasta que entre. Nunca se sale del monitor.
+        const m = this._monitor();
+        const [panelX, panelY] = this._panel.get_position();
+        const panelH = this._panel.height;
+        const [, rowY] = source.get_transformed_position();
+        const monBottom = (m?.y ?? 0) + (m?.height ?? 720) - 12;
+        const [, natural] = picker.get_preferred_height(PICKER_WIDTH);
+        const height = Math.min(natural, panelH, monBottom - panelY);
+        const y = Math.max(panelY, Math.min(rowY, monBottom - height));
+        picker.set_position(panelX + PANEL_WIDTH + 10, y);
+        picker.set_height(height);
+
+        Main.layoutManager.addChrome(picker, {
+            affectsStruts: false,
+            affectsInputRegion: true,
+        });
+        this._picker = picker;
+        const parent = picker.get_parent();
+        if (parent)
+            parent.set_child_above_sibling(picker, null);
+        Main.layoutManager._queueUpdateRegions?.();
+    }
+
+    _closeCategoryPicker() {
+        if (!this._picker)
+            return;
+        const picker = this._picker;
+        this._picker = null;
+        Main.layoutManager.removeChrome(picker);
+        picker.destroy();
+        Main.layoutManager._queueUpdateRegions?.();
+    }
+
+    // --- reordenar con el puntero ---------------------------------------
+    //
+    // Se arma al presionar el boton 1 sobre una fila y pasa a ser arrastre al
+    // moverse mas de DRAG_THRESHOLD px. Mientras dura, la fila sigue al puntero
+    // y las demas se corren para abrirle el hueco. Al soltar se guarda el orden
+    // (state.js, moveAppTo) en un idle: reconstruir la lista destruye las filas
+    // y no debe pasar dentro del evento (BUG-26).
+
+    _canReorder() {
+        if (!this._isOpen || this._entry.get_text().trim() || this._filterIndex < 0)
+            return false;
+        const cat = this._model[this._filterIndex];
+        return !!cat && !FIXED_ORDER.has(cat.nombre) && cat.apps.length > 1;
+    }
+
+    _dragArm(btn, event) {
+        this._dragEnd(false);
+        this._suppressClick = false;
+        const index = this._rows.indexOf(btn);
+        if (index < 0 || this._rows.length < 2)
+            return;
+        const adj = this._scroll.vadjustment ?? this._scroll.vscroll?.adjustment ?? null;
+        const [, y] = event.get_coords();
+        this._drag = {
+            btn, index, target: index, active: false,
+            startY: y, lastY: y,
+            startScroll: adj?.value ?? 0,
+            adj,
+            step: this._rows.length > 1
+                ? this._rows[1].get_y() - this._rows[0].get_y()
+                : btn.get_height(),
+            scrollId: 0,
+            captureId: global.stage.connect('captured-event', (_a, ev) => this._dragEvent(ev)),
+        };
+    }
+
+    _dragEvent(ev) {
+        const d = this._drag;
+        if (!d)
+            return Clutter.EVENT_PROPAGATE;
+        const t = ev.type();
+        if (t === Clutter.EventType.MOTION) {
+            d.lastY = ev.get_coords()[1];
+            this._dragMove();
+        } else if (t === Clutter.EventType.BUTTON_RELEASE) {
+            this._dragEnd(true);
+        }
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    _dragMove() {
+        const d = this._drag;
+        const scrolled = (d.adj?.value ?? 0) - d.startScroll;
+        const dy = d.lastY - d.startY + scrolled;
+        if (!d.active) {
+            if (Math.abs(dy) < DRAG_THRESHOLD)
+                return;
+            d.active = true;
+            d.btn.add_style_class_name('nebula-result-dragging');
+            d.scrollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, DRAG_SCROLL_MS, () => {
+                if (!this._drag)
+                    return GLib.SOURCE_REMOVE;
+                this._dragAutoScroll();
+                return GLib.SOURCE_CONTINUE;
+            });
+        }
+        const last = this._rows.length - 1;
+        // Posicion de la fila arrastrada, acotada a la lista.
+        const lo = -d.index * d.step;
+        const hi = (last - d.index) * d.step;
+        const shift = Math.max(lo, Math.min(hi, dy));
+        d.btn.translation_y = shift;
+        const target = Math.max(0, Math.min(last, d.index + Math.round(shift / d.step)));
+        d.target = target;
+        this._rows.forEach((row, i) => {
+            if (row === d.btn)
+                return;
+            let offset = 0;
+            if (d.target > d.index && i > d.index && i <= d.target)
+                offset = -d.step;
+            else if (d.target < d.index && i < d.index && i >= d.target)
+                offset = d.step;
+            row.ease({translation_y: offset, duration: 120, mode: Clutter.AnimationMode.EASE_OUT_QUAD});
+        });
+    }
+
+    // Arrastrando cerca del borde de la lista, la desplaza (sino no se puede
+    // llevar una app mas alla de lo que se ve).
+    _dragAutoScroll() {
+        const d = this._drag;
+        if (!d?.active || !d.adj)
+            return;
+        const [, top] = this._scroll.get_transformed_position();
+        const bottom = top + this._scroll.height;
+        let delta = 0;
+        if (d.lastY < top + DRAG_EDGE)
+            delta = -DRAG_SCROLL_STEP;
+        else if (d.lastY > bottom - DRAG_EDGE)
+            delta = DRAG_SCROLL_STEP;
+        if (!delta)
+            return;
+        const next = Math.max(d.adj.lower, Math.min(d.adj.upper - d.adj.page_size, d.adj.value + delta));
+        if (next === d.adj.value)
+            return;
+        d.adj.value = next;
+        this._dragMove();
+    }
+
+    /** Termina el arrastre. Con `commit`, si hubo movimiento guarda el orden. */
+    _dragEnd(commit) {
+        const d = this._drag;
+        if (!d)
+            return;
+        this._drag = null;
+        if (d.captureId)
+            global.stage.disconnect(d.captureId);
+        if (d.scrollId)
+            GLib.source_remove(d.scrollId);
+        if (!d.active)
+            return;
+        this._suppressClick = true;   // el soltar emite 'clicked' en la fila: no lanzar la app
+        for (const row of this._rows) {
+            if (row === d.btn)
+                row.remove_style_class_name('nebula-result-dragging');
+            row.remove_all_transitions();
+            row.translation_y = 0;
+        }
+        const app = this._rowApps[d.index];
+        const cat = this._model[this._filterIndex];
+        if (!commit || !app || !cat || d.target === d.index)
+            return;
+        const visible = cat.apps.map(a => a.exec);
+        this._addPickerIdle(() => {
+            if (moveAppTo(cat.nombre, app.exec, d.target, visible))
+                this.setModel(buildModel(this._ext.path));
+        });
+    }
+
     _openAppMenu(source, app) {
         const menu = new PopupMenu.PopupMenu(source, 0.5, St.Side.TOP);
         Main.uiGroup.add_child(menu.actor);
@@ -610,31 +884,13 @@ export class NebulaLauncher {
         });
         menu.addMenuItem(favorite);
 
-        const move = new PopupMenu.PopupSubMenuMenuItem('Mover a categoría', false);
-        const dynamicCategories = new Set(['Favoritos', 'Recientes', 'Mis discos y nubes', 'Accesos rapidos']);
-        for (const category of this._model) {
-            if (dynamicCategories.has(category.nombre))
-                continue;
-            const item = new PopupMenu.PopupMenuItem(category.nombre);
-            if (app.categoria === category.nombre)
-                item.setOrnament(PopupMenu.Ornament.CHECK);
-            item.connect('activate', () => {
-                setCategoryOverride(app.exec, category.nombre);
-                this.setModel(buildModel(this._ext.path));
-            });
-            move.menu.addMenuItem(item);
-        }
-        if (categoryOverride(app.exec)) {
-            const restore = new PopupMenu.PopupMenuItem('Restaurar categoría original');
-            restore.connect('activate', () => {
-                setCategoryOverride(app.exec, null);
-                this.setModel(buildModel(this._ext.path));
-            });
-            move.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-            move.menu.addMenuItem(restore);
-        }
-        if (!move.menu.isEmpty())
-            menu.addMenuItem(move);
+        // Las categorias van en un panel al costado (no en un submenu que se
+        // despliega hacia abajo y se sale de la pantalla).
+        const move = new PopupMenu.PopupMenuItem('Mover a categoría  ›');
+        move.connect('activate', () => {
+            this._addPickerIdle(() => this._openCategoryPicker(source, app));
+        });
+        menu.addMenuItem(move);
 
         const hide = new PopupMenu.PopupMenuItem('Ocultar aplicación');
         hide.connect('activate', () => {
@@ -732,6 +988,12 @@ export class NebulaLauncher {
             this._toggleIdleId = 0;
         }
         this._removeOutsideWatch();
+        this._closeCategoryPicker();
+        this._dragEnd(false);
+        if (this._pickerIdleId) {
+            GLib.source_remove(this._pickerIdleId);
+            this._pickerIdleId = 0;
+        }
         for (const [target, id] of this._signalIds)
             target.disconnect(id);
         this._signalIds = [];

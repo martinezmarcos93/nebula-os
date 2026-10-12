@@ -9,6 +9,10 @@ import {
     toggleTaskbarPinned,
     setDisplayName,
     moveApp,
+    moveAppTo,
+    desktopIconCells,
+    setDesktopIconCell,
+    clearDesktopIconCell,
     sanitize,
 } from '../extension/nebula-shell@nebula-os/state.js';
 
@@ -20,6 +24,7 @@ const expected = {
     anclados_taskbar: ['org.example.Editor'],
     nombres: {'org.example.Editor': 'Mi editor'},
     orden: {Desarrollo: ['org.example.Editor', 'a', 'b']},
+    iconos_escritorio: {},
 };
 
 const initial = loadState();
@@ -87,5 +92,30 @@ if (Object.keys(mixed.categoria_override).length !== 1 ||
     mixed.categoria_override.editor !== 'Desarrollo' ||
     Object.prototype.hasOwnProperty.call(mixed.categoria_override, 'bad'))
     throw new Error(`sanitize categoria_override inesperado: ${JSON.stringify(mixed.categoria_override)}`);
+
+// Arrastre con el puntero: soltar en una posicion deja el orden visto.
+saveState(sanitize({}));
+invalidateStateCache();
+const seen = ['a', 'b', 'c', 'd'];
+if (!moveAppTo('Cat', 'd', 1, seen) || loadState().orden.Cat.join() !== 'a,d,b,c')
+    throw new Error(`moveAppTo hacia arriba: ${JSON.stringify(loadState().orden)}`);
+if (!moveAppTo('Cat', 'a', 99, seen) || loadState().orden.Cat.join() !== 'b,c,d,a')
+    throw new Error(`moveAppTo al final: ${JSON.stringify(loadState().orden)}`);
+if (moveAppTo('Cat', 'a', 0, seen) || moveAppTo('Cat', 'zzz', 0, seen))
+    throw new Error('moveAppTo reporto cambio donde no lo hubo');
+
+// Iconos del escritorio: posiciones por escritorio, independientes entre si.
+saveState(sanitize({}));
+invalidateStateCache();
+setDesktopIconCell(0, 'a.txt', [1, 2]);
+setDesktopIconCell(1, 'a.txt', [3, 4]);
+if (desktopIconCells(0)['a.txt'].join() !== '1,2' || desktopIconCells(1)['a.txt'].join() !== '3,4')
+    throw new Error('las posiciones de iconos no son independientes por escritorio');
+clearDesktopIconCell(0, 'a.txt');
+if ('a.txt' in desktopIconCells(0) || !('a.txt' in desktopIconCells(1)))
+    throw new Error('clearDesktopIconCell borro de mas o de menos');
+const dirty = sanitize({iconos_escritorio: {0: {ok: [1, 2], malo: [1], peor: 'x', frac: [1.5, 2]}, 1: 'x'}});
+if (JSON.stringify(dirty.iconos_escritorio) !== '{"0":{"ok":[1,2]}}')
+    throw new Error(`sanitize iconos_escritorio: ${JSON.stringify(dirty.iconos_escritorio)}`);
 
 print('STATE_PERSISTENCE_OK');

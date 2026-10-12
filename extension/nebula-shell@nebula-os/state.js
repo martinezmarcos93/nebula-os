@@ -25,6 +25,7 @@ function emptyState() {
         anclados_taskbar: [],     // [exec, ...]
         nombres: {},              // {exec: 'nombre visual'}
         orden: {},               // {categoria: [exec, ...]}
+        iconos_escritorio: {},   // {indice_escritorio: {archivo: [col, fila]}}
     };
 }
 
@@ -56,6 +57,17 @@ export function sanitize(data) {
     if (order && typeof order === 'object' && !Array.isArray(order)) {
         for (const [k,v] of Object.entries(order))
             if (Array.isArray(v)) base.orden[k] = v.filter(x => typeof x === 'string');
+    }
+    const icons = data.iconos_escritorio;
+    if (icons && typeof icons === 'object' && !Array.isArray(icons)) {
+        for (const [ws, files] of Object.entries(icons)) {
+            if (!files || typeof files !== 'object' || Array.isArray(files))
+                continue;
+            for (const [name, cell] of Object.entries(files)) {
+                if (Array.isArray(cell) && cell.length === 2 && cell.every(Number.isInteger))
+                    (base.iconos_escritorio[ws] ??= {})[name] = [cell[0], cell[1]];
+            }
+        }
     }
     return base;
 }
@@ -199,4 +211,46 @@ export function moveApp(category, exec, direction, visible = []) {
         [arr[i], arr[j]] = [arr[j], arr[i]];
     saveState(s);
     return j >= 0 && j < arr.length;
+}
+
+/** Arrastre con el puntero: deja `exec` en la posicion `toIndex` del orden que
+ * el usuario ve (`visible`, ya ordenado). Parte de `visible` y no del orden
+ * guardado, asi lo que se suelta queda exactamente donde se vio. Devuelve
+ * false si no hubo cambio. */
+export function moveAppTo(category, exec, toIndex, visible) {
+    const from = visible.indexOf(exec);
+    if (from < 0)
+        return false;
+    const arr = [...visible];
+    arr.splice(from, 1);
+    arr.splice(Math.max(0, Math.min(toIndex, arr.length)), 0, exec);
+    if (arr.every((x, i) => x === visible[i]))
+        return false;
+    const s = loadState();
+    s.orden[category] = arr;
+    saveState(s);
+    return true;
+}
+
+// --- Iconos del escritorio (un conjunto por escritorio virtual) -----------
+
+/** {archivo: [col, fila]} de las posiciones que el usuario fijo en ese escritorio. */
+export function desktopIconCells(workspace) {
+    return {...(loadState().iconos_escritorio[String(workspace)] ?? {})};
+}
+
+export function setDesktopIconCell(workspace, name, cell) {
+    const s = loadState();
+    (s.iconos_escritorio[String(workspace)] ??= {})[name] = [cell[0], cell[1]];
+    saveState(s);
+}
+
+/** Olvida la posicion de un archivo (se movio de escritorio o se borro). */
+export function clearDesktopIconCell(workspace, name) {
+    const s = loadState();
+    const files = s.iconos_escritorio[String(workspace)];
+    if (!files || !(name in files))
+        return;
+    delete files[name];
+    saveState(s);
 }

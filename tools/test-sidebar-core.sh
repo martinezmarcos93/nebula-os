@@ -57,6 +57,9 @@ bad(){ printf '  FAIL %s\n' "$*"; }
 e(){ gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval "$1" 2>/dev/null | sed -E "s/^\(true, '(.*)'\)$/\1/; s/^\(false, .*/__EVAL_ERROR__/"; }
 X="const X=Main.extensionManager.lookup('nebula-shell@nebula-os').stateObj; const S=X?._sidebars?.[0]; const L=S?._launcher; const G=X?._unredirect;"
 check(){ local r; r="$(e "$X ($2) ? 'SI' : 'NO'")"; [[ "$r" == *SI* ]] && ok "$1" || bad "$1 (obtuve: $r)"; }
+# Igual que check, pero reintenta hasta ~4 s: para lo que el Shell resuelve de
+# forma asincrona (idles, foco, cambio de escritorio) y tarda mas con carga.
+check_wait(){ local r i; for i in $(seq 1 14); do r="$(e "$X ($2) ? 'SI' : 'NO'")"; [[ "$r" == *SI* ]] && { ok "$1"; return; }; sleep .3; done; bad "$1 (obtuve: $r)"; }
 for _ in $(seq 1 80); do [[ "$(e '1+1')" == 2 ]] && break; sleep .5; done
 [[ "$(e '1+1')" == 2 ]] || { bad 'GNOME Shell no responde por D-Bus'; exit 1; }
 sleep .2
@@ -93,6 +96,23 @@ check 'launcher cierra limpiamente' "!L._isOpen && !L._panel.visible"
 e "$X L.open(-1); L._entry.set_text(L._flat[0]?.nombre?.slice(0,3) ?? ''); L._rebuild(); 1" >/dev/null; sleep .5
 check 'busqueda devuelve resultados' "L._isOpen && L._rows.length > 0"
 e "$X L.close('search-test'); 1" >/dev/null; sleep .5
+# Reordenar con el puntero y panel lateral "Mover a categoria".
+CI="(L._model.findIndex(c => !['Recientes', 'Mis discos y nubes', 'Accesos rapidos'].includes(c.nombre) && c.apps.length >= 3))"
+e "$X S._expand(); L.open($CI); 1" >/dev/null; sleep .6
+check_wait 'categoria con 3+ apps para probar el arrastre' "$CI >= 0 && L._rows.length >= 3 && L._rows.length === L._rowApps.length"
+e "$X L._openCategoryPicker(L._rows[1], L._rowApps[1]); 1" >/dev/null; sleep .4
+check_wait 'mover a categoria: el panel aparece al costado del lanzador' "!!L._picker && L._picker.visible && L._picker.x >= L._panel.x + L._panel.width"
+check_wait 'mover a categoria: el panel entra entero en el monitor' "(() => { const m = Main.layoutManager.primaryMonitor; return L._picker.y >= m.y && L._picker.y + L._picker.height <= m.y + m.height; })()"
+e "$X L._closeCategoryPicker(); 1" >/dev/null; sleep .2
+check_wait 'mover a categoria: cerrar el panel lo destruye' "!L._picker"
+# Armar, mover y soltar en un solo Eval: un repoblado del modelo (instalacion
+# de apps de otros tests) reconstruye las filas y cancelaria un arrastre a medias.
+e "$X globalThis.__first = L._rowApps[0].exec; globalThis.__second = L._rowApps[1].exec; L._dragArm(L._rows[0], {get_coords: () => [0, 100]}); L._drag.lastY = 100 + 2 * L._drag.step + 4; L._dragMove(); globalThis.__drag = [L._drag.active, L._drag.target, L._rows[0].translation_y > 0]; L._dragEnd(true); 1" >/dev/null; sleep .8
+check_wait 'arrastre: la fila sigue al puntero y el destino es la tercera posicion' "globalThis.__drag?.[0] === true && globalThis.__drag[1] === 2 && globalThis.__drag[2] === true"
+check_wait 'arrastre: soltar guarda el nuevo orden' "(() => { const c = L._model[$CI]; return c.apps[2].exec === globalThis.__first && c.apps[0].exec === globalThis.__second; })()"
+check_wait 'arrastre: sin estado colgado tras soltar' "!L._drag && L._rows.every(r => r.translation_y === 0)"
+e "$X L.close('drag-test'); 1" >/dev/null; sleep .4
+check_wait 'arrastre y panel lateral no dejan holds de unredirect' "G._count === 0"
 for i in 1 2 3 4 5; do e "$X S._expand(); L.open(0); L.close('cycle'); S._collapse(); 1" >/dev/null; sleep .2; done
 check '5 ciclos sidebar/launcher sin perder estado' "!L._isOpen && S._collapsed && !S._sidebar.visible"
 check 'sin holds de unredirect despues de cerrar' "G._count === 0"
@@ -228,6 +248,41 @@ if ls /usr/share/gnome-shell/theme/Yaru-purple*/gnome-shell.css >/dev/null 2>&1;
     e "$X X._settings.set_boolean('violet-accent', true); 1" >/dev/null; sleep .6
     check 'acento: volver a encenderla lo re-aplica' "/Yaru-purple/.test($ACC)"
 fi
+# Iconos propios por escritorio (clave workspace-icons, apagada por defecto).
+# Cambiar de escritorio y esperar a que Mutter lo haga de verdad (con la
+# maquina cargada tarda mas de un instante).
+goto_ws(){
+  local i
+  for i in $(seq 1 20); do
+    e "global.workspace_manager.get_workspace_by_index($1).activate(global.display.get_current_time_roundtrip()); 1" >/dev/null
+    sleep .4
+    [[ "$(e 'global.workspace_manager.get_active_workspace_index()')" == "$1" ]] && { sleep .6; return; }
+  done
+}
+# Ventanas ajenas (p. ej. un Archivos que abrio un test anterior y aparece
+# tarde) roban foco y cambian de escritorio en medio de la prueba: se cierran.
+e "global.get_window_actors().map(a => a.meta_window).filter(w => w.get_title() !== 'nebula-testwin' && w.get_window_type() === 0).forEach(w => w.delete(global.get_current_time())); 1" >/dev/null; sleep 1.5
+mkdir -p "$HOME/Desktop" "$XDG_DATA_HOME/nebula/escritorios/2"
+: > "$HOME/Desktop/uno.txt"; : > "$XDG_DATA_HOME/nebula/escritorios/2/dos.txt"; : > "$XDG_DATA_HOME/nebula/escritorios/2/tres.txt"
+BG="Main.layoutManager._backgroundGroup"
+DI="const DI = X._desktopIcons;"
+check_wait 'escritorios: sin la clave no hay capa de iconos' "!X._desktopIcons"
+e "globalThis.__bgN = $BG.get_n_children(); 1" >/dev/null
+e "$X X._settings.set_boolean('workspace-icons', true); 1" >/dev/null; sleep .8
+check_wait 'escritorios: con la clave la capa vive en el fondo, debajo de las ventanas' "(() => { $DI return !!DI && DI._layer.get_parent() === $BG; })()"
+check_wait 'escritorios: el escritorio 1 muestra su carpeta' "(() => { $DI return DI._workspace === 0 && DI._items.map(i => i.name).join() === 'uno.txt' && DI._boxes.size === 1; })()"
+goto_ws 1
+check_wait 'escritorios: el escritorio 2 muestra otros iconos' "(() => { $DI return DI._workspace === 1 && DI._items.map(i => i.name).join() === 'dos.txt,tres.txt'; })()"
+e "$X $DI DI.sendToWorkspace(DI._items[0], 2); 1" >/dev/null; sleep .8
+check_wait 'escritorios: mover un icono a otro escritorio lo pasa de carpeta' "imports.gi.GLib.file_test(imports.gi.GLib.get_user_data_dir() + '/nebula/escritorios/3/dos.txt', imports.gi.GLib.FileTest.EXISTS) && !imports.gi.GLib.file_test(imports.gi.GLib.get_user_data_dir() + '/nebula/escritorios/2/dos.txt', imports.gi.GLib.FileTest.EXISTS)"
+check_wait 'escritorios: el icono movido desaparece del escritorio de origen' "(() => { $DI return DI._items.map(i => i.name).join() === 'tres.txt'; })()"
+e "$X $DI DI._dropAt(DI._items[0], DI._layer.get_transformed_position()[0] + 12 + 96 * 2 + 5, DI._layer.get_transformed_position()[1] + 12 + 104 * 1 + 5); 1" >/dev/null; sleep .4
+check_wait 'escritorios: soltar un icono lo deja en la celda elegida' "(() => { $DI const b = DI._boxes.get('tres.txt'); return b.x === 12 + 96 * 2 && b.y === 12 + 104 * 1; })()"
+goto_ws 0
+check_wait 'escritorios: volver al 1 no hereda la posicion del 2' "(() => { $DI const b = DI._boxes.get('uno.txt'); return b.x === 12 && b.y === 12; })()"
+e "$X X._settings.set_boolean('workspace-icons', false); 1" >/dev/null; sleep .5
+check_wait 'escritorios: apagar la clave quita la capa del fondo' "!X._desktopIcons && $BG.get_n_children() === globalThis.__bgN"
+
 # Herramienta de emergencia: deja GNOME con su configuracion base aunque
 # Nebula tenga oculta la barra superior. Corre contra el HOME temporal.
 EMERG="$(bash "$REPO/tools/nebula-gnome-emergency.sh" 2>&1)"; sleep 1.5

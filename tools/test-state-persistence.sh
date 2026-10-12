@@ -8,3 +8,5 @@ export XDG_CONFIG_HOME="$HOME/.config"
 trap 'rm -rf "$HOME"' EXIT
 
 gjs -m tools/test-state-persistence.mjs
+
+gjs -m tools/test-desktop-grid.mjs
