@@ -1,4 +1,7 @@
-import {assignCells, nearestFreeCell, rectsIntersect, rangeBetween, placeGroup, neighborInDirection} from '../extension/nebula-shell@nebula-os/desktop-grid.js';
+import {
+    assignCells, nearestFreeCell, rectsIntersect, rangeBetween, placeGroup, neighborInDirection,
+    gridLayout, cellAtPoint, isDoubleClick,
+} from '../extension/nebula-shell@nebula-os/desktop-grid.js';
 
 const same = (a, b, msg) => {
     if (JSON.stringify(a) !== JSON.stringify(b))
@@ -81,5 +84,27 @@ same(neighborInDirection(nav, 'a', 'up'), null, 'arriba de todo: nadie');
 same(neighborInDirection(nav, 'c', 'left'), 'a', 'izquierda');
 same(neighborInDirection(nav, 'b', 'right'), 'c', 'a igual distancia, el mas alineado');
 same(neighborInDirection(nav, 'x', 'down'), null, 'origen desconocido');
+
+// Grilla estirada: 1360x768 con una barra de 34 px (area 1360x734). Antes
+// entraban 6 filas y sobraba casi una fila vacia al pie.
+const box = {minW: 96, minH: 100, boxW: 88, boxH: 92, margin: 12};
+const lay = gridLayout(1360, 734, box);
+same([lay.cols, lay.rows], [14, 7], 'columnas y filas en 1360x734');
+// La ultima caja termina justo en el margen inferior/derecho.
+same(12 + (lay.rows - 1) * lay.stepY + 92, 734 - 12, 'la ultima fila llega al pie');
+same(12 + (lay.cols - 1) * lay.stepX + 88, 1360 - 12, 'la ultima columna llega al borde');
+// Soltar en la franja de abajo de todo cae en la ultima fila, no afuera.
+same(cellAtPoint(700, 733, lay, 12), [7, 6], 'el pie de la pantalla es la ultima fila');
+same(cellAtPoint(1359, 0, lay, 12), [13, 0], 'el borde derecho es la ultima columna');
+same(cellAtPoint(-50, 5000, lay, 12), [0, 6], 'fuera del area: se acota');
+same(gridLayout(50, 50, box).cols, 1, 'area minuscula: al menos una celda');
+
+// Doble clic medido a mano (Clutter 14 no cuenta clics).
+const p1 = {name: 'a', time: 1000, x: 10, y: 10};
+same(isDoubleClick(p1, {name: 'a', time: 1300, x: 12, y: 11}, 400, 5), true, 'doble clic');
+same(isDoubleClick(p1, {name: 'a', time: 1500, x: 10, y: 10}, 400, 5), false, 'demasiado lento');
+same(isDoubleClick(p1, {name: 'b', time: 1100, x: 10, y: 10}, 400, 5), false, 'otro icono');
+same(isDoubleClick(p1, {name: 'a', time: 1100, x: 30, y: 10}, 400, 5), false, 'se movio');
+same(isDoubleClick(null, p1, 400, 5), false, 'primer clic');
 
 print('DESKTOP_GRID_OK');

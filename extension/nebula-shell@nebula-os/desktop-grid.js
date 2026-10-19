@@ -126,3 +126,49 @@ export function neighborInDirection(cells, from, dir) {
     }
     return best;
 }
+
+/**
+ * Grilla que ocupa todo el area: cuantas columnas/filas entran con celdas de
+ * al menos `minW` x `minH` (la caja del icono mide boxW x boxH) y el paso entre
+ * celdas estirado para que la ultima caja toque el margen del otro lado. Sin
+ * estirar quedaba una franja vacia casi del alto de una fila al pie de la
+ * pantalla donde no se podia soltar nada.
+ * @returns {{cols, rows, stepX, stepY}}
+ */
+export function gridLayout(width, height, {minW, minH, boxW, boxH, margin}) {
+    const axis = (size, min, box) => {
+        const free = size - 2 * margin;
+        const n = Math.max(1, Math.floor((free - box) / min) + 1);
+        return [n, n > 1 ? (free - box) / (n - 1) : min];
+    };
+    const [cols, stepX] = axis(width, minW, boxW);
+    const [rows, stepY] = axis(height, minH, boxH);
+    return {cols, rows, stepX, stepY};
+}
+
+/**
+ * Celda bajo un punto relativo al area (acotada a la grilla). Cuenta como de
+ * una celda todo su paso, incluido el hueco que la separa de la siguiente.
+ */
+export function cellAtPoint(x, y, {cols, rows, stepX, stepY}, margin) {
+    const clamp = (v, n) => Math.max(0, Math.min(n - 1, v));
+    return [
+        clamp(Math.floor((x - margin) / stepX), cols),
+        clamp(Math.floor((y - margin) / stepY), rows),
+    ];
+}
+
+/**
+ * Si `press` completa un doble clic con `prev` (mismo icono, dentro del tiempo
+ * y la distancia del sistema). Clutter 14 (GNOME 46) ya no cuenta los clics:
+ * get_click_count no existe y hay que medirlo a mano.
+ * @param {{name, time, x, y}|null} prev
+ * @param {{name, time, x, y}} press
+ */
+export function isDoubleClick(prev, press, maxMs, maxDist) {
+    if (!prev || prev.name !== press.name)
+        return false;
+    const dt = press.time - prev.time;
+    return dt >= 0 && dt <= maxMs &&
+        Math.abs(press.x - prev.x) <= maxDist && Math.abs(press.y - prev.y) <= maxDist;
+}

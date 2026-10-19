@@ -281,16 +281,21 @@ e "$X $DI DI.sendToWorkspace(DI._items.find(i => i.name === 'dos.txt'), 2); 1" >
 check_wait 'escritorios: mover un icono a otro escritorio lo pasa de carpeta' "imports.gi.GLib.file_test(imports.gi.GLib.get_user_data_dir() + '/nebula/escritorios/3/dos.txt', imports.gi.GLib.FileTest.EXISTS) && !imports.gi.GLib.file_test(imports.gi.GLib.get_user_data_dir() + '/nebula/escritorios/2/dos.txt', imports.gi.GLib.FileTest.EXISTS)"
 check_wait 'escritorios: el icono movido desaparece del escritorio de origen' "(() => { $DI return DI._items.filter(i => !i.virtual).map(i => i.name).join() === 'tres.txt'; })()"
 check_wait 'escritorios: la Carpeta personal esta tambien en el escritorio 2' "(() => { $DI return DI._items.some(i => i.virtual && i.name === '/personal') && DI._boxes.has('/personal'); })()"
-e "$X $DI const it = DI._items.find(i => i.name === 'tres.txt'); DI._dropGroup([it], it, DI._workspace, new Map(), -1, DI._layer.get_transformed_position()[0] + 12 + 96 * 2 + 5, DI._layer.get_transformed_position()[1] + 12 + 104 * 1 + 5); 1" >/dev/null; sleep .4
-check_wait 'escritorios: soltar un icono lo deja en la celda elegida' "(() => { $DI const b = DI._boxes.get('tres.txt'); return b.x === 12 + 96 * 2 && b.y === 12 + 104 * 1; })()"
+e "$X $DI const it = DI._items.find(i => i.name === 'tres.txt'); DI._dropGroup([it], it, DI._workspace, new Map(), -1, DI._layer.get_transformed_position()[0] + Math.round(12 + DI._grid().stepX * 2) + 5, DI._layer.get_transformed_position()[1] + Math.round(12 + DI._grid().stepY * 1) + 5); 1" >/dev/null; sleep .4
+check_wait 'escritorios: soltar un icono lo deja en la celda elegida' "(() => { $DI const b = DI._boxes.get('tres.txt'); return b.x === Math.round(12 + DI._grid().stepX * 2) && b.y === Math.round(12 + DI._grid().stepY * 1); })()"
+check_wait 'escritorios: la grilla llena el alto (la ultima fila llega al pie)' "(() => { $DI const g = DI._grid(); return Math.abs(12 + (g.rows - 1) * g.stepY + 92 - (DI._layer.height - 12)) < 1; })()"
+check_wait 'escritorios: el doble clic tiene tiempo y distancia del sistema' "(() => { const s = imports.gi.Clutter.Settings.get_default(); return s.double_click_time > 0 && s.double_click_distance >= 0; })()"
+# Doble clic: Clutter 14 no cuenta clics; dos pulsaciones seguidas sobre el mismo icono lo abren.
+DCLICK="(() => { $DI const it = DI._items.find(i => i.virtual); const b = DI._boxes.get(it.name); let n = 0; const orig = DI.openItem; DI.openItem = () => n++; const ev = t => ({get_button: () => 1, get_state: () => 0, get_coords: () => [20, 20], get_time: () => t}); try { DI._lastPress = null; DI._onPress(b, it, ev(5000)); DI._drag?.cancel(); DI._drag = null; const uno = n; DI._onPress(b, it, ev(5150)); DI._drag?.cancel(); DI._drag = null; const dos = n; DI._onPress(b, it, ev(9000)); DI._drag?.cancel(); DI._drag = null; return uno === 0 && dos === 1 && n === 1; } finally { DI.openItem = orig; } })()"
+check_wait 'escritorios: doble clic sobre un icono lo abre (y uno lento no)' "$DCLICK"
 goto_ws 0
-check_wait 'escritorios: volver al 1 no hereda la posicion del 2' "(() => { $DI const b = DI._boxes.get('uno.txt'); return b.x === 12 && b.y === 12 + 104; })()"
+check_wait 'escritorios: volver al 1 no hereda la posicion del 2' "(() => { $DI const b = DI._boxes.get('uno.txt'); return b.x === 12 && b.y === Math.round(12 + DI._grid().stepY); })()"
 # Seleccion multiple y grupos (sobre el escritorio 1: Carpeta personal + uno.txt).
 check_wait 'escritorios: la Carpeta personal ocupa la primera celda' "(() => { $DI const b = DI._boxes.get('/personal'); return b.x === 12 && b.y === 12; })()"
 e "$X $DI DI._setSelection(['uno.txt', '/personal'], 'uno.txt'); 1" >/dev/null
 check 'seleccion: varios iconos quedan marcados a la vez' "(() => { $DI return DI._selection.size === 2 && DI._boxes.get('uno.txt').has_style_pseudo_class('selected') && DI._boxes.get('/personal').has_style_pseudo_class('selected'); })()"
-e "$X $DI const g = DI._selectedItems(); DI._dropGroup(g, g.find(i => i.name === 'uno.txt'), 0, new Map([['/personal', [0, 0]], ['uno.txt', [0, 1]]]), -1, DI._layer.get_transformed_position()[0] + 12 + 96 * 3 + 5, DI._layer.get_transformed_position()[1] + 12 + 104 * 2 + 5); 1" >/dev/null; sleep .4
-check_wait 'grupo: soltar dos iconos los mueve juntos conservando la distancia' "(() => { $DI const a = DI._boxes.get('uno.txt'), h = DI._boxes.get('/personal'); return a.x === 12 + 96 * 3 && a.y === 12 + 104 * 2 && h.x === 12 + 96 * 3 && h.y === 12 + 104 * 1; })()"
+e "$X $DI const g = DI._selectedItems(); DI._dropGroup(g, g.find(i => i.name === 'uno.txt'), 0, new Map([['/personal', [0, 0]], ['uno.txt', [0, 1]]]), -1, DI._layer.get_transformed_position()[0] + Math.round(12 + DI._grid().stepX * 3) + 5, DI._layer.get_transformed_position()[1] + Math.round(12 + DI._grid().stepY * 2) + 5); 1" >/dev/null; sleep .4
+check_wait 'grupo: soltar dos iconos los mueve juntos conservando la distancia' "(() => { $DI const a = DI._boxes.get('uno.txt'), h = DI._boxes.get('/personal'); return a.x === Math.round(12 + DI._grid().stepX * 3) && a.y === Math.round(12 + DI._grid().stepY * 2) && h.x === Math.round(12 + DI._grid().stepX * 3) && h.y === Math.round(12 + DI._grid().stepY * 1); })()"
 e "$X $DI DI._setSelection([], null); 1" >/dev/null
 check 'seleccion: vaciarla desmarca los iconos' "(() => { $DI return DI._selection.size === 0 && !DI._boxes.get('uno.txt').has_style_pseudo_class('selected'); })()"
 # Teclado y menu del fondo (barrido 5).
@@ -308,9 +313,9 @@ e "$X $DI globalThis.__it = DI._items.find(i => i.name === 'uno.txt'); DI._onDra
 check_wait 'borde: quedarse contra el borde derecho pasa al escritorio siguiente' "(() => { $DI return DI._workspace === 1; })()"
 e "$X $DI DI._onDragMove($MON.x + $MON.width - 1, $MON.y + 101); 1" >/dev/null; sleep 1.4
 check 'borde: sin apartarse del borde no sigue de largo' "(() => { $DI return DI._workspace === 1; })()"
-e "$X $DI DI._onDragEnd(); DI._dropGroup([globalThis.__it], globalThis.__it, 0, new Map([['uno.txt', [3, 2]]]), -1, DI._layer.get_transformed_position()[0] + 12 + 96 * 1 + 5, DI._layer.get_transformed_position()[1] + 12 + 104 * 3 + 5); 1" >/dev/null; sleep .8
+e "$X $DI DI._onDragEnd(); DI._dropGroup([globalThis.__it], globalThis.__it, 0, new Map([['uno.txt', [3, 2]]]), -1, DI._layer.get_transformed_position()[0] + Math.round(12 + DI._grid().stepX * 1) + 5, DI._layer.get_transformed_position()[1] + Math.round(12 + DI._grid().stepY * 3) + 5); 1" >/dev/null; sleep .8
 check_wait 'borde: el archivo soltado en el escritorio nuevo viaja a su carpeta' "imports.gi.GLib.file_test(imports.gi.GLib.get_user_data_dir() + '/nebula/escritorios/2/uno.txt', imports.gi.GLib.FileTest.EXISTS) && !imports.gi.GLib.file_test(imports.gi.GLib.get_home_dir() + '/Desktop/uno.txt', imports.gi.GLib.FileTest.EXISTS)"
-check_wait 'borde: queda en la celda donde se solto, en el escritorio nuevo' "(() => { $DI const b = DI._boxes.get('uno.txt'); return DI._workspace === 1 && !!b && b.x === 12 + 96 * 1 && b.y === 12 + 104 * 3; })()"
+check_wait 'borde: queda en la celda donde se solto, en el escritorio nuevo' "(() => { $DI const b = DI._boxes.get('uno.txt'); return DI._workspace === 1 && !!b && b.x === Math.round(12 + DI._grid().stepX * 1) && b.y === Math.round(12 + DI._grid().stepY * 3); })()"
 goto_ws 0
 check_wait 'borde: el escritorio de origen ya no lo muestra' "(() => { $DI return !DI._boxes.has('uno.txt'); })()"
 e "$X X._settings.set_boolean('workspace-icons', false); 1" >/dev/null; sleep .5

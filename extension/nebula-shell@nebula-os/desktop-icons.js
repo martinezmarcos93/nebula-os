@@ -29,13 +29,18 @@ import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 import {armDrag, createDragGhost} from './pointer-drag.js';
 import {desktopIconCells, setDesktopIconCell, clearDesktopIconCell} from './state.js';
 import {
-    assignCells, nearestFreeCell, rectsIntersect, rangeBetween, placeGroup, neighborInDirection,
+    assignCells, rectsIntersect, rangeBetween, placeGroup, neighborInDirection,
+    gridLayout, cellAtPoint, isDoubleClick,
 } from './desktop-grid.js';
 
+// Paso minimo entre celdas y tamano de la caja del icono. El paso real se
+// estira para que la grilla llene el area (ver gridLayout).
 const CELL_W = 96;
-const CELL_H = 104;
+const CELL_H = 100;
+const BOX_W = 88;
+const BOX_H = 92;             // 4+48+4 de icono y espaciado + dos lineas de 9pt
 const MARGIN = 12;
-const CELL_GAP = 8;           // CELL_W/CELL_H menos el tamano real del icono
+const GRID = {minW: CELL_W, minH: CELL_H, boxW: BOX_W, boxH: BOX_H, margin: MARGIN};
 const ICON_SIZE = 48;
 const FADE_MS = 160;
 const REFRESH_DEBOUNCE_MS = 200;
@@ -102,6 +107,7 @@ export class NebulaDesktopIcons {
         this._deskFocus = false;       // el ultimo clic fue en el escritorio (teclado)
         this._dialog = null;           // dialogo abierto (renombrar / carpeta nueva)
         this._drag = null;
+        this._lastPress = null;        // {name, time, x, y} del ultimo clic izquierdo (doble clic)
         this._workspace = global.workspace_manager.get_active_workspace_index();
 
         this._layer = new St.Widget({reactive: false, clip_to_allocation: true});
@@ -161,14 +167,10 @@ export class NebulaDesktopIcons {
         this._content.set_size(a.width, a.height);
     }
 
+    /** {cols, rows, stepX, stepY}: la grilla llena el area de trabajo entera. */
     _grid() {
         const a = this._area();
-        // El ultimo icono no necesita el hueco de CELL_GAP a su derecha/abajo:
-        // sin sumarlo se perdia la ultima columna/fila cuando sobraba justo un icono.
-        return {
-            cols: Math.max(1, Math.floor(((a?.width ?? 1024) - 2 * MARGIN + CELL_GAP) / CELL_W)),
-            rows: Math.max(1, Math.floor(((a?.height ?? 720) - 2 * MARGIN + CELL_GAP) / CELL_H)),
-        };
+        return gridLayout(a?.width ?? 1024, a?.height ?? 720, GRID);
     }
 
     _relayout() {
@@ -231,14 +233,14 @@ export class NebulaDesktopIcons {
         this._content.destroy_all_children();
         this._items = this._readItems();
 
-        const {cols, rows} = this._grid();
+        const {cols, rows, stepX, stepY} = this._grid();
         const cells = assignCells(this._items.map(i => i.name), desktopIconCells(this._workspace), cols, rows);
         for (const item of this._items) {
             const cell = cells.get(item.name);
             if (!cell)
                 continue;
             const box = this._makeIcon(item);
-            box.set_position(MARGIN + cell[0] * CELL_W, MARGIN + cell[1] * CELL_H);
+            box.set_position(Math.round(MARGIN + cell[0] * stepX), Math.round(MARGIN + cell[1] * stepY));
             this._content.add_child(box);
             this._boxes.set(item.name, box);
         }
@@ -265,8 +267,8 @@ export class NebulaDesktopIcons {
             style_class: 'nebula-desk-icon',
             reactive: true,
             track_hover: true,
-            width: CELL_W - CELL_GAP,
-            height: CELL_H - CELL_GAP,
+            width: BOX_W,
+            height: BOX_H,
         });
         box.add_child(new St.Icon({
             gicon: item.icon,
@@ -325,6 +327,13 @@ export class NebulaDesktopIcons {
 
         this._takeDesktopFocus();
         const mods = event.get_state?.() ?? 0;
+        const [px, py] = event.get_coords();
+        const press = {name: item.name, time: event.get_time(), x: px, y: py};
+        const settings = Clutter.Settings.get_default();
+        const double = !(mods & (Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.SHIFT_MASK)) &&
+            isDoubleClick(this._lastPress, press, settings.double_click_time, settings.double_click_distance);
+        // Tras un doble clic se empieza de cero: un tercer clic no abre otra vez.
+        this._lastPress = double ? null : press;
         if (mods & Clutter.ModifierType.CONTROL_MASK) {
             const next = new Set(this._selection);
             if (!next.delete(item.name))
@@ -344,7 +353,8 @@ export class NebulaDesktopIcons {
         const collapse = this._selection.has(item.name) && this._selection.size > 1;
         if (!this._selection.has(item.name))
             this._setSelection([item.name], item.name);
-        if (event.get_click_count?.() === 2) {
+        if (double) {
+            this._setSelection([item.name], item.name);
             this.openItem(item);
             return Clutter.EVENT_STOP;
         }
@@ -592,10 +602,7 @@ export class NebulaDesktopIcons {
     /** Celda de la grilla bajo el punto (x, y) de la pantalla. */
     _cellAt(x, y) {
         const [lx, ly] = this._layer.get_transformed_position();
-        return [
-            Math.floor((x - lx - MARGIN) / CELL_W),
-            Math.floor((y - ly - MARGIN) / CELL_H),
-        ];
+        return cellAtPoint(x - lx, y - ly, this._grid(), MARGIN);
     }
 
     /**
