@@ -52,7 +52,7 @@ const MAX_ENTRIES = 400;
 // grilla ni en las posiciones guardadas.
 const HOME_KEY = '/personal';
 const CLIP_MIME = 'x-special/gnome-copied-files';   // el que usan Archivos y DING
-const ATTRS = 'standard::name,standard::display-name,standard::icon,standard::is-hidden,thumbnail::path';
+const ATTRS = 'standard::name,standard::display-name,standard::icon,standard::is-hidden,standard::content-type,thumbnail::path';
 
 /** Carpeta de un escritorio (0 = Escritorio del usuario). La crea si falta. */
 export function workspaceFolder(index) {
@@ -207,7 +207,7 @@ export class NebulaDesktopIcons {
                         icon = app.get_icon() ?? icon;
                     }
                 }
-                items.push({name, file, label, icon});
+                items.push({name, file, label, icon, contentType: info.get_content_type()});
             }
             en.close(null);
         } catch (e) {
@@ -223,6 +223,7 @@ export class NebulaDesktopIcons {
             file: Gio.File.new_for_path(GLib.get_home_dir()),
             label: 'Carpeta personal',
             icon: new Gio.ThemedIcon({names: ['user-home', 'folder']}),
+            contentType: 'inode/directory',
             virtual: true,
         });
         return items;
@@ -708,6 +709,29 @@ export class NebulaDesktopIcons {
         open.connect('activate', () => targets.forEach(t => this.openItem(t)));
         menu.addMenuItem(open);
 
+        if (targets.length === 1) {
+            const only = targets[0];
+            const apps = only.name.endsWith('.desktop') ? [] : this._appsFor(only);
+            if (apps.length > 0) {
+                const withMenu = new PopupMenu.PopupSubMenuMenuItem('Abrir con');
+                for (const app of apps) {
+                    const entry = new PopupMenu.PopupMenuItem(app.get_name());
+                    entry.connect('activate', () => this._openWith(app, only));
+                    withMenu.menu.addMenuItem(entry);
+                }
+                menu.addMenuItem(withMenu);
+            }
+            if (only.contentType === 'inode/directory') {
+                const term = new PopupMenu.PopupMenuItem('Abrir en una terminal');
+                term.connect('activate', () => this._openTerminal(only));
+                menu.addMenuItem(term);
+            }
+            const path = new PopupMenu.PopupMenuItem('Copiar ruta');
+            path.connect('activate', () => St.Clipboard.get_default().set_text(
+                St.ClipboardType.CLIPBOARD, only.file.get_path() ?? only.file.get_uri()));
+            menu.addMenuItem(path);
+        }
+
         if (real.length > 0) {
             const copy = new PopupMenu.PopupMenuItem('Copiar');
             copy.connect('activate', () => this._copySelection(false));
@@ -744,6 +768,41 @@ export class NebulaDesktopIcons {
 
         this._bindMenuClose(menu);
         menu.open(BoxPointer.PopupAnimation.FULL);
+    }
+
+    /** Apps que abren ese tipo de archivo, la predeterminada primero. */
+    _appsFor(item) {
+        if (!item.contentType)
+            return [];
+        const def = Gio.AppInfo.get_default_for_type(item.contentType, false);
+        const all = Gio.AppInfo.get_all_for_type(item.contentType).filter(a => a.should_show());
+        const seen = new Set();
+        return [def, ...all].filter(a => a && !seen.has(a.get_id()) && seen.add(a.get_id())).slice(0, 10);
+    }
+
+    _openWith(app, item) {
+        try {
+            app.launch([item.file], global.create_app_launch_context(0, -1));
+        } catch (e) {
+            console.error(`Nebula Shell: no se pudo abrir ${item.name} con ${app.get_id()}: ${e}`);
+        }
+    }
+
+    /** Terminal en esa carpeta: gnome-terminal si esta, si no la del sistema. */
+    _openTerminal(item) {
+        const dir = item.file.get_path();
+        if (!dir)
+            return;
+        try {
+            const launcher = new Gio.SubprocessLauncher({flags: Gio.SubprocessFlags.NONE});
+            launcher.set_cwd(dir);
+            if (GLib.find_program_in_path('gnome-terminal'))
+                launcher.spawnv(['gnome-terminal', `--working-directory=${dir}`]);
+            else
+                launcher.spawnv(['x-terminal-emulator']);
+        } catch (e) {
+            console.error(`Nebula Shell: no se pudo abrir una terminal en ${dir}: ${e}`);
+        }
     }
 
     _bindMenuClose(menu) {
