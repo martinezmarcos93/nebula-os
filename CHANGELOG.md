@@ -30,6 +30,8 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 ## [No publicado]
 
 ### Agregado
+- **Menu del icono del escritorio**: "Abrir con", "Abrir en una terminal"
+  (carpetas) y "Copiar ruta"; la Carpeta personal suma esas acciones (2026-10-18).
 - **Interacciones basicas del escritorio de Nebula** (completan el reemplazo de
   DING): teclado (Supr a la papelera, Enter abre, F2 renombra, flechas mueven la
   seleccion, Ctrl+A/C/X/V, Esc), solo cuando el ultimo clic fue en el escritorio y
@@ -88,6 +90,16 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
   esta abierto. En pantallas de 768 px no entraba en la sidebar y no se veia.
 
 ### Corregido
+- **BUG-42**: a veces un clic en una ventana de la barra no la traia al frente.
+  La lista se destruia y rearmaba con cada cambio de titulo, foco o apilado de
+  cualquier ventana, y el clic que caia en medio se perdia. Ahora cada ventana
+  conserva su boton (`window-list.js`, probado con `tools/test-window-list.mjs`)
+  y el orden es estable, por aparicion, en lugar de por uso reciente.
+- Doble clic en los iconos del escritorio: Clutter 14 no tiene `get_click_count`,
+  asi que nunca se detectaba; ahora se mide con el tiempo y la distancia de
+  `Clutter.Settings` (2026-10-18).
+- La grilla de iconos estira el paso entre celdas para llegar al pie de la
+  pantalla: en 1360x734 la ultima franja quedaba inalcanzable (2026-10-18).
 - Clic en una ventana de la barra de Nebula (o relanzar una app ya abierta)
   cuando esa ventana estaba en otro escritorio: llevaba al usuario a ese
   escritorio. Ahora trae la ventana al escritorio actual.

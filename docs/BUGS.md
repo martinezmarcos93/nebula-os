@@ -1230,14 +1230,14 @@ actualizado.
 - **Descartado:** los avisos `Buggy client sent a _NET_ACTIVE_WINDOW message
   with a timestamp of 0` del journal los mandan las aplicaciones, no la
   extensión.
-- **Corrección propuesta:** un botón por ventana que se reusa; ante cambios de
-  título o foco, actualizar solo la etiqueta y las clases, y reconstruir
-  solo si cambia el conjunto de ventanas. Orden estable (por aparición), no
-  por uso reciente. Prueba en el gate: un cambio de título entre press y
-  release no pierde el clic.
-- **Estado:** 🟡 Diagnosticado, sin corregir (falta el OK del autor). Bloquea
-  la fase C2 de la conexión con Hanna (ver [`HANNA-INTEGRACION.md`](HANNA-INTEGRACION.md)),
-  que suma un indicador a esta misma barra.
+- **Corrección:** `window-list.js#planWindowList` decide qué botones crear,
+  quitar y reordenar; `_syncWindows()` reusa el botón de cada ventana mientras
+  exista y solo refresca etiqueta, icono y clases. Orden estable por
+  `Meta.Window.get_stable_sequence()` (aparición), no por uso reciente.
+- **Estado:** ✅ Corregido (2026-10-25), cubierto por `tools/test-window-list.mjs`
+  (en el CI de la extensión). ⏳ Falta validarlo en la sesión real: recargar el
+  Shell y hacer clics en la barra mientras otra ventana cambia de título (por
+  ejemplo, OpenShot exportando).
 
 ---
 
