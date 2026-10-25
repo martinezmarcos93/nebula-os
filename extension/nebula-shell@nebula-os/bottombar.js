@@ -35,6 +35,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import {taskbarPinnedApps, launchEntry} from './model.js';
+import {onTaskbarPinnedChanged} from './state.js';
 import {NebulaMeters} from './meters.js';
 import {armDrag, createDragGhost} from './pointer-drag.js';
 import {planWindowList} from './window-list.js';
@@ -77,6 +78,7 @@ export class NebulaBottomBar {
         this._place();
         this._syncWorkspaces();
         this._syncPinnedApps();
+        this._unwatchPinned = onTaskbarPinnedChanged(() => this._syncPinnedApps());
         this._syncWindows();
         this._windowTracker = new WindowTracker(() => this._syncWindows());
         this._startClock();
@@ -403,7 +405,9 @@ export class NebulaBottomBar {
                 accessible_name: app.nombre,
                 child: new St.Icon({gicon: app.icono, icon_size: 16}),
             });
-            this._connect(b, 'clicked', () => launchEntry(app));
+            // Senal propia del boton (no this._connect): se rehacen al anclar y
+            // desanclar, y la senal muere con el boton.
+            b.connect('clicked', () => launchEntry(app));
             this._pinnedBox.add_child(b);
             this._pinnedButtons.push(b);
         }
@@ -746,6 +750,8 @@ export class NebulaBottomBar {
         }
         this._windowTracker?.destroy();
         this._windowItems?.clear();
+        this._unwatchPinned?.();
+        this._unwatchPinned = null;
         if (this._windowMenu) {
             this._windowMenu.destroy();
             this._windowMenu = null;

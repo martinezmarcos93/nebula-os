@@ -7,6 +7,7 @@ import {
     setCategoryOverride,
     recordRecent,
     toggleTaskbarPinned,
+    onTaskbarPinnedChanged,
     setDisplayName,
     moveApp,
     moveAppTo,
@@ -117,5 +118,20 @@ if ('a.txt' in desktopIconCells(0) || !('a.txt' in desktopIconCells(1)))
 const dirty = sanitize({iconos_escritorio: {0: {ok: [1, 2], malo: [1], peor: 'x', frac: [1.5, 2]}, 1: 'x'}});
 if (JSON.stringify(dirty.iconos_escritorio) !== '{"0":{"ok":[1,2]}}')
     throw new Error(`sanitize iconos_escritorio: ${JSON.stringify(dirty.iconos_escritorio)}`);
+
+// Anclar/desanclar avisa a los suscriptores (la barra redibuja al instante).
+let avisos = 0;
+const desuscribir = onTaskbarPinnedChanged(() => avisos++);
+const fallaUno = onTaskbarPinnedChanged(() => {
+    throw new Error('un suscriptor roto no frena a los demas');
+});
+toggleTaskbarPinned('org.example.Aviso');
+toggleTaskbarPinned('org.example.Aviso');
+desuscribir();
+fallaUno();
+toggleTaskbarPinned('org.example.Aviso');
+toggleTaskbarPinned('org.example.Aviso');
+if (avisos !== 2)
+    throw new Error(`onTaskbarPinnedChanged: ${avisos} avisos (esperaba 2)`);
 
 print('STATE_PERSISTENCE_OK');

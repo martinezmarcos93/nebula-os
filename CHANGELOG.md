@@ -90,6 +90,9 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
   esta abierto. En pantallas de 768 px no entraba en la sidebar y no se veia.
 
 ### Corregido
+- Anclar o desanclar una app a la taskbar no se veia hasta recargar el Shell: la
+  barra solo leia las ancladas al crearse. Ahora `state.js` avisa el cambio
+  (`onTaskbarPinnedChanged`) y la barra se redibuja al instante.
 - **BUG-42**: a veces un clic en una ventana de la barra no la traia al frente.
   La lista se destruia y rearmaba con cada cambio de titulo, foco o apilado de
   cualquier ventana, y el clic que caia en medio se perdia. Ahora cada ventana

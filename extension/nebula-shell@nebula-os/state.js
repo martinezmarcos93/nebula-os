@@ -187,7 +187,34 @@ export function favoriteExecutions() {
 }
 
 export function isTaskbarPinned(exec){return loadState().anclados_taskbar.includes(exec);}
-export function toggleTaskbarPinned(exec){const s=loadState();const i=s.anclados_taskbar.indexOf(exec);if(i>=0)s.anclados_taskbar.splice(i,1);else s.anclados_taskbar.push(exec);saveState(s);return i<0;}
+// Quien muestra las apps ancladas (la barra) se suscribe para redibujar al
+// instante: antes la barra solo las leia al crearse y anclar no se veia hasta
+// recargar el Shell.
+const _pinnedListeners = new Set();
+
+/** Devuelve la funcion para desuscribirse. */
+export function onTaskbarPinnedChanged(callback) {
+    _pinnedListeners.add(callback);
+    return () => _pinnedListeners.delete(callback);
+}
+
+export function toggleTaskbarPinned(exec) {
+    const s = loadState();
+    const i = s.anclados_taskbar.indexOf(exec);
+    if (i >= 0)
+        s.anclados_taskbar.splice(i, 1);
+    else
+        s.anclados_taskbar.push(exec);
+    saveState(s);
+    for (const callback of [..._pinnedListeners]) {
+        try {
+            callback();
+        } catch (e) {
+            console.error(`Nebula Shell: fallo al avisar el cambio de anclados: ${e}`);
+        }
+    }
+    return i < 0;
+}
 export function displayName(exec){return loadState().nombres[exec]??null;}
 export function setDisplayName(exec,name){const s=loadState();if(name&&name.trim())s.nombres[exec]=name.trim();else delete s.nombres[exec];saveState(s);}
 export function taskbarPinnedExecutions(){return [...loadState().anclados_taskbar];}
