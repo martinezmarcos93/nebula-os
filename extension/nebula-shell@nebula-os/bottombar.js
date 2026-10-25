@@ -37,6 +37,7 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import {taskbarPinnedApps, launchEntry} from './model.js';
 import {NebulaMeters} from './meters.js';
 import {armDrag, createDragGhost} from './pointer-drag.js';
+import {planWindowList} from './window-list.js';
 
 export const BAR_HEIGHT = 34;
 const CLOCK_TICK_S = 15;
@@ -408,62 +409,97 @@ export class NebulaBottomBar {
         }
     }
 
+    // BUG-42: un boton por ventana que se reusa mientras la ventana exista. El
+    // WindowTracker llama aca con cada cambio de titulo, foco o apilado de
+    // cualquier ventana; destruir y rehacer los botones se comia los clics que
+    // caian en medio. Solo se crean/quitan botones cuando cambia el conjunto, y
+    // el orden es estable (por aparicion), no por uso reciente.
     _syncWindows() {
         if (!this._windowBox)
             return;
-        this._windowBox.destroy_all_children();
-        this._windowButtons = [];
+        this._windowItems ??= new Map();   // Meta.Window -> {button, icon, label}
 
-        for (const window of listWindows()) {
-            const icon = new St.Icon({
-                gicon: windowIcon(window),
-                icon_size: 16,
-                style_class: 'nebula-window-icon',
-            });
+        const windows = listWindows();
+        const plan = planWindowList([...this._windowItems.keys()],
+            windows.map(w => ({key: w, seq: w.get_stable_sequence?.() ?? 0})));
 
-            const label = windowLabel(window);
-            const button = new St.Button({
-                style_class: 'nebula-window-btn',
-                can_focus: true,
-                reactive: true,
-            });
-            if (window.minimized)
-                button.add_style_class_name('nebula-window-btn-minimized');
-            if (window.has_focus?.())
-                button.add_style_class_name('nebula-window-btn-active');
-
-            const box = new St.BoxLayout({
-                style_class: 'nebula-window-box',
-            });
-            box.add_child(icon);
-            box.add_child(new St.Label({
-                text: label,
-                y_align: Clutter.ActorAlign.CENTER,
-                style_class: 'nebula-window-label',
-            }));
-            button.set_child(box);
-            button.connect('clicked', () => {
-                // Soltar un arrastre sobre el propio boton no es un clic.
-                if (this._suppressWindowClick) {
-                    this._suppressWindowClick = false;
-                    return;
-                }
-                toggleTaskWindow(window);
-            });
-            button.connect('button-press-event', (_actor, event) => {
-                if (event.get_button() === 3) {
-                    this._openWindowMenu(button, window);
-                    return Clutter.EVENT_STOP;
-                }
-                if (event.get_button() === 1) {
-                    this._suppressWindowClick = false;
-                    this._armWindowDrag(window, label, event);
-                }
-                return Clutter.EVENT_PROPAGATE;
-            });
-            this._windowBox.add_child(button);
-            this._windowButtons.push(button);
+        for (const window of plan.remove) {
+            this._windowItems.get(window)?.button.destroy();
+            this._windowItems.delete(window);
         }
+        for (const window of plan.add)
+            this._windowItems.set(window, this._createWindowButton(window));
+
+        plan.order.forEach((window, index) => {
+            const item = this._windowItems.get(window);
+            this._updateWindowButton(window, item);
+            if (this._windowBox.get_child_at_index(index) !== item.button)
+                this._windowBox.set_child_at_index(item.button, index);
+        });
+        this._windowButtons = plan.order.map(w => this._windowItems.get(w).button);
+    }
+
+    _createWindowButton(window) {
+        const icon = new St.Icon({
+            gicon: windowIcon(window),
+            icon_size: 16,
+            style_class: 'nebula-window-icon',
+        });
+        const label = new St.Label({
+            text: '',
+            y_align: Clutter.ActorAlign.CENTER,
+            style_class: 'nebula-window-label',
+        });
+        const button = new St.Button({
+            style_class: 'nebula-window-btn',
+            can_focus: true,
+            reactive: true,
+        });
+        const box = new St.BoxLayout({
+            style_class: 'nebula-window-box',
+        });
+        box.add_child(icon);
+        box.add_child(label);
+        button.set_child(box);
+        button.connect('clicked', () => {
+            // Soltar un arrastre sobre el propio boton no es un clic.
+            if (this._suppressWindowClick) {
+                this._suppressWindowClick = false;
+                return;
+            }
+            toggleTaskWindow(window);
+        });
+        button.connect('button-press-event', (_actor, event) => {
+            if (event.get_button() === 3) {
+                this._openWindowMenu(button, window);
+                return Clutter.EVENT_STOP;
+            }
+            if (event.get_button() === 1) {
+                this._suppressWindowClick = false;
+                this._armWindowDrag(window, label.text, event);
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._windowBox.add_child(button);
+        return {button, icon, label};
+    }
+
+    /** Refresca lo que puede cambiar sin rehacer el boton. */
+    _updateWindowButton(window, {button, icon, label}) {
+        const text = windowLabel(window);
+        if (label.text !== text)
+            label.text = text;
+        const gicon = windowIcon(window);
+        if (gicon && !gicon.equal?.(icon.gicon))
+            icon.gicon = gicon;
+        const setClass = (name, on) => {
+            if (on)
+                button.add_style_class_name(name);
+            else
+                button.remove_style_class_name(name);
+        };
+        setClass('nebula-window-btn-minimized', !!window.minimized);
+        setClass('nebula-window-btn-active', !!window.has_focus?.());
     }
 
     // Arrastrar una ventana de la barra hasta el boton de otro escritorio la
@@ -709,6 +745,7 @@ export class NebulaBottomBar {
             this._metersMenu = null;
         }
         this._windowTracker?.destroy();
+        this._windowItems?.clear();
         if (this._windowMenu) {
             this._windowMenu.destroy();
             this._windowMenu = null;

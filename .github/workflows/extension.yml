@@ -11,6 +11,7 @@ on:
       - tools/test-sidebar-core.sh
       - tools/test-state-persistence.sh
       - tools/test-state-persistence.mjs
+      - tools/test-window-list.mjs
       - dotfiles/nebula/**
       - bin/nebula-categories
       - .github/workflows/extension.yml
@@ -21,6 +22,7 @@ on:
       - tools/test-sidebar-core.sh
       - tools/test-state-persistence.sh
       - tools/test-state-persistence.mjs
+      - tools/test-window-list.mjs
       - dotfiles/nebula/**
       - bin/nebula-categories
       - .github/workflows/extension.yml
@@ -52,6 +54,9 @@ jobs:
 
       - name: tools/test-state-persistence.sh
         run: bash tools/test-state-persistence.sh
+
+      - name: tools/test-window-list.mjs (BUG-42, lista de ventanas de la barra)
+        run: gjs -m tools/test-window-list.mjs
 
       - name: tools/test-sidebar-core.sh (Producto 1)
         run: bash tools/test-sidebar-core.sh
