@@ -1206,6 +1206,39 @@ actualizado.
   monitor simulado (en el gate no hay Cuentas en línea). ⏳ Falta verlo en la
   sesión real tras reiniciar la sesión.
 
+### BUG-42 — A veces un clic en una ventana de la barra no la trae al frente
+- **Componente:** `bottombar.js` (`_syncWindows`), `window-manager.js`
+  (`WindowTracker`).
+- **Cómo se encontró:** reporte del autor (24/10/2026): "en ocasiones no me
+  deja traer al frente las pestañas abiertas", sin patrón que pudiera
+  predecir.
+- **Causa raíz:** `_syncWindows()` hace `destroy_all_children()` y vuelve a
+  crear todos los botones. `WindowTracker` lo llama con cada `notify::title`,
+  `focus-window`, `restacked`, `window-visibility-updated` y
+  `workspace-changed` de **cualquier** ventana. `St.Button` emite `clicked`
+  solo si el mismo actor recibe el press y el release; si un cambio llega en
+  medio, el botón apretado ya no existe y el clic se pierde sin error.
+- **Variables:** la frecuencia con que otras ventanas cambian de título.
+  Medido con `xprop -spy`: la ventana de exportación de OpenShot cambió de
+  título 44 veces en 30 s. Chrome al cargar páginas, YouTube y las terminales
+  que muestran el comando en curso hacen lo mismo. Por eso falla "al azar":
+  depende de lo que hagan las demás ventanas.
+- **Efecto que suma confusión:** los botones siguen el orden de uso reciente
+  (`get_tab_list`), así que al activar una ventana todas se corren. Un clic
+  en la posición donde estaba otra puede caer en la que ya tiene el foco, y
+  esa se minimiza.
+- **Descartado:** los avisos `Buggy client sent a _NET_ACTIVE_WINDOW message
+  with a timestamp of 0` del journal los mandan las aplicaciones, no la
+  extensión.
+- **Corrección propuesta:** un botón por ventana que se reusa; ante cambios de
+  título o foco, actualizar solo la etiqueta y las clases, y reconstruir
+  solo si cambia el conjunto de ventanas. Orden estable (por aparición), no
+  por uso reciente. Prueba en el gate: un cambio de título entre press y
+  release no pierde el clic.
+- **Estado:** 🟡 Diagnosticado, sin corregir (falta el OK del autor). Bloquea
+  la fase C2 de la conexión con Hanna (ver [`HANNA-INTEGRACION.md`](HANNA-INTEGRACION.md)),
+  que suma un indicador a esta misma barra.
+
 ---
 
 ## 4. Sin verificar
