@@ -82,6 +82,8 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
   `dotfiles/fastfetch/nebula.txt`).
 
 ### Cambiado
+- Las apps ancladas de la barra pasan a la derecha, justo antes del boton de
+  Nebula (bloque SISTEMA); sin ancladas, el grupo no ocupa lugar.
 - `tools/test-sidebar-core.sh` fija 4 escritorios (no dinamicos): con los dinamicos
   el Shell borraba el escritorio vacio y volvia al 1 a mitad de la prueba, y daba
   falsos fallos (el commit anterior fallaba 5 de esas pruebas).

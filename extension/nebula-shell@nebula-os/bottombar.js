@@ -1,7 +1,7 @@
 // Nebula Shell - la barra de Nebula (incremento 5). Franja full-width:
 //
-//   [1 2 3 4 5] [ventanas...]   Artista - Titulo |< >|| >|  📈 🔊⏻  dom 4 oct 21:37
-//   escritorios  taskbar        now-playing (MPRIS)      meters sistema  fecha y hora
+//   [1 2 3 4 5] [ventanas...]   Artista - Titulo |< >|| >|  [H] 📈 🔊⏻  dom 4 oct 21:37
+//   escritorios  taskbar        now-playing (MPRIS)   ancladas meters sistema  fecha y hora
 //
 // Clave bar-position: 'top' la pone en el lugar de la barra superior de GNOME
 // (que se oculta mientras tanto, ver extension.js) y 'bottom' al pie, con la
@@ -103,8 +103,6 @@ export class NebulaBottomBar {
         // Taskbar: una representacion por ventana, no por aplicacion.
         // Clic = activar/restaurar. Esto mantiene separadas las responsabilidades
         // del launcher (abrir) y la barra (volver a una ventana existente).
-        this._pinnedBox = new St.BoxLayout({style_class: 'nebula-pinned-apps'});
-        this._bar.add_child(this._pinnedBox);
 
         this._windowScroll = new St.ScrollView({
             style_class: 'nebula-window-scroll',
@@ -148,6 +146,10 @@ export class NebulaBottomBar {
 
         // Derecha: menu de sistema de GNOME + fecha y hora (calendario de GNOME)
         const right = new St.BoxLayout({style_class: 'nebula-tray'});
+        // Apps ancladas: a la derecha, justo antes del boton de Nebula (bloque
+        // SISTEMA), separadas de los escritorios y de la lista de ventanas.
+        this._pinnedBox = new St.BoxLayout({style_class: 'nebula-pinned-apps'});
+        right.add_child(this._pinnedBox);
         if (this._settings?.get_boolean('enable-meters'))
             right.add_child(this._buildMetersButton());
 
@@ -411,6 +413,8 @@ export class NebulaBottomBar {
             this._pinnedBox.add_child(b);
             this._pinnedButtons.push(b);
         }
+        // Sin ancladas no ocupa lugar (ni deja el margen antes de los meters).
+        this._pinnedBox.visible = apps.length > 0;
     }
 
     // BUG-42: un boton por ventana que se reusa mientras la ventana exista. El
