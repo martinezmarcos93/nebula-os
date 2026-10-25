@@ -29,6 +29,8 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 
 ## [No publicado]
 
+## [0.4.0] - 2026-10-25
+
 ### Agregado
 - `tools/test-stress-bug26.sh`: estres de BUG-26 en un GNOME Shell 46 real en
   X11 (sidebar, lanzador, `UnmapNotify`, Overview). 300 ciclos sin crash; BUG-26

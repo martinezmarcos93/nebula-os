@@ -126,7 +126,7 @@ formalmente y R-302/R-311 pasan a la siguiente versión.
 | ID | Tarea | Aceptación |
 |---|---|---|
 | R-301 ✅ | **Quitar `trackFullscreen` de la sidebar y del lanzador** (FS-20). Escuchar `global.display` `in-fullscreen-changed` y ocultar a mano, **respetando `_isOpen`/`_collapsed`** | Cerrar el lanzador → Super, Super → no reaparece. Colapsar sidebar → Overview → `UnredirectGuard._count === 0`. Hecho: `sidebar.js#_syncFullscreen()`, BUG-27 |
-| R-302 🔬 ⏳ | Cerrar BUG-26 con el protocolo de su criterio de aceptación. Si el crash nativo reaparece: reportarlo a mutter con la traza (no se puede corregir desde la extensión) y documentar el flujo seguro de recarga | Una semana de uso sin `signal 11` en el journal. **Abierta** |
+| R-302 🔬 ⏳ | Cerrar BUG-26 con el protocolo de su criterio de aceptación. Si el crash nativo reaparece: reportarlo a mutter con la traza (no se puede corregir desde la extensión) y documentar el flujo seguro de recarga | Una semana de uso sin `signal 11` en el journal. **✅ Cerrada 2026-10-25**: 3 semanas de uso diario sin crashes en el journal (27/09–25/10) y 300 ciclos de `tools/test-stress-bug26.sh` en X11 sin crash (ver `BUGS.md` BUG-26). |
 | R-303 ✅ | Reactivar "clic afuera cierra" (`_installStageCapture`, BUG-004/KNOWN-04) **después** de R-301 (probable causa común) | Ciclo de BUG-24 ×5 sin click-through. Hecho: `launcher.js#_installOutsideWatch()`, verificado con clics reales en X11 (BUG-28) |
 | R-304 ✅ | Pasar `FEATURES` de `config.js` a claves gsettings (`enable-launcher`, `enable-meters`, `enable-bottombar`) con reacción en vivo. Default: launcher ✔, **meters ✔**, bottombar ✘ hasta validarla (BUG-005). **Desde 2026-10-04** la barra viene encendida y arriba (`bar-position`), en el lugar de la barra de GNOME | Cambiar la clave sin tocar código |
 | R-305 ✅ | Meters en pausa mientras la sidebar está colapsada (FS-25) | 0 procesos `nvidia-smi` con la sidebar colapsada |
@@ -242,8 +242,9 @@ F4 R-401/R-402 ────┘          │
  desde el día 1)
 ```
 
-**Dónde estamos (2026-10-04):** `v0.3.0` cortada. Para `v1.0.0` faltan R-302
-(BUG-26), R-311, R-405, R-406, R-502, el pedido a GitHub Support de R-004, la
+**Dónde estamos (2026-10-25):** `v0.4.0` cortada (escritorios independientes,
+BUG-42, R-302/BUG-26 cerrada, apps ancladas a la derecha, botón de Hanna). Para
+`v1.0.0` faltan R-311, R-405, R-406, R-502, el pedido a GitHub Support de R-004, la
 instalación limpia en una VM Desktop y en la máquina de referencia (punto 2 de
 la sección 8) y la semana de uso real (punto 5).
 
