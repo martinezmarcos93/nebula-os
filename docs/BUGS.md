@@ -666,8 +666,9 @@ Convención de estado:
   decir: ese crash pasó **con el código viejo, sin el fix**. Por eso la
   validación en vivo sigue pendiente y no se puede dar por hecha con datos
   de esa sesión.
-- **Estado:** 🔴 **VOLVIÓ A CRASHEAR CON EL FIX INSTALADO — el fix de esta
-  entrada NO quedó confirmado; hace falta seguir investigando.** Ver el
+- **Estado (histórico, 2026-09-15):** 🔴 **VOLVIÓ A CRASHEAR CON EL FIX INSTALADO — el fix de esta
+  entrada NO quedó confirmado; hace falta seguir investigando.** *(Superado:
+  ver "Cierre — 2026-10-25" al final de esta entrada.)* Ver el
   crash de 2026-09-15 00:53:57 más abajo, que sí corrió sobre código fresco
   (a diferencia del de 18:14:49) y crasheó igual.
 
@@ -812,6 +813,42 @@ Convención de estado:
      causa raíz de más arriba es la única posible.
   - Solo si los 4 puntos pasan sin incidentes, la entrada pasa a
     ✅ **Resuelto** con la fecha y el commit de validación.
+
+#### Cierre — 2026-10-25: validado con uso real y prueba de estrés
+
+- **Uso real:** el journal guardado va del 2026-09-27 al 2026-10-25 (35
+  arranques) e incluye uso diario de la extensión desde el 2026-10-04. Tiene
+  **cero** `crashed with signal`, cero segfaults del kernel de `gnome-shell` y
+  ningún volcado del Shell en `/var/crash`. El último crash conocido sigue siendo
+  el del 2026-09-15, durante un `gnome-shell --replace`.
+- **Prueba de estrés:** `tools/test-stress-bug26.sh` arranca un GNOME Shell 46
+  real en X11 (Xvfb) con la extensión instalada y repite, ciclo por ciclo:
+  - expandir la sidebar;
+  - abrir el lanzador en otra categoría;
+  - cerrar y colapsar;
+  - desmapear y volver a mapear una ventana real (`UnmapNotify`, el evento de
+    la traza del 2026-09-15);
+  - minimizar y restaurar;
+  - y cada 10 ciclos, entrar y salir del Overview.
+
+  Dos corridas de 150 ciclos (300 en total), con sidebar y lanzador abiertos de
+  verdad en todos los ciclos: **0 crashes y 0 errores JS**.
+- **Lectura:**
+  - El fix de la reentrada de Clutter (`243db54`: `idle_add` en el toggle y en
+    `UnredirectGuard`) queda validado.
+  - El crash del 2026-09-15 tiene firma de mutter: compositor `NULL` en
+    `handle_host_xevent` mientras otro `gnome-shell --replace` toma la
+    pantalla. No hay código de la extensión en esa traza. Una búsqueda de esa
+    firma en los trackers públicos no encontró un reporte con esa misma
+    combinación.
+- **Precaución operativa:** para recargar el Shell usar Alt+F2 → `r`. Evitar
+  `gnome-shell --replace` encadenado a `build.sh --install` y a `gnome-extensions
+  enable`: es el único contexto donde se vio el crash con el fix instalado.
+- **Si vuelve a pasar:** `apport-unpack /var/crash/_usr_bin_gnome-shell.1000.crash`
+  + `gdb -ex "thread apply all bt full"` sobre `/usr/bin/gnome-shell` (los
+  paquetes `-dbgsym` de la sección anterior), y reabrir esta entrada con la traza.
+- **Estado:** ✅ **Resuelto** (2026-10-25). Fix `243db54`, validado con 3
+  semanas de uso diario sin crashes y 300 ciclos de estrés en X11.
 
 ---
 

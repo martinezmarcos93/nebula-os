@@ -30,6 +30,9 @@ y el proyecto sigue [Versionado Semantico](https://semver.org/lang/es/).
 ## [No publicado]
 
 ### Agregado
+- `tools/test-stress-bug26.sh`: estres de BUG-26 en un GNOME Shell 46 real en
+  X11 (sidebar, lanzador, `UnmapNotify`, Overview). 300 ciclos sin crash; BUG-26
+  pasa a resuelto junto con 3 semanas de uso diario sin crashes.
 - **Menu del icono del escritorio**: "Abrir con", "Abrir en una terminal"
   (carpetas) y "Copiar ruta"; la Carpeta personal suma esas acciones (2026-10-18).
 - **Interacciones basicas del escritorio de Nebula** (completan el reemplazo de
