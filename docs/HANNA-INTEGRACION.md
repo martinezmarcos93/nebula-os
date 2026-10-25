@@ -1,6 +1,6 @@
 # Conexión con Hanna — lado Nebula
 
-**Estado:** línea abierta el 24/10/2026. Hoy no hay **ningún** código de Hanna en Nebula.
+**Estado:** línea abierta el 24/10/2026. Al 25/10 sigue sin haber código de Hanna en Nebula: el botón de C1 funciona con el mecanismo de apps ancladas que ya existía.
 **Roadmap completo:** `docs/ROADMAP_CONEXION_HANNA_NEBULA.md` en el repositorio de Hanna. Las fases y sus criterios de salida se definen allá; este documento fija lo que le toca a Nebula y las reglas que Nebula no negocia.
 
 ## Qué es Hanna para Nebula
@@ -19,8 +19,8 @@ Un servicio local opcional: un servidor HTTP en `127.0.0.1:8502` y, desde la fas
 
 | Fase | Trabajo en Nebula | Requisito previo en Nebula |
 |---|---|---|
-| C1 | Nada de código: anclar `hanna.desktop` en la barra con el mecanismo de apps ancladas (`model.js#taskbarPinnedApps`). | — |
-| C2 | Módulo `hanna-link.js`: indicador en la barra con el estado de Hanna (`GET /api/v1/estado`). Al hacer clic la enfoca, la abre o la lanza. Prueba en `tools/test-sidebar-core.sh` con un servidor falso que tarda, se cae o devuelve basura. | **BUG-42 corregido** (misma barra). |
+| C1 ✅ (25/10) | Nada de código: anclar Hanna en la barra ("Otras aplicaciones" → clic derecho → *Anclar a la taskbar*). Como `hanna.desktop` usa `Exec=hanna` (sin argumentos) y `StartupWMClass=Hanna`, `model.js#launch` toma el camino `Shell.App`: si Hanna tiene ventana la trae al frente, si no la lanza. Hanna levanta todo y lo apaga con su botón "Cerrar Hanna". | — |
+| C2 (opcional) | Módulo `hanna-link.js`: indicador de estado sobre el botón de C1 (`GET /api/v1/estado`: ocupada, sin respuesta). El clic sigue siendo el de C1. Prueba en `tools/test-sidebar-core.sh` con un servidor falso que tarda, se cae o devuelve basura. | BUG-42 validado en sesión (misma barra). |
 | C3 | Atajo global con `Main.wm.addKeybinding` (mismo patrón que `sidebar.js`) que llama por D-Bus a Hanna para alternar su overlay. | C2 |
 | C4 | El indicador muestra escuchando, procesando, hablando y error; el atajo de voz alterna la escucha. | C3 |
 | C5 | Menú desplegable del indicador con el Radar y el día (`GET /api/v1/hoy`), solo lectura. | C2 |
