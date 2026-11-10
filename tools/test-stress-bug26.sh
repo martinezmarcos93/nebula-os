@@ -81,6 +81,7 @@ echo "RESULTADO: $CICLOS ciclos sin crash"
 SCEN
 
 export T CICLOS
+# shellcheck disable=SC2016  # se expande dentro del bash de dbus-run-session
 XDG_SESSION_TYPE=x11 xvfb-run -a -s "-screen 0 1280x800x24 +extension Composite" dbus-run-session -- bash -c '
     gsettings set org.gnome.shell disable-user-extensions false
     gsettings set org.gnome.shell enabled-extensions "[\"nebula-harness@test\", \"nebula-shell@nebula-os\"]"
