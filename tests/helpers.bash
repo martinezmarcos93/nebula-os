@@ -20,6 +20,21 @@ stub() {
     chmod +x "$STUBS/$1"
 }
 
+# PATH minimo y controlado: solo utilidades basicas (+ los stubs). Sirve para
+# simular "sin nvidia-smi / sin lm-sensors / sin notify-send" en cualquier
+# maquina; recortar a /usr/bin:/bin no alcanza donde esos programas viven ahi.
+minimal_path() {
+    local dir="$BATS_TEST_TMPDIR/minbin" c p
+    mkdir -p "$dir"
+    for c in bash sh env awk head tail sleep free mkdir dirname basename cat date \
+             stat mv cp rm flock cut tr sed grep mktemp touch sort uniq wc tee id \
+             readlink chmod ls printf timeout seq nproc; do
+        p="$(command -v "$c" 2>/dev/null)" || continue
+        [[ "$p" == /* ]] && ln -sf "$p" "$dir/$c"
+    done
+    echo "$STUBS:$dir"
+}
+
 skip_if_root() {
     [[ ${EUID:-$(id -u)} -ne 0 ]] || skip "requiere usuario no-root"
 }

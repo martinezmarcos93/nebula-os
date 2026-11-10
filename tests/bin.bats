@@ -31,7 +31,7 @@ teardown() { [[ -n "${first:-}" ]] && kill "$first" 2>/dev/null; true; }
 }
 
 @test "nebula-resource-hud once: CPU real sin lm-sensors ni nvidia-smi" {
-    run env PATH="/usr/bin:/bin" "$REPO/bin/nebula-resource-hud" once
+    run env PATH="$(minimal_path)" "$REPO/bin/nebula-resource-hud" once
     [ "$status" -eq 0 ]
     [[ "$output" =~ CPU\ [0-9]+% ]]
 }
@@ -43,6 +43,9 @@ teardown() { [[ -n "${first:-}" ]] && kill "$first" 2>/dev/null; true; }
     NEBULA_LINK=copy NEBULA_DRY_RUN=0 bash "$R/install/30-dotfiles.sh" >/dev/null 2>&1
     echo "$R" > "$HOME/.local/share/nebula/repo-path"
     echo "# nuevo" >> "$R/dotfiles/dunst/dunstrc"
+    # El aviso sale por notify-send si existe: se captura por stdout (y no
+    # aparecen notificaciones reales en el escritorio de quien corre los tests).
+    stub notify-send 'echo "$@"'
     run "$R/bin/nebula-sync" --dotfiles-only --quiet
     [[ "$output" == *"nebula-sync --apply"* ]]
     [ "$(tail -n1 "$HOME/.config/dunst/dunstrc")" != "# nuevo" ]
@@ -124,7 +127,7 @@ teardown() { [[ -n "${first:-}" ]] && kill "$first" 2>/dev/null; true; }
 
 @test "nebula-gpu-stat: sin NVIDIA imprime vacio y sale 0" {
     export XDG_RUNTIME_DIR="$BATS_TEST_TMPDIR/run"
-    run env PATH="/usr/bin:/bin" "$REPO/bin/nebula-gpu-stat" util
+    run env PATH="$(minimal_path)" "$REPO/bin/nebula-gpu-stat" util
     [ "$status" -eq 0 ]
     [ -z "$output" ]
 }
