@@ -170,12 +170,12 @@ fi
 dups="$(grep -E '^[^# ]' "$REPO/dotfiles/sxhkd/sxhkdrc" | grep -vE '^\s' | sort | uniq -d)"
 [[ -z "$dups" ]] && ok "sxhkdrc: sin atajos duplicados" || bad "sxhkdrc: atajos duplicados -> $dups"
 
-# PKGS_BASE: las deps declaradas de las features nuevas
+# install/pkgs-base.list: las deps declaradas de las features nuevas
 missing_pkg=0
 for p in alttab copyq maim xdotool x11-xkb-utils libnotify-bin git unzip curl ca-certificates xclip python3 x11-utils ffmpeg slop; do
-    grep -qw "$p" "$REPO/install/10-base.sh" || { bad "install/10-base.sh: falta '$p' en PKGS_BASE"; missing_pkg=1; }
+    sed 's/#.*//' "$REPO/install/pkgs-base.list" | grep -qw -- "$p" || { bad "install/pkgs-base.list: falta '$p'"; missing_pkg=1; }
 done
-[[ "$missing_pkg" -eq 0 ]] && ok "install/10-base.sh: deps de las features nuevas declaradas"
+[[ "$missing_pkg" -eq 0 ]] && ok "install/pkgs-base.list: deps de las features nuevas declaradas"
 
 # ===========================================================================
 if [[ "$ONLY_STATIC" -eq 1 ]]; then

@@ -102,3 +102,20 @@ setup() {
     NEBULA_DRY_RUN=1 download_verified "https://x/y.zip" "0000" "$HOME/y.zip" 2>/dev/null
     [ ! -e "$HOME/curl-corrio" ] && [ ! -e "$HOME/y.zip" ]
 }
+
+@test "pkg_list: lee el manifiesto sin comentarios y en orden" {
+    printf '# cabecera\nbspwm sxhkd   # en linea\n\n  curl\n' > "$HOME/l.list"
+    [ "$(pkg_list "$HOME/l.list" | tr '\n' ' ')" = "bspwm sxhkd curl " ]
+}
+
+@test "pkg_list: es dato, no codigo (nada se ejecuta ni se expande)" {
+    printf 'curl $(touch %s/pwned) * `id` ok-pkg\n' "$HOME" > "$HOME/l.list"
+    out="$(pkg_list "$HOME/l.list" 2>/dev/null)"
+    [ ! -e "$HOME/pwned" ]
+    [ "$(echo "$out" | tr '\n' ' ')" = "curl ok-pkg " ]
+}
+
+@test "pkg_list: el manifiesto real tiene las deps base" {
+    out="$(pkg_list "$REPO/install/pkgs-base.list")"
+    for p in bspwm sxhkd curl unzip python3 x11-utils; do grep -qx "$p" <<<"$out"; done
+}

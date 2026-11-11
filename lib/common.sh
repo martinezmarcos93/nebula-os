@@ -92,6 +92,23 @@ run_root() {
 has_cmd()     { command -v "$1" >/dev/null 2>&1; }
 require_cmd() { has_cmd "$1" || die "Falta el comando requerido: $1"; }
 
+# pkg_list ARCHIVO -> un paquete por linea, sin comentarios. Es un manifiesto
+# de datos (antes se extraia PKGS_BASE de 10-base.sh y se le hacia eval).
+pkg_list() {
+    local f="$1" line p words
+    [[ -r "$f" ]] || { warn "no se puede leer $f"; return 1; }
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        read -ra words <<<"${line%%#*}"
+        for p in "${words[@]}"; do
+            if [[ "$p" =~ ^[a-z0-9][a-z0-9.+-]+$ ]]; then
+                printf '%s\n' "$p"
+            else
+                warn "pkg_list: nombre de paquete invalido en $f: $p (se ignora)"
+            fi
+        done
+    done <"$f"
+}
+
 # download_verified URL SHA256 DESTINO -> baja URL a DESTINO y exige ese SHA-256.
 # Si no coincide borra DESTINO y devuelve 1 (descarga cortada, release
 # re-subida o alterada). En dry-run solo muestra el curl.

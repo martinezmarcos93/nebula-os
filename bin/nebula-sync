@@ -3,7 +3,7 @@
 # bspwmrc, en segundo plano, una vez por sesion) y tambien a mano.
 #
 #   1. Detecta si los dotfiles del repo cambiaron desde el ultimo despliegue
-#   2. Detecta paquetes de PKGS_BASE que falten
+#   2. Detecta paquetes de install/pkgs-base.list que falten
 #   3. Por defecto SOLO AVISA (notify-send) con el comando para aplicarlo.
 #
 # Aplicar cambios es opt-in (docs/ROADMAP-REPARACION.md D6 / BUG-007): antes
@@ -91,14 +91,14 @@ elif [[ "$DO_DOTS" -eq 1 && -z "$REPO" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Paquetes: instalar los de PKGS_BASE que falten.
+# 2. Paquetes: instalar los de install/pkgs-base.list que falten.
 # ---------------------------------------------------------------------------
 [[ "$DO_PKGS" -eq 1 ]] || exit 0
 
 # Lista de paquetes: preferir el repo (mas fresco), si no la copia desplegada.
 pkgs_raw=""
 if [[ -n "$REPO" ]]; then
-    pkgs_raw="$( eval "$(sed -n '/^PKGS_BASE=(/,/^)/p' "$REPO/install/10-base.sh")" 2>/dev/null; printf '%s\n' "${PKGS_BASE[@]:-}" )"
+    [[ -r "$REPO/install/pkgs-base.list" ]] && pkgs_raw="$(cat "$REPO/install/pkgs-base.list")"
 fi
 [[ -z "${pkgs_raw// }" && -r "$DATA/pkgs.list" ]] && pkgs_raw="$(cat "$DATA/pkgs.list")"
 mapfile -t want < <(printf '%s\n' "$pkgs_raw" | sed 's/#.*//' | tr -s ' ' '\n' | grep -E '^[a-z0-9][a-z0-9.+-]*$' | sort -u)
