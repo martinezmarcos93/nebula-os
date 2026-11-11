@@ -129,7 +129,7 @@ info "panel efectivo: $EFFECTIVE_PANEL (guardado en $NEBULA_SESSION_ENV)"
 # ---------------------------------------------------------------------------
 # Nerd Font (glyphs del panel). Idempotente: se salta si ya esta instalada.
 # ---------------------------------------------------------------------------
-if fc-list 2>/dev/null | grep -qi "JetBrainsMono Nerd Font"; then
+if font_installed "JetBrainsMono Nerd Font"; then
     info "Nerd Font ya instalada: $NERD_FONT_NAME"
 else
     tmp_zip="$(mktemp --suffix=.zip)"

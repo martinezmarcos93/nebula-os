@@ -92,6 +92,24 @@ run_root() {
 has_cmd()     { command -v "$1" >/dev/null 2>&1; }
 require_cmd() { has_cmd "$1" || die "Falta el comando requerido: $1"; }
 
+# font_installed NOMBRE -> 0 si fontconfig conoce una tipografia con ese nombre.
+# - fc-list escribe la cache de fontconfig en ~/.cache: en dry-run se usa una
+#   cache temporal para no tocar el HOME.
+# - La salida se captura entera: con pipefail, `fc-list | grep -q` puede dar
+#   "no instalada" si fc-list recibe SIGPIPE cuando grep ya encontro.
+font_installed() {
+    has_cmd fc-list || return 1
+    local fonts tmp=""
+    if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
+        tmp="$(mktemp -d)"
+        fonts="$(XDG_CACHE_HOME="$tmp" fc-list 2>/dev/null || true)"
+        rm -rf "$tmp"
+    else
+        fonts="$(fc-list 2>/dev/null || true)"
+    fi
+    grep -qiF -- "$1" <<<"$fonts"
+}
+
 pkg_installed() {
     dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q 'install ok installed'
 }

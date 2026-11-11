@@ -67,3 +67,24 @@ setup() {
     [[ "$out" != *"NEBULA_PANEL"* ]]
     grep -q NEBULA_PANEL "$NEBULA_BACKUP_DIR/.xprofile"
 }
+
+@test "font_installed: encuentra la tipografia aunque fc-list liste mucho (sin falso negativo por SIGPIPE)" {
+    stub fc-list 'for i in $(seq 1 20000); do echo "/usr/share/fonts/x$i.ttf: Fuente $i"; done
+        echo "/f/jb.ttf: JetBrainsMono Nerd Font:style=Regular"
+        for i in $(seq 1 20000); do echo "/usr/share/fonts/y$i.ttf: Otra $i"; done'
+    set -o pipefail
+    font_installed "JetBrainsMono Nerd Font"
+    ! font_installed "Space Grotesk"
+}
+
+@test "font_installed: en dry-run fc-list usa una cache temporal, no la del HOME" {
+    stub fc-list 'echo "XDG_CACHE_HOME=$XDG_CACHE_HOME"'
+    NEBULA_DRY_RUN=1 font_installed "XDG_CACHE_HOME=/"
+    ! NEBULA_DRY_RUN=1 font_installed "XDG_CACHE_HOME=$HOME"
+}
+
+@test "download_verified: en dry-run no baja nada" {
+    stub curl 'touch "$HOME/curl-corrio"'
+    NEBULA_DRY_RUN=1 download_verified "https://x/y.zip" "0000" "$HOME/y.zip" 2>/dev/null
+    [ ! -e "$HOME/curl-corrio" ] && [ ! -e "$HOME/y.zip" ]
+}
