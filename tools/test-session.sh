@@ -87,9 +87,22 @@ grep -q '(deflisten TASKWINS' "$YUCK" && grep -q 'nebula-taskbar' "$YUCK" \
     && ok "eww.yuck: taskbar cableado (deflisten TASKWINS -> nebula-taskbar)" \
     || bad "eww.yuck: falta el deflisten TASKWINS del taskbar"
 
-if command -v eww >/dev/null 2>&1 && [[ -z "${DISPLAY:-}" ]]; then
-    warn "eww instalado pero sin DISPLAY: no valido la carga del .yuck (correr bajo xvfb-run)"
+# eww abre ventanas de verdad: se usa un Xvfb propio y nunca el DISPLAY de la
+# sesion (antes las abria en el escritorio del usuario, y una ventana que
+# sobrevivia a la corrida anterior hacia fallar la siguiente a veces).
+eww_x=""; eww_xpid=""; eww_saved_display="${DISPLAY:-}"
+if command -v eww >/dev/null 2>&1 && command -v Xvfb >/dev/null 2>&1; then
+    eww_dfile="$(mktemp)"
+    Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp 3>"$eww_dfile" >/dev/null 2>&1 &
+    eww_xpid=$!
+    for _ in $(seq 1 25); do [[ -s "$eww_dfile" ]] && break; sleep 0.2; done
+    [[ -s "$eww_dfile" ]] && eww_x=":$(tr -d '[:space:]' <"$eww_dfile")"
+    rm -f "$eww_dfile"
+fi
+if command -v eww >/dev/null 2>&1 && [[ -z "$eww_x" ]]; then
+    warn "eww instalado pero sin Xvfb: no valido la carga del .yuck (apt install xvfb)"
 elif command -v eww >/dev/null 2>&1; then
+    export DISPLAY="$eww_x"
     # Los polls del .yuck llaman a nebula-* (gpu-stat, taskbar): del repo.
     export PATH="$REPO/bin:$PATH"
     d="$REPO/dotfiles/eww"; sock=""
@@ -140,9 +153,11 @@ elif command -v eww >/dev/null 2>&1; then
     eww -c "$d" kill >/dev/null 2>&1 || true
     kill -9 "$epid" 2>/dev/null || true
     rm -f /tmp/nebula-eww-test.$$
+    if [[ -n "$eww_saved_display" ]]; then export DISPLAY="$eww_saved_display"; else unset DISPLAY; fi
 else
     warn "eww no instalado: no valido la carga del .yuck"
 fi
+[[ -n "$eww_xpid" ]] && { kill "$eww_xpid" 2>/dev/null; wait "$eww_xpid" 2>/dev/null; } || true
 
 # Seguridad: eww reemplaza {} CRUDO dentro de /bin/sh -c (sin escapar). En
 # un .yuck solo se permite {} solo en su linea (dentro de un heredoc).
