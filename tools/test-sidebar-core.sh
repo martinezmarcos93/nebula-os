@@ -327,6 +327,12 @@ check_wait 'borde: el escritorio de origen ya no lo muestra' "(() => { $DI retur
 e "$X X._settings.set_boolean('workspace-icons', false); 1" >/dev/null; sleep .5
 check_wait 'escritorios: apagar la clave quita la capa del fondo' "!X._desktopIcons && $BG.get_n_children() === globalThis.__bgN"
 
+# Cobertura: toda app visible en "Mostrar aplicaciones" de GNOME tiene que
+# estar en alguna categoria de Nebula (o en "Otras aplicaciones"), salvo que
+# el usuario la haya ocultado.
+e "$X globalThis.__miss = null; import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__miss = m.appsMissingFromModel(S._model); }).catch(err => { globalThis.__miss = ['ERROR ' + err]; }); 1" >/dev/null
+check_wait 'cobertura: todas las apps del grid de GNOME estan en Nebula' "globalThis.__miss !== null && globalThis.__miss.length === 0"
+[[ "$(e 'JSON.stringify(globalThis.__miss)')" == *'[]'* ]] || printf '  INFO faltan: %s\n' "$(e 'JSON.stringify(globalThis.__miss)')"
 # Estado editado desde afuera (a mano o por un script): el Shell lo relee en
 # vivo y no lo pisa en el proximo guardado. Antes quedaba con la copia vieja.
 # Eval devuelve el resultado como JSON: un string llega con comillas y hay que
