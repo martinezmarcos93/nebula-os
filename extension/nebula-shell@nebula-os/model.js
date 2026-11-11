@@ -562,6 +562,20 @@ function uncategorizedApps(rawCats) {
     return out;
 }
 
+/** Apps visibles del grid de GNOME ("Mostrar aplicaciones") que no aparecen en
+ * ninguna categoria de `model` (el resultado de buildModel) ni estan ocultas
+ * por el usuario. Debe dar [] siempre: lo verifica el gate de tests. */
+export function appsMissingFromModel(model) {
+    const shown = [];
+    for (const cat of model)
+        for (const app of cat.apps ?? [])
+            if (app.exec)
+                shown.push({exec: app.exec});
+    const hidden = hiddenExecutions().map(exec => ({exec}));
+    return uncategorizedApps([{app: [...shown, ...hidden]}])
+        .map(({info, exec}) => ({id: info.get_id?.() ?? null, nombre: info.get_display_name(), exec}));
+}
+
 export function buildModel(extensionPath) {
     const rawCats = loadCategories(extensionPath);
     const knownNames = new Set(rawCats.map(c => c.nombre ?? '?'));

@@ -90,14 +90,20 @@ export function loadState() {
     return _cache;
 }
 
+// Ultimo texto que escribio este proceso: el monitor lo usa para no tomar
+// como "cambio externo" su propia escritura.
+let _lastWritten = null;
+
 /** Escribe shell-state.json de forma atomica (replace_contents). */
 export function saveState(state) {
     _cache = state;
     try {
         GLib.mkdir_with_parents(STATE_DIR, 0o755);
         const file = Gio.File.new_for_path(STATE_PATH);
-        const bytes = new TextEncoder().encode(JSON.stringify(state, null, 2));
-        file.replace_contents(bytes, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+        const text = JSON.stringify(state, null, 2);
+        _lastWritten = text;
+        file.replace_contents(new TextEncoder().encode(text), null, false,
+            Gio.FileCreateFlags.REPLACE_DESTINATION, null);
     } catch (e) {
         console.error(`Nebula Shell: no se pudo guardar ${STATE_PATH}: ${e}`);
     }
@@ -107,6 +113,69 @@ export function saveState(state) {
  * detectar que otra sesion lo modifico). */
 export function invalidateStateCache() {
     _cache = null;
+}
+
+// --- Cambios hechos desde afuera ----------------------------------------
+// Antes el estado se leia una sola vez: si alguien editaba shell-state.json
+// (a mano, un script, un respaldo restaurado) el Shell seguia con la copia en
+// memoria y la volvia a escribir en el proximo guardado, pisando el cambio.
+// Ahora un monitor del archivo invalida la cache y avisa a los suscriptores.
+
+const _stateListeners = new Set();
+let _stateMonitor = null;
+let _stateMonitorId = 0;
+
+function _readStateText() {
+    try {
+        const [ok, bytes] = Gio.File.new_for_path(STATE_PATH).load_contents(null);
+        return ok ? new TextDecoder('utf-8').decode(bytes) : null;
+    } catch (_e) {
+        return null;   // borrado o a medio escribir: se trata como cambio
+    }
+}
+
+function _onStateFileEvent(_monitor, _file, _other, event) {
+    if (![Gio.FileMonitorEvent.CHANGES_DONE_HINT, Gio.FileMonitorEvent.CREATED,
+        Gio.FileMonitorEvent.DELETED, Gio.FileMonitorEvent.MOVED_IN,
+        Gio.FileMonitorEvent.RENAMED].includes(event))
+        return;
+    const text = _readStateText();
+    if (text !== null && text === _lastWritten)
+        return;   // es nuestra propia escritura
+    _cache = null;
+    for (const callback of [..._stateListeners]) {
+        try {
+            callback();
+        } catch (e) {
+            console.error(`Nebula Shell: fallo al avisar el cambio externo del estado: ${e}`);
+        }
+    }
+}
+
+/** Llama a `callback` cuando shell-state.json cambia desde fuera del Shell.
+ * Devuelve la funcion para desuscribirse (el monitor se apaga con el ultimo). */
+export function onStateChangedExternally(callback) {
+    _stateListeners.add(callback);
+    if (!_stateMonitor) {
+        try {
+            GLib.mkdir_with_parents(STATE_DIR, 0o755);
+            _stateMonitor = Gio.File.new_for_path(STATE_PATH)
+                .monitor_file(Gio.FileMonitorFlags.WATCH_MOVES, null);
+            _stateMonitorId = _stateMonitor.connect('changed', _onStateFileEvent);
+        } catch (e) {
+            console.error(`Nebula Shell: no se pudo vigilar ${STATE_PATH}: ${e}`);
+            _stateMonitor = null;
+        }
+    }
+    return () => {
+        _stateListeners.delete(callback);
+        if (_stateListeners.size === 0 && _stateMonitor) {
+            _stateMonitor.disconnect(_stateMonitorId);
+            _stateMonitor.cancel();
+            _stateMonitor = null;
+            _stateMonitorId = 0;
+        }
+    };
 }
 
 // --- Favoritos -------------------------------------------------------

@@ -33,6 +33,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {debug} from './debug.js';
 import {buildModel, invalidateIconCache} from './model.js';
+import {onStateChangedExternally} from './state.js';
 import {NebulaLauncher} from './launcher.js';
 import {BAR_HEIGHT} from './bottombar.js';
 
@@ -93,6 +94,9 @@ export class NebulaSidebar {
         });
         this._connect(Shell.AppSystem.get_default(), 'installed-changed', () =>
             this._scheduleRepopulate());
+        // shell-state.json editado desde afuera (ocultas, favoritos...): sin
+        // esto el Shell seguia con su copia vieja y la volvia a guardar.
+        this._unwatchState = onStateChangedExternally(() => this._scheduleRepopulate());
         // Discos y nubes: montar/desmontar o enchufar una unidad cambia la
         // categoria "Mis discos y nubes" sin que cambie ninguna app instalada.
         this._volumeMonitor = Gio.VolumeMonitor.get();
@@ -645,6 +649,8 @@ export class NebulaSidebar {
             this._sidebar.destroy();
             this._sidebar = null;
         }
+        this._unwatchState?.();
+        this._unwatchState = null;
         this._unredirect = null;
         this._catButtons = [];
         this._catList = null;

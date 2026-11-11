@@ -268,6 +268,10 @@ goto_ws(){
 # Ventanas ajenas (p. ej. un Archivos que abrio un test anterior y aparece
 # tarde) roban foco y cambian de escritorio en medio de la prueba: se cierran.
 e "global.get_window_actors().map(a => a.meta_window).filter(w => w.get_title() !== 'nebula-testwin' && w.get_window_type() === 0).forEach(w => w.delete(global.get_current_time())); 1" >/dev/null; sleep 1.5
+# Este bloque corre en cada fase con el mismo HOME: la fase X11 heredaba las
+# carpetas y posiciones que dejo la Wayland. Se arranca de cero.
+rm -rf "$HOME/Desktop" "$XDG_DATA_HOME/nebula/escritorios"
+python3 -c 'import json,sys,os; p=sys.argv[1]; d=json.load(open(p,encoding="utf-8")) if os.path.exists(p) else {}; d["iconos_escritorio"]={}; json.dump(d, open(p,"w",encoding="utf-8"))' "$XDG_CONFIG_HOME/nebula/shell-state.json"
 mkdir -p "$HOME/Desktop" "$XDG_DATA_HOME/nebula/escritorios/2"
 : > "$HOME/Desktop/uno.txt"; : > "$XDG_DATA_HOME/nebula/escritorios/2/dos.txt"; : > "$XDG_DATA_HOME/nebula/escritorios/2/tres.txt"
 BG="Main.layoutManager._backgroundGroup"
@@ -323,6 +327,29 @@ check_wait 'borde: el escritorio de origen ya no lo muestra' "(() => { $DI retur
 e "$X X._settings.set_boolean('workspace-icons', false); 1" >/dev/null; sleep .5
 check_wait 'escritorios: apagar la clave quita la capa del fondo' "!X._desktopIcons && $BG.get_n_children() === globalThis.__bgN"
 
+# Cobertura: toda app visible en "Mostrar aplicaciones" de GNOME tiene que
+# estar en alguna categoria de Nebula (o en "Otras aplicaciones"), salvo que
+# el usuario la haya ocultado.
+e "$X globalThis.__miss = null; import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__miss = m.appsMissingFromModel(S._model); }).catch(err => { globalThis.__miss = ['ERROR ' + err]; }); 1" >/dev/null
+check_wait 'cobertura: todas las apps del grid de GNOME estan en Nebula' "globalThis.__miss !== null && globalThis.__miss.length === 0"
+[[ "$(e 'JSON.stringify(globalThis.__miss)')" == *'[]'* ]] || printf '  INFO faltan: %s\n' "$(e 'JSON.stringify(globalThis.__miss)')"
+# Estado editado desde afuera (a mano o por un script): el Shell lo relee en
+# vivo y no lo pisa en el proximo guardado. Antes quedaba con la copia vieja.
+# Eval devuelve el resultado como JSON: un string llega con comillas y hay que
+# decodificarlo. HJS es el mismo exec como literal de JS para los chequeos.
+HEXEC="$(e "$X S._model.flatMap(c => c.apps).find(a => a.exec && !['Favoritos','Recientes'].includes(a.categoria))?.exec ?? ''" \
+  | python3 -c 'import json,sys; print(json.loads(sys.stdin.read()))')"
+HJS="$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$HEXEC")"
+STATE_FILE="$XDG_CONFIG_HOME/nebula/shell-state.json"
+# Sin esta precondicion "ocultar" pasaria aunque el exec no exista en el modelo.
+check 'estado externo: la app elegida esta en el modelo' "$HJS !== '' && S._model.some(c => c.apps.some(a => a.exec === $HJS))"
+python3 -c 'import json,sys; json.dump({"ocultos":[sys.argv[2]]}, open(sys.argv[1],"w",encoding="utf-8"))' "$STATE_FILE" "$HEXEC"
+check_wait 'estado externo: ocultar desde el archivo se ve en vivo' "!S._model.some(c => c.apps.some(a => a.exec === $HJS))"
+python3 -c 'import json,sys; json.dump({"ocultos":[]}, open(sys.argv[1],"w",encoding="utf-8"))' "$STATE_FILE"
+check_wait 'estado externo: des-ocultar desde el archivo se ve en vivo' "S._model.some(c => c.apps.some(a => a.exec === $HJS))"
+e "$X import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/state.js').then(m => m.recordRecent('nebula-test-recent')); 1" >/dev/null; sleep .5
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1],encoding="utf-8")); sys.exit(0 if d.get("ocultos")==[] and "nebula-test-recent" in d.get("recientes",[]) else 1)' "$STATE_FILE" \
+  && ok 'estado externo: el proximo guardado del Shell no revive lo de antes' || bad 'estado externo: el Shell piso el archivo con su copia vieja'
 # Herramienta de emergencia: deja GNOME con su configuracion base aunque
 # Nebula tenga oculta la barra superior. Corre contra el HOME temporal.
 EMERG="$(bash "$REPO/tools/nebula-gnome-emergency.sh" 2>&1)"; sleep 1.5
