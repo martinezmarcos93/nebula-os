@@ -48,14 +48,21 @@ for f in "$REPO"/bin/nebula-* "$REPO"/extras/nebula-* "$REPO"/install/*.sh "$REP
 done
 [[ "$synbad" -eq 0 ]] && ok "bash -n sobre todos los scripts"
 
+# Todos los bin/nebula-* bash (AUD-005: antes faltaban 7). Cada --help corre
+# con un HOME temporal: algunos crean su carpeta de estado antes de parsear.
+help_home="$(mktemp -d)"
 for b in nebula-gpu-stat nebula-screenrecord nebula-screenshot nebula-powermenu nebula-edge-sidebar nebula-rescue \
          nebula-window-switcher nebula-gen-panel nebula-sync nebula-taskbar \
+         nebula-ai-chat nebula-escritorios nebula-focus-mode nebula-game-mode nebula-resource-hud \
+         nebula-sidebar nebula-streaming-profile \
          ../extras/nebula-mount-datos; do
     s="$REPO/bin/$b"
     [[ -x "$s" ]] || { bad "no ejecutable: bin/$b"; continue; }
-    if "$s" --help >/dev/null 2>&1; then ok "bin/$b --help -> 0"
+    if env -u XDG_CONFIG_HOME -u XDG_DATA_HOME -u XDG_CACHE_HOME -u XDG_STATE_HOME HOME="$help_home" \
+        timeout 5 "$s" --help >/dev/null 2>&1; then ok "bin/$b --help -> 0"
     else bad "bin/$b --help sale != 0"; fi
 done
+rm -rf "$help_home"
 
 # nebula-taskbar sin bspwm: debe emitir un array JSON vacio y salir, no colgarse.
 tb_out="$(timeout 3 "$REPO/bin/nebula-taskbar" 2>/dev/null | head -n1)"
