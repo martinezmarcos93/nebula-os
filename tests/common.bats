@@ -83,6 +83,20 @@ setup() {
     ! NEBULA_DRY_RUN=1 font_installed "XDG_CACHE_HOME=$HOME"
 }
 
+@test "download_verified: acepta el archivo con el SHA-256 esperado" {
+    stub curl 'while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && { printf hola > "$2"; shift; }; shift; done'
+    sum="$(printf hola | sha256sum | cut -d" " -f1)"
+    download_verified "https://x/y.zip" "$sum" "$HOME/y.zip"
+    [ "$(cat "$HOME/y.zip")" = hola ]
+}
+
+@test "download_verified: rechaza y borra un archivo con otro SHA-256" {
+    stub curl 'while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && { printf alterado > "$2"; shift; }; shift; done'
+    sum="$(printf hola | sha256sum | cut -d" " -f1)"
+    ! download_verified "https://x/y.zip" "$sum" "$HOME/y.zip" 2>/dev/null
+    [ ! -e "$HOME/y.zip" ]
+}
+
 @test "download_verified: en dry-run no baja nada" {
     stub curl 'touch "$HOME/curl-corrio"'
     NEBULA_DRY_RUN=1 download_verified "https://x/y.zip" "0000" "$HOME/y.zip" 2>/dev/null

@@ -92,6 +92,20 @@ run_root() {
 has_cmd()     { command -v "$1" >/dev/null 2>&1; }
 require_cmd() { has_cmd "$1" || die "Falta el comando requerido: $1"; }
 
+# download_verified URL SHA256 DESTINO -> baja URL a DESTINO y exige ese SHA-256.
+# Si no coincide borra DESTINO y devuelve 1 (descarga cortada, release
+# re-subida o alterada). En dry-run solo muestra el curl.
+download_verified() {
+    local url="$1" sum="$2" dest="$3"
+    run curl -fsSL -o "$dest" "$url" || return 1
+    [[ "$NEBULA_DRY_RUN" == "1" ]] && return 0
+    if ! printf '%s  %s\n' "$sum" "$dest" | sha256sum -c --status 2>/dev/null; then
+        warn "SHA-256 inesperado para $url; se descarta la descarga"
+        rm -f "$dest"
+        return 1
+    fi
+}
+
 # font_installed NOMBRE -> 0 si fontconfig conoce una tipografia con ese nombre.
 # - fc-list escribe la cache de fontconfig en ~/.cache: en dry-run se usa una
 #   cache temporal para no tocar el HOME.
