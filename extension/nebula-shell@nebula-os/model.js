@@ -86,6 +86,11 @@ export function isInstalled(exec) {
     const appId = flatpakAppId(exec);
     if (appId)
         return Gio.DesktopAppInfo.new(`${appId}.desktop`) !== null;
+    // "gtk-launch <id>" (apps de Wine, AppImages): gtk-launch siempre esta;
+    // lo que importa es que exista ese .desktop.
+    const argv = argvOf(exec);
+    if (argv[0] === 'gtk-launch')
+        return !!argv[1] && Gio.DesktopAppInfo.new(`${argv[1].replace(/\.desktop$/, '')}.desktop`) !== null;
 
     const bin = firstToken(exec);
     if (!bin)
