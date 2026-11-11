@@ -183,7 +183,10 @@ TOML
     nebula-sidebar open; sleep 0.5
     xdotool mousemove 128 80 click 1; sleep 0.3
     q="lib (office; touch $HOME/PWN1 \$(touch $HOME/PWN2) it's"
-    xdotool type --delay 40 "$q"; sleep 1
+    xdotool type --delay 40 "$q"
+    # Esperar la condicion, no un tiempo fijo: con la maquina cargada 1 s no
+    # alcanzaba y la ultima letra todavia no habia llegado.
+    for _ in $(seq 1 40); do [ "$(ew get QUERY)" = "$q" ] && break; sleep 0.1; done
     echo "QUERY=[$(ew get QUERY)]"; echo "q=[$q]"; [ "$(ew get QUERY)" = "$q" ]
     [ ! -e "$HOME/PWN1" ]
     [ ! -e "$HOME/PWN2" ]
