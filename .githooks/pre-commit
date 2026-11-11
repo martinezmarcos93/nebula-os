@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit - chequeos rapidos antes de cada commit (R-405, opcional).
+#
+# Activar una vez por clon:   make hooks   (git config core.hooksPath .githooks)
+# Saltear un commit puntual:  git commit --no-verify
+#
+# Corre lo barato del CI: shellcheck, validacion de categories.toml y que
+# eww.yuck este sincronizado con el .toml. Los tests largos siguen en `make test`.
+set -euo pipefail
+REPO="$(git rev-parse --show-toplevel)"
+cd "$REPO"
+TOML="dotfiles/nebula/categories.toml"
+YUCK="dotfiles/eww/eww.yuck"
+fail=0
+
+if command -v shellcheck >/dev/null 2>&1; then
+  make -s lint || fail=1
+else
+  echo "pre-commit: falta shellcheck (apt install shellcheck); se saltea el lint" >&2
+fi
+
+python3 bin/nebula-categories check --toml "$TOML" >/dev/null || {
+  echo "pre-commit: $TOML invalido (python3 bin/nebula-categories check --toml $TOML)" >&2; fail=1; }
+
+python3 bin/nebula-categories render-yuck "$YUCK" --all --toml "$TOML" --check >/dev/null 2>&1 || {
+  echo "pre-commit: $YUCK desincronizado; regenerar con:" >&2
+  echo "  python3 bin/nebula-categories render-yuck $YUCK --all --toml $TOML" >&2
+  fail=1; }
+
+exit "$fail"
