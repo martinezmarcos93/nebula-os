@@ -323,6 +323,23 @@ check_wait 'borde: el escritorio de origen ya no lo muestra' "(() => { $DI retur
 e "$X X._settings.set_boolean('workspace-icons', false); 1" >/dev/null; sleep .5
 check_wait 'escritorios: apagar la clave quita la capa del fondo' "!X._desktopIcons && $BG.get_n_children() === globalThis.__bgN"
 
+# Estado editado desde afuera (a mano o por un script): el Shell lo relee en
+# vivo y no lo pisa en el proximo guardado. Antes quedaba con la copia vieja.
+# Eval devuelve el resultado como JSON: un string llega con comillas y hay que
+# decodificarlo. HJS es el mismo exec como literal de JS para los chequeos.
+HEXEC="$(e "$X S._model.flatMap(c => c.apps).find(a => a.exec && !['Favoritos','Recientes'].includes(a.categoria))?.exec ?? ''" \
+  | python3 -c 'import json,sys; print(json.loads(sys.stdin.read()))')"
+HJS="$(python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$HEXEC")"
+STATE_FILE="$XDG_CONFIG_HOME/nebula/shell-state.json"
+# Sin esta precondicion "ocultar" pasaria aunque el exec no exista en el modelo.
+check 'estado externo: la app elegida esta en el modelo' "$HJS !== '' && S._model.some(c => c.apps.some(a => a.exec === $HJS))"
+python3 -c 'import json,sys; json.dump({"ocultos":[sys.argv[2]]}, open(sys.argv[1],"w",encoding="utf-8"))' "$STATE_FILE" "$HEXEC"
+check_wait 'estado externo: ocultar desde el archivo se ve en vivo' "!S._model.some(c => c.apps.some(a => a.exec === $HJS))"
+python3 -c 'import json,sys; json.dump({"ocultos":[]}, open(sys.argv[1],"w",encoding="utf-8"))' "$STATE_FILE"
+check_wait 'estado externo: des-ocultar desde el archivo se ve en vivo' "S._model.some(c => c.apps.some(a => a.exec === $HJS))"
+e "$X import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/state.js').then(m => m.recordRecent('nebula-test-recent')); 1" >/dev/null; sleep .5
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1],encoding="utf-8")); sys.exit(0 if d.get("ocultos")==[] and "nebula-test-recent" in d.get("recientes",[]) else 1)' "$STATE_FILE" \
+  && ok 'estado externo: el proximo guardado del Shell no revive lo de antes' || bad 'estado externo: el Shell piso el archivo con su copia vieja'
 # Herramienta de emergencia: deja GNOME con su configuracion base aunque
 # Nebula tenga oculta la barra superior. Corre contra el HOME temporal.
 EMERG="$(bash "$REPO/tools/nebula-gnome-emergency.sh" 2>&1)"; sleep 1.5
