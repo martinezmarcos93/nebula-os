@@ -15,7 +15,7 @@ estetica oscura *Cosmic Dark*.
 
 - Diseno completo y decisiones: [`docs/DESIGN.md`](docs/DESIGN.md).
 - Bugs encontrados y su causa raiz: [`docs/BUGS.md`](docs/BUGS.md).
-- Auditoria ejecutada (fallos corregidos y pendientes, que falta para operar al 100%): [`docs/AUDIT-FAILSAFE.md`](docs/AUDIT-FAILSAFE.md).
+- Auditorias anteriores (ya migradas a `docs/BUGS.md` y al roadmap; quedan como historia): [`docs/archive/`](docs/archive/).
 - Roadmap de reparacion (decisiones tomadas, fases hasta v1.0): [`docs/ROADMAP-REPARACION.md`](docs/ROADMAP-REPARACION.md).
 - Conexion con Hanna (asistente local opcional; reglas y fases del lado Nebula): [`docs/HANNA-INTEGRACION.md`](docs/HANNA-INTEGRACION.md).
 - Hardware de referencia (verificado con CPU-Z el 2026-09-01): Intel Core
@@ -25,38 +25,26 @@ estetica oscura *Cosmic Dark*.
 
 ## Estado
 
-**Funcional.** Los 7 stages (`00`-`60`), los 13 scripts `nebula-*` de `bin/` y el extra `nebula-mount-datos`
-estan implementados: instalan paquetes, despliegan dotfiles, generan el panel
-desde `categories.toml`, registran las funciones unicas (juego, foco,
-streaming, IA, HUD, rescate) y las piezas del escritorio (screenshots,
-portapapeles, menu de energia, taskbar, gesto de borde del sidebar,
-sincronizacion al login, montaje del disco de datos), y verifican el
-resultado. Validado por partes en esta maquina; **pendiente una validacion
-integral** en una sesion real (arranque limpio, recorrido de cada componente
-del escritorio) y sobre una instalacion limpia (clon nuevo, usuario distinto).
-Ver [`CHANGELOG.md`](CHANGELOG.md) para el detalle de que se hizo y que sigue
-abierto, y [`docs/BUGS.md`](docs/BUGS.md) para los bugs ya encontrados
-(causa raiz y variables que los disparan) y los riesgos aun sin verificar.
+**Al 2026-11-10 (`v0.4.0` + rama de la auditoria de noviembre).** El producto
+principal es la **extension de GNOME Shell 46** (`extension/`); la sesion
+bspwm/eww queda como sesion ligera, mantenida (bugs si) pero congelada en
+features (D1).
 
-**Estado al 2026-10-03.** El producto principal es la extension de GNOME
-(`extension/`); la sesion bspwm queda como sesion ligera, congelada en
-features. Roadmap de producto en
-[`docs/NEBULA-DESKTOP-ROADMAP.md`](docs/NEBULA-DESKTOP-ROADMAP.md), estabilidad
-y deuda en [`docs/ROADMAP-REPARACION.md`](docs/ROADMAP-REPARACION.md), y como
-volver atras si algo falla en [`docs/ROLLBACK.md`](docs/ROLLBACK.md). La CI
-esta en verde y la extension se activa sin errores en GNOME Shell 46 headless;
-la validacion en uso real de las funciones de escritorio sigue pendiente
-(ultimo handoff en `docs/handoffs/`).
+| Parte | Estado | Como se verifica |
+|---|---|---|
+| Extension GNOME 46: sidebar, lanzador, barra inferior, escritorios con iconos | En uso diario en la maquina de referencia, sin crashes desde el 25/10 | CI `extension`: GNOME Shell 46 real headless (Wayland y X11): `test-sidebar-core.sh`, `test-extension.sh`, `test-state-persistence.sh`, `test-window-list.mjs` |
+| Cobertura de apps: toda app del grid de GNOME aparece en Nebula | Auditada sobre las apps reales (101 apps, 0 faltantes) | Test de cobertura en el CI; `tools/audit-apps.sh` contra las apps de la maquina |
+| GNOME 47/48 | No soportado (sin validar) | Matriz en `extension/README.md`, "Compatibilidad" |
+| Instalador (`install.sh`, stages `00`-`70`) | Funcional; dry-run sin escrituras fuera de su log | CI `lint`: shellcheck, estaticos, `bats tests/`, pytest |
+| Sesion bspwm/eww | Congelada en features | CI `lint` y `eww-build` |
+| Validacion integral | **Pendiente**: instalacion limpia en una VM Desktop y en la maquina de referencia, y una semana de uso real (seccion 8 del roadmap) | Manual |
 
-**Extension de GNOME Shell.** `extension/` (ver
-[`extension/README.md`](extension/README.md)) explora llevar el sidebar de
-Nebula a una **extension de GNOME 46** en vez de reemplazar el escritorio:
-sidebar de categorias, lanzador con busqueda, meters de sistema en vivo y
-barra inferior (escritorios, MPRIS, accesos), todo sobre una sesion GNOME
-normal (red, audio, Bluetooth, notificaciones intactos). Es un prototipo de
-viabilidad, no reemplaza el stack Xorg/bspwm/eww de arriba: la sesion bspwm
-sigue registrada en GDM como alternativa. Checklist de validacion y puntos
-sensibles a version de GNOME en `extension/README.md`.
+Bugs abiertos y su causa raiz en [`docs/BUGS.md`](docs/BUGS.md) (unica lista;
+las auditorias viejas quedaron en `docs/archive/`). Roadmap de producto en
+[`docs/NEBULA-DESKTOP-ROADMAP.md`](docs/NEBULA-DESKTOP-ROADMAP.md),
+estabilidad y deuda en [`docs/ROADMAP-REPARACION.md`](docs/ROADMAP-REPARACION.md),
+como volver atras en [`docs/ROLLBACK.md`](docs/ROLLBACK.md) y el punto de
+control de la sesion en curso en `docs/punto-de-control.md`.
 
 Piezas de diseno explicitamente diferidas (no bloquean el uso diario):
 cursores tematicos, un HUD/centro de control mas grande que el sidebar
@@ -193,7 +181,7 @@ nebula-os/
 
 ## Logs
 
-Cada corrida escribe en `~/.local/share/nebula/log/install-AAAA-MM-DD.log`.
+Cada corrida escribe en `~/.local/share/nebula/log/install-AAAAMMDD.log` (un archivo por dia y por script: `install-`, `nebula-sync-`, ...).
 Los backups de configuracion previa van a
 `~/.config/nebula-backup-<timestamp>/`.
 

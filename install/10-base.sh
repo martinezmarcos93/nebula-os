@@ -22,53 +22,8 @@ nebula_log_init "install"
 
 step "10-base - Xorg + WM + sesion"
 
-PKGS_BASE=(
-    xserver-xorg-core xinit x11-xserver-utils
-    bspwm sxhkd picom rofi alacritty dunst
-    # alttab -> Alt+Tab visual entre ventanas (bspwm no lo trae). Lo arranca
-    # dotfiles/bspwm/bspwmrc como residente.
-    alttab
-    feh brightnessctl playerctl lm-sensors
-    # xz-utils -> tar -xJf del cursor Bibata (40-tema). En Desktop viene de
-    # arrastre; en una instalacion minima o contenedor, no (misma clase que BUG-10).
-    xz-utils
-    network-manager-gnome pavucontrol
-    copyq
-    # libnotify-bin -> notify-send. dunst es el servidor, pero el binario que
-    # lo dispara es aparte y lo dan por hecho todos los scripts nebula-*.
-    libnotify-bin
-    # Capturas de pantalla (bin/nebula-screenshot): maim toma la captura,
-    # xdotool resuelve la ventana activa para el modo 'window'. xclip (arriba)
-    # copia la imagen al portapapeles.
-    maim xdotool
-    # Grabacion de pantalla (bin/nebula-screenrecord): ffmpeg (x11grab + NVENC
-    # o libx264) y slop para elegir region. pulseaudio-utils -> pactl (audio
-    # del escritorio via pipewire-pulse).
-    ffmpeg slop pulseaudio-utils
-    pipewire pipewire-pulse wireplumber
-    lxpolkit i3lock xss-lock
-    fonts-jetbrains-mono fonts-inter papirus-icon-theme
-    # x11-xkb-utils -> setxkbmap. Suele venir de xserver-common (Depends), pero
-    # el layout de teclado depende de el, asi que se pide explicito. bspwmrc lo
-    # usa para fijar el layout en los caminos startx/ly (ver ese archivo).
-    x11-xkb-utils
-    # Utilidades que dan por hecho los stages siguientes pero NO vienen en una
-    # instalacion minima / Ubuntu Server (ver docs/DESIGN.md seccion 2.1):
-    #   git, ca-certificates -> 40-tema.sh clona los temas GTK
-    #   unzip                -> 20-panel.sh descomprime la Nerd Font
-    #   curl                 -> descargas de 20/40 (cursor, fuentes, papirus-folders)
-    #   xclip                -> portapapeles X (lo usa nebula-ai-chat y hace falta
-    #                           para "copiar al portapapeles" en general)
-    # Sin esto los stages caian a `warn` y la sesion quedaba sin glyphs ni tema.
-    git ca-certificates unzip curl xclip
-    # python3 -> bin/nebula-categories (lector unico de categories.toml; usa
-    # tomllib de la stdlib, Python >= 3.11). Viene en Ubuntu, pero minimal/
-    # server no lo garantiza con --no-install-recommends.
-    python3
-    # x11-utils -> xprop (bin/nebula-window-switcher). No viene en una
-    # instalacion minima con --no-install-recommends.
-    x11-utils
-)
+mapfile -t PKGS_BASE < <(pkg_list "$HERE/pkgs-base.list")
+[[ "${#PKGS_BASE[@]}" -gt 0 ]] || die "install/pkgs-base.list vacio o ilegible"
 
 info "Paquetes (${#PKGS_BASE[@]}): ${PKGS_BASE[*]}"
 apt_install "${PKGS_BASE[@]}"

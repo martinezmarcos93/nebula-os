@@ -10,3 +10,5 @@ trap 'rm -rf "$HOME"' EXIT
 gjs -m tools/test-state-persistence.mjs
 
 gjs -m tools/test-desktop-grid.mjs
+
+gjs -m tools/test-file-ops.mjs

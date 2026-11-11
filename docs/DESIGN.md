@@ -282,7 +282,7 @@ Cada función se entrega como script en `~/.local/bin/nebula-<nombre>`, con entr
 |---|---|
 | Atajo | `Super + Shift + G` |
 | Estado | `~/.cache/nebula/gamemode` (present = activo) |
-| Al activar | Detiene `polybar`/`eww` y `picom`; `bspc config borderless_monocle true`; desactiva DPMS/screen-blanking (`xset -dpms s off`); governor de CPU a `performance` (vía `gamemoded` si está); pausa notificaciones (`dunstctl set-paused true`); baja frecuencia del HUD. Notifica "Modo Juego ON". |
+| Al activar | Detiene `polybar`/`eww` y `picom`; `bspc config borderless_monocle true`; desactiva DPMS/screen-blanking (`xset -dpms s off`); governor de CPU a `performance` (vía `sudo -n cpupower frequency-set`: solo si `cpupower` existe y sudo no pide contraseña; si no, se omite en silencio — no se usa `gamemoded`); pausa notificaciones (`dunstctl set-paused true`); baja frecuencia del HUD. Notifica "Modo Juego ON". |
 | Al desactivar | Restaura compositor, panel, DPMS, governor, notificaciones. Notifica "Modo Juego OFF". |
 | Salvaguarda | `trap` en `INT`/`TERM` durante la secuencia de activación: si lo matan a mitad de camino, revierte en vez de dejar governor/DPMS/notificaciones a medio cambiar (no cubre `SIGKILL`, que no es interceptable). `nebula-rescue` también lo revierte. |
 | Nota | No lanza el juego; se combina con `gamescope`/`gamemoderun` en las opciones de lanzamiento de Steam. |

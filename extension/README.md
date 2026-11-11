@@ -297,6 +297,19 @@ tecla Super sigue abriendo la vista general).
 
 ## Puntos sensibles a versión de GNOME
 
+### Compatibilidad (R-311, decidido el 2026-11-10)
+
+| GNOME Shell | Ubuntu | Estado | Cómo se verifica |
+|---|---|---|---|
+| **46** | 24.04 LTS | **Soportado** | CI: `test-sidebar-core.sh`, `test-extension.sh` (Shell 46 real headless), ESLint; uso diario en la máquina de referencia |
+| 47 | 24.10 | No soportado | Sin validar: no se declara en `shell-version` |
+| 48 | 25.04 | No soportado | Sin validar: no se declara en `shell-version` |
+
+`metadata.json` declara **solo `"46"`**. Agregar 47/48 exige antes correr los
+gates en esa versión (VM o runner con ese Shell) y revisar los puntos de abajo.
+Con `"46"` solo, GNOME 47+ se niega a activar la extensión en vez de cargarla y
+fallar a medias.
+
 - `metadata.json` fija `shell-version: ["46"]` (Ubuntu 24.04 LTS se queda en 46
   hasta 26.04).
 - El lanzador usa `St.ScrollView` con `add_child` + `set_policy(NEVER, AUTOMATIC)`

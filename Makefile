@@ -2,13 +2,14 @@ SHELL := /bin/bash
 STAGES := $(sort $(wildcard install/[0-9][0-9]-*.sh))
 # Solo scripts bash (bin/nebula-categories es Python: lo cubren pytest y py_compile).
 BASH_BIN := $(shell grep -l '^\#!.*bash' bin/nebula-* extras/nebula-* 2>/dev/null)
-SCRIPTS := install.sh $(wildcard lib/*.sh) $(STAGES) $(BASH_BIN) $(wildcard tools/*.sh)
+SCRIPTS := install.sh $(wildcard lib/*.sh) $(STAGES) $(BASH_BIN) $(wildcard tools/*.sh) .githooks/pre-commit
 
-.PHONY: help lint fmt-check preflight dry-run install check test test-nested test-session
+.PHONY: help hooks lint fmt-check preflight dry-run install check test test-nested test-session
 
 help:
 	@echo "Targets:"
 	@echo "  lint          shellcheck sobre todos los scripts"
+	@echo "  hooks         activa el pre-commit opcional (.githooks/)"
 	@echo "  preflight     corre install/00-preflight.sh"
 	@echo "  dry-run       corre install.sh --dry-run"
 	@echo "  install       corre install.sh"
@@ -16,6 +17,10 @@ help:
 	@echo "  test          lint + bateria estatica + bats + pytest (lo mismo que CI)"
 	@echo "  test-session  bateria de pruebas (estatico + sandbox Xephyr, no interactiva)"
 	@echo "  test-nested   sandbox INTERACTIVO de bspwm/sxhkd en Xephyr"
+
+hooks:
+	git config core.hooksPath .githooks
+	@echo "pre-commit activo (desactivar: git config --unset core.hooksPath)"
 
 lint:
 	@command -v shellcheck >/dev/null 2>&1 || { echo "Falta shellcheck (apt install shellcheck)"; exit 1; }

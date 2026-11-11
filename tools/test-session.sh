@@ -48,14 +48,21 @@ for f in "$REPO"/bin/nebula-* "$REPO"/extras/nebula-* "$REPO"/install/*.sh "$REP
 done
 [[ "$synbad" -eq 0 ]] && ok "bash -n sobre todos los scripts"
 
+# Todos los bin/nebula-* bash (AUD-005: antes faltaban 7). Cada --help corre
+# con un HOME temporal: algunos crean su carpeta de estado antes de parsear.
+help_home="$(mktemp -d)"
 for b in nebula-gpu-stat nebula-screenrecord nebula-screenshot nebula-powermenu nebula-edge-sidebar nebula-rescue \
          nebula-window-switcher nebula-gen-panel nebula-sync nebula-taskbar \
+         nebula-ai-chat nebula-escritorios nebula-focus-mode nebula-game-mode nebula-resource-hud \
+         nebula-sidebar nebula-streaming-profile \
          ../extras/nebula-mount-datos; do
     s="$REPO/bin/$b"
     [[ -x "$s" ]] || { bad "no ejecutable: bin/$b"; continue; }
-    if "$s" --help >/dev/null 2>&1; then ok "bin/$b --help -> 0"
+    if env -u XDG_CONFIG_HOME -u XDG_DATA_HOME -u XDG_CACHE_HOME -u XDG_STATE_HOME HOME="$help_home" \
+        timeout 5 "$s" --help >/dev/null 2>&1; then ok "bin/$b --help -> 0"
     else bad "bin/$b --help sale != 0"; fi
 done
+rm -rf "$help_home"
 
 # nebula-taskbar sin bspwm: debe emitir un array JSON vacio y salir, no colgarse.
 tb_out="$(timeout 3 "$REPO/bin/nebula-taskbar" 2>/dev/null | head -n1)"
@@ -87,9 +94,22 @@ grep -q '(deflisten TASKWINS' "$YUCK" && grep -q 'nebula-taskbar' "$YUCK" \
     && ok "eww.yuck: taskbar cableado (deflisten TASKWINS -> nebula-taskbar)" \
     || bad "eww.yuck: falta el deflisten TASKWINS del taskbar"
 
-if command -v eww >/dev/null 2>&1 && [[ -z "${DISPLAY:-}" ]]; then
-    warn "eww instalado pero sin DISPLAY: no valido la carga del .yuck (correr bajo xvfb-run)"
+# eww abre ventanas de verdad: se usa un Xvfb propio y nunca el DISPLAY de la
+# sesion (antes las abria en el escritorio del usuario, y una ventana que
+# sobrevivia a la corrida anterior hacia fallar la siguiente a veces).
+eww_x=""; eww_xpid=""; eww_saved_display="${DISPLAY:-}"
+if command -v eww >/dev/null 2>&1 && command -v Xvfb >/dev/null 2>&1; then
+    eww_dfile="$(mktemp)"
+    Xvfb -displayfd 3 -screen 0 1280x800x24 -nolisten tcp 3>"$eww_dfile" >/dev/null 2>&1 &
+    eww_xpid=$!
+    for _ in $(seq 1 25); do [[ -s "$eww_dfile" ]] && break; sleep 0.2; done
+    [[ -s "$eww_dfile" ]] && eww_x=":$(tr -d '[:space:]' <"$eww_dfile")"
+    rm -f "$eww_dfile"
+fi
+if command -v eww >/dev/null 2>&1 && [[ -z "$eww_x" ]]; then
+    warn "eww instalado pero sin Xvfb: no valido la carga del .yuck (apt install xvfb)"
 elif command -v eww >/dev/null 2>&1; then
+    export DISPLAY="$eww_x"
     # Los polls del .yuck llaman a nebula-* (gpu-stat, taskbar): del repo.
     export PATH="$REPO/bin:$PATH"
     d="$REPO/dotfiles/eww"; sock=""
@@ -140,9 +160,11 @@ elif command -v eww >/dev/null 2>&1; then
     eww -c "$d" kill >/dev/null 2>&1 || true
     kill -9 "$epid" 2>/dev/null || true
     rm -f /tmp/nebula-eww-test.$$
+    if [[ -n "$eww_saved_display" ]]; then export DISPLAY="$eww_saved_display"; else unset DISPLAY; fi
 else
     warn "eww no instalado: no valido la carga del .yuck"
 fi
+[[ -n "$eww_xpid" ]] && { kill "$eww_xpid" 2>/dev/null; wait "$eww_xpid" 2>/dev/null; } || true
 
 # Seguridad: eww reemplaza {} CRUDO dentro de /bin/sh -c (sin escapar). En
 # un .yuck solo se permite {} solo en su linea (dentro de un heredoc).
@@ -170,12 +192,12 @@ fi
 dups="$(grep -E '^[^# ]' "$REPO/dotfiles/sxhkd/sxhkdrc" | grep -vE '^\s' | sort | uniq -d)"
 [[ -z "$dups" ]] && ok "sxhkdrc: sin atajos duplicados" || bad "sxhkdrc: atajos duplicados -> $dups"
 
-# PKGS_BASE: las deps declaradas de las features nuevas
+# install/pkgs-base.list: las deps declaradas de las features nuevas
 missing_pkg=0
 for p in alttab copyq maim xdotool x11-xkb-utils libnotify-bin git unzip curl ca-certificates xclip python3 x11-utils ffmpeg slop; do
-    grep -qw "$p" "$REPO/install/10-base.sh" || { bad "install/10-base.sh: falta '$p' en PKGS_BASE"; missing_pkg=1; }
+    sed 's/#.*//' "$REPO/install/pkgs-base.list" | grep -qw -- "$p" || { bad "install/pkgs-base.list: falta '$p'"; missing_pkg=1; }
 done
-[[ "$missing_pkg" -eq 0 ]] && ok "install/10-base.sh: deps de las features nuevas declaradas"
+[[ "$missing_pkg" -eq 0 ]] && ok "install/pkgs-base.list: deps de las features nuevas declaradas"
 
 # ===========================================================================
 if [[ "$ONLY_STATIC" -eq 1 ]]; then

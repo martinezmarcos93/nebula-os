@@ -50,6 +50,15 @@ printf '#!/bin/sh\nexec gjs %s\n' "$T/testwin.js" > "$T/bin/nebtestwin"
 chmod +x "$T/bin/nebtestwin"
 printf '[Desktop Entry]\nType=Application\nName=Nebula Test Win\nExec=%s\n' "$T/bin/nebtestwin" \
   > "$XDG_DATA_HOME/applications/org.nebula.TestWin.desktop"
+# Cobertura con lanzador ausente (vim/htop en CI: el .toml los lista como
+# "alacritty -e vim" y sin alacritty desaparecian de Nebula). Una entrada cuyo
+# lanzador no esta instalado no puede tapar a la app del grid.
+printf '#!/bin/sh\nexit 0\n' > "$T/bin/nebtestcov"; chmod +x "$T/bin/nebtestcov"
+printf '[Desktop Entry]\nType=Application\nName=Nebula Test Cov\nExec=%s\n' "$T/bin/nebtestcov" \
+  > "$XDG_DATA_HOME/applications/org.nebula.TestCov.desktop"
+printf '[Desktop Entry]\nType=Application\nName=Nebula Test Gtk\nExec=true\nNoDisplay=true\n' > "$XDG_DATA_HOME/applications/org.nebula.TestGtk.desktop"
+python3 -c 'import json,sys; p=sys.argv[1]; d=json.load(open(p,encoding="utf-8")); next(c for c in d["categoria"] if c.get("nombre") not in ("Favoritos","Recientes") and not c.get("tipo")).setdefault("app",[]).extend([{"nombre":"Cov sin lanzador","exec":"nebula-no-instalado -e nebtestcov"},{"nombre":"GtkLaunch fantasma","exec":"gtk-launch nebula-no-existe"},{"nombre":"GtkLaunch real","exec":"gtk-launch org.nebula.TestGtk"}]); json.dump(d, open(p,"w",encoding="utf-8"))' \
+  "$XDG_DATA_HOME/gnome-shell/extensions/nebula-shell@nebula-os/categories.json"
 
 cat > "$T/common.sh" <<'EOF'
 ok(){ printf '  OK   %s\n' "$*"; }
@@ -70,7 +79,11 @@ check 'launcher creado' "!!L && !!L._panel"
 # esta encima: segun cuanto tarde el Shell en responder ya puede estar
 # colapsada. Lo que no puede pasar es que el actor y el estado no coincidan
 # (salvo durante los 180 ms de la animacion de retraer: ya colapsada, aun visible).
-check 'estado inicial coherente (visible <=> no colapsada)' "S._sidebar.visible === !S._collapsed || (S._collapsed && (S._sidebar.get_transition('translation_x') !== null || S._sidebar.translation_x < 0))"
+# Estado y condicion en la misma consulta: si falla, el INFO muestra que vio.
+ST0="$(e "$X (() => { const s = S._sidebar; const st = {colapsada: S._collapsed, visible: s.visible, anim: s.get_transition('translation_x') !== null, x: s.translation_x, fullscreen: S._inFullscreen, flecha: S._edgeArrow?.visible ?? null}; st.ok = s.visible === !S._collapsed || (S._collapsed && (st.anim || s.translation_x < 0)); return JSON.stringify(st); })()")"
+# gdbus devuelve las comillas escapadas (\\"ok\\":true): se busca sin ellas.
+[[ "$(tr -d '\\"' <<<"$ST0")" == *ok:true* ]] && ok 'estado inicial coherente (visible <=> no colapsada)' \
+  || { bad 'estado inicial coherente (visible <=> no colapsada)'; printf '  INFO estado inicial: %s\n' "$ST0"; }
 e "$X S._expand(); 1" >/dev/null; sleep .6
 # BUG-33: desplegar/colapsar no debe tocar el area de trabajo (DING reubica los
 # iconos y las ventanas maximizadas se redimensionan en cada workareas-changed).
@@ -280,6 +293,9 @@ check_wait 'escritorios: sin la clave no hay capa de iconos' "!X._desktopIcons"
 e "globalThis.__bgN = $BG.get_n_children(); 1" >/dev/null
 e "$X X._settings.set_boolean('workspace-icons', true); 1" >/dev/null; sleep .8
 check_wait 'escritorios: con la clave la capa vive en el fondo, debajo de las ventanas' "(() => { $DI return !!DI && DI._layer.get_parent() === $BG; })()"
+# Se mide recien creada la capa: el doble clic simulado de mas abajo pasa por
+# _onPress, que toma el foco del escritorio a proposito.
+check 'teclado: sin clic previo en el escritorio las teclas no se roban' "(() => { $DI return DI._deskFocus === false; })()"
 check_wait 'escritorios: el escritorio 1 muestra su carpeta' "(() => { $DI return DI._workspace === 0 && DI._items.filter(i => !i.virtual).map(i => i.name).join() === 'uno.txt' && DI._boxes.size === 2; })()"
 goto_ws 1
 check_wait 'escritorios: el escritorio 2 muestra otros iconos' "(() => { $DI return DI._workspace === 1 && DI._items.filter(i => !i.virtual).map(i => i.name).join() === 'dos.txt,tres.txt'; })()"
@@ -305,7 +321,6 @@ check_wait 'grupo: soltar dos iconos los mueve juntos conservando la distancia' 
 e "$X $DI DI._setSelection([], null); 1" >/dev/null
 check 'seleccion: vaciarla desmarca los iconos' "(() => { $DI return DI._selection.size === 0 && !DI._boxes.get('uno.txt').has_style_pseudo_class('selected'); })()"
 # Teclado y menu del fondo (barrido 5).
-check 'teclado: sin clic previo en el escritorio las teclas no se roban' "(() => { $DI return DI._deskFocus === false; })()"
 e "$X $DI DI._setSelection(['/personal'], '/personal'); DI._deskFocus = true; DI._moveSelection('down'); 1" >/dev/null
 check 'teclado: las flechas mueven la seleccion a un vecino' "(() => { $DI return DI._selection.size === 1 && DI._anchor !== '/personal'; })()"
 e "$X $DI DI._deskFocus = false; DI._openBackgroundMenu(300, 300); 1" >/dev/null; sleep .5
@@ -324,6 +339,14 @@ check_wait 'borde: el archivo soltado en el escritorio nuevo viaja a su carpeta'
 check_wait 'borde: queda en la celda donde se solto, en el escritorio nuevo' "(() => { $DI const b = DI._boxes.get('uno.txt'); return DI._workspace === 1 && !!b && b.x === Math.round(12 + DI._grid().stepX * 1) && b.y === Math.round(12 + DI._grid().stepY * 3); })()"
 goto_ws 0
 check_wait 'borde: el escritorio de origen ya no lo muestra' "(() => { $DI return !DI._boxes.has('uno.txt'); })()"
+# Pegar (file-ops.js): asincronico, recursivo y sin pegar una carpeta en si
+# misma; los errores se avisan al usuario, no solo al log.
+mkdir -p "$T/pegar/carpeta/sub"; echo x > "$T/pegar/carpeta/sub/x.txt"
+e "$X $DI globalThis.__notes = []; DI._notifyError = t => globalThis.__notes.push(t); DI._pasteUris('copy', ['file://$T/pegar/carpeta']); 1" >/dev/null
+check_wait 'pegar: copia una carpeta entera al escritorio' "(() => { $DI return imports.gi.GLib.file_test(DI._folderPath() + '/carpeta/sub/x.txt', imports.gi.GLib.FileTest.EXISTS); })()"
+e "$X $DI DI._pasteUris('copy', [imports.gi.Gio.File.new_for_path(DI._folderPath()).get_uri()]); 1" >/dev/null
+check_wait 'pegar: una carpeta dentro de si misma se rechaza y se avisa' "globalThis.__notes.length === 1 && globalThis.__notes[0].startsWith('No se pudo pegar')"
+e "$X $DI delete DI._notifyError; 1" >/dev/null
 e "$X X._settings.set_boolean('workspace-icons', false); 1" >/dev/null; sleep .5
 check_wait 'escritorios: apagar la clave quita la capa del fondo' "!X._desktopIcons && $BG.get_n_children() === globalThis.__bgN"
 
@@ -332,6 +355,9 @@ check_wait 'escritorios: apagar la clave quita la capa del fondo' "!X._desktopIc
 # el usuario la haya ocultado.
 e "$X globalThis.__miss = null; import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__miss = m.appsMissingFromModel(S._model); }).catch(err => { globalThis.__miss = ['ERROR ' + err]; }); 1" >/dev/null
 check_wait 'cobertura: todas las apps del grid de GNOME estan en Nebula' "globalThis.__miss !== null && globalThis.__miss.length === 0"
+check 'cobertura: un lanzador no instalado no tapa a la app (vim/htop sin alacritty)' "S._model.some(c => c.apps.some(a => (a.exec ?? '').endsWith('nebtestcov')))"
+check 'instaladas: gtk-launch de un .desktop inexistente no se muestra' "!S._model.some(c => c.apps.some(a => a.exec === 'gtk-launch nebula-no-existe'))"
+check 'instaladas: gtk-launch de un .desktop existente si se muestra' "S._model.some(c => c.apps.some(a => a.exec === 'gtk-launch org.nebula.TestGtk'))"
 [[ "$(e 'JSON.stringify(globalThis.__miss)')" == *'[]'* ]] || printf '  INFO faltan: %s\n' "$(e 'JSON.stringify(globalThis.__miss)')"
 # Estado editado desde afuera (a mano o por un script): el Shell lo relee en
 # vivo y no lo pisa en el proximo guardado. Antes quedaba con la copia vieja.

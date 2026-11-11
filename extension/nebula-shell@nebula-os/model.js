@@ -86,6 +86,11 @@ export function isInstalled(exec) {
     const appId = flatpakAppId(exec);
     if (appId)
         return Gio.DesktopAppInfo.new(`${appId}.desktop`) !== null;
+    // "gtk-launch <id>" (apps de Wine, AppImages): gtk-launch siempre esta;
+    // lo que importa es que exista ese .desktop.
+    const argv = argvOf(exec);
+    if (argv[0] === 'gtk-launch')
+        return !!argv[1] && Gio.DesktopAppInfo.new(`${argv[1].replace(/\.desktop$/, '')}.desktop`) !== null;
 
     const bin = firstToken(exec);
     if (!bin)
@@ -533,7 +538,9 @@ function uncategorizedApps(rawCats) {
     const known = new Set();
     for (const cat of rawCats)
         for (const a of (Array.isArray(cat.app) ? cat.app : []))
-            if (a?.exec)
+            // Solo cubre lo que de verdad se va a mostrar: "alacritty -e vim"
+            // sin alacritty no aparece, y vim tiene que ir a "Otras".
+            if (a?.exec && isInstalled(a.exec))
                 execKeys(a.exec).forEach(k => known.add(k));
     // "Mis discos y nubes" ya ofrece el gestor de discos (categoria dinamica).
     known.add('gnome-disks');

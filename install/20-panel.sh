@@ -24,6 +24,8 @@ FONT_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/fonts"
 NERD_FONT_NAME="JetBrainsMono Nerd Font"
 NERD_FONT_TAG="v3.2.1"
 NERD_FONT_URL="https://github.com/ryanoasis/nerd-fonts/releases/download/${NERD_FONT_TAG}/JetBrainsMono.zip"
+# SHA-256.txt publicado en la release v3.2.1 (verificado el 2026-11-10).
+NERD_FONT_SHA256="6596922aabaf8876bb657c36a47009ac68c388662db45d4ac05c2536c2f07ade"
 
 EFFECTIVE_PANEL="$NEBULA_PANEL"
 EWW_REPO="https://github.com/elkowar/eww"
@@ -129,18 +131,18 @@ info "panel efectivo: $EFFECTIVE_PANEL (guardado en $NEBULA_SESSION_ENV)"
 # ---------------------------------------------------------------------------
 # Nerd Font (glyphs del panel). Idempotente: se salta si ya esta instalada.
 # ---------------------------------------------------------------------------
-if fc-list 2>/dev/null | grep -qi "JetBrainsMono Nerd Font"; then
+if font_installed "JetBrainsMono Nerd Font"; then
     info "Nerd Font ya instalada: $NERD_FONT_NAME"
 else
     tmp_zip="$(mktemp --suffix=.zip)"
-    if run curl -fsSL -o "$tmp_zip" "$NERD_FONT_URL"; then
+    if download_verified "$NERD_FONT_URL" "$NERD_FONT_SHA256" "$tmp_zip"; then
         dest="$FONT_DIR/JetBrainsMonoNerdFont"
         run mkdir -p "$dest"
         run unzip -oq "$tmp_zip" -d "$dest"
         run fc-cache -f "$dest" >/dev/null
         ok "Nerd Font instalada en $dest"
     else
-        warn "no se pudo descargar la Nerd Font ($NERD_FONT_URL). El panel puede mostrar glyphs como cuadros (E14); reintenta mas tarde con: nebula-os/install/20-panel.sh"
+        warn "no se pudo descargar (o verificar) la Nerd Font ($NERD_FONT_URL). El panel puede mostrar glyphs como cuadros (E14); reintenta mas tarde con: nebula-os/install/20-panel.sh"
     fi
     rm -f "$tmp_zip"
 fi

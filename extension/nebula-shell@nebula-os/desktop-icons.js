@@ -32,6 +32,7 @@ import {
     assignCells, rectsIntersect, rangeBetween, placeGroup, neighborInDirection,
     gridLayout, cellAtPoint, isDoubleClick,
 } from './desktop-grid.js';
+import {pasteInto, uniqueDestination} from './file-ops.js';
 
 // Paso minimo entre celdas y tamano de la caja del icono. El paso real se
 // estira para que la grilla llene el area (ver gridLayout).
@@ -65,36 +66,14 @@ export function workspaceFolder(index) {
     return path;
 }
 
-function uniqueDestination(folder, name) {
-    const dot = name.lastIndexOf('.');
-    const [stem, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, ''];
-    let candidate = name;
-    for (let i = 2; GLib.file_test(GLib.build_filenamev([folder, candidate]), GLib.FileTest.EXISTS); i++)
-        candidate = `${stem} (${i})${ext}`;
-    return GLib.build_filenamev([folder, candidate]);
-}
-
-/** Copia un archivo o carpeta (Gio.File.copy no baja a las carpetas). */
-function copyTree(src, dst) {
-    const info = src.query_info('standard::type', Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
-    if (info.get_file_type() === Gio.FileType.DIRECTORY) {
-        dst.make_directory_with_parents(null);
-        const en = src.enumerate_children('standard::name', Gio.FileQueryInfoFlags.NOFOLLOW_SYMLINKS, null);
-        let child;
-        while ((child = en.next_file(null)))
-            copyTree(src.get_child(child.get_name()), dst.get_child(child.get_name()));
-        en.close(null);
-    } else {
-        src.copy(dst, Gio.FileCopyFlags.NOFOLLOW_SYMLINKS | Gio.FileCopyFlags.ALL_METADATA, null, null);
-    }
-}
-
 export class NebulaDesktopIcons {
     /** @param {function(): Array} getBars  barras de Nebula (para soltar sobre sus botones de escritorio) */
     constructor(getBars = () => []) {
         this._getBars = getBars;
         this._signalIds = [];
         this._timeoutIds = new Set();
+        // Cancela un pegado en curso si la extension se apaga.
+        this._cancellable = new Gio.Cancellable();
         this._monitorWatch = null;
         this._monitorWatchId = 0;
         this._menu = null;
@@ -485,7 +464,7 @@ export class NebulaDesktopIcons {
             }
             Gio.AppInfo.launch_default_for_uri(item.file.get_uri(), global.create_app_launch_context(0, -1));
         } catch (e) {
-            console.error(`Nebula Shell: no se pudo abrir ${item.name}: ${e}`);
+            this._notifyError(`No se pudo abrir ${item.name}`, e.message ?? e);
         }
     }
 
@@ -667,7 +646,7 @@ export class NebulaDesktopIcons {
             item.file.move(Gio.File.new_for_path(destPath), Gio.FileCopyFlags.NONE, null, null);
             return GLib.path_get_basename(destPath);
         } catch (e) {
-            console.error(`Nebula Shell: no se pudo mover ${item.name} al escritorio ${workspace + 1}: ${e}`);
+            this._notifyError(`No se pudo mover ${item.name} al escritorio ${workspace + 1}`, e.message ?? e);
             return null;
         }
     }
@@ -687,7 +666,7 @@ export class NebulaDesktopIcons {
             item.file.trash(null);
             clearDesktopIconCell(this._workspace, item.name);
         } catch (e) {
-            console.error(`Nebula Shell: no se pudo mandar ${item.name} a la papelera: ${e}`);
+            this._notifyError(`No se pudo mandar ${item.name} a la papelera`, e.message ?? e);
         }
     }
 
@@ -784,7 +763,7 @@ export class NebulaDesktopIcons {
         try {
             app.launch([item.file], global.create_app_launch_context(0, -1));
         } catch (e) {
-            console.error(`Nebula Shell: no se pudo abrir ${item.name} con ${app.get_id()}: ${e}`);
+            this._notifyError(`No se pudo abrir ${item.name} con ${app.get_display_name()}`, e.message ?? e);
         }
     }
 
@@ -801,7 +780,7 @@ export class NebulaDesktopIcons {
             else
                 launcher.spawnv(['x-terminal-emulator']);
         } catch (e) {
-            console.error(`Nebula Shell: no se pudo abrir una terminal en ${dir}: ${e}`);
+            this._notifyError('No se pudo abrir una terminal', `${dir}: ${e.message ?? e}`);
         }
     }
 
@@ -908,20 +887,29 @@ export class NebulaDesktopIcons {
             if (this._destroyed || !bytes)
                 return;
             const [mode, ...uris] = new TextDecoder().decode(bytes.get_data()).split('\n').filter(l => l.trim());
-            const folder = this._folderPath();
-            for (const uri of uris) {
-                try {
-                    const src = Gio.File.new_for_uri(uri);
-                    const dest = Gio.File.new_for_path(uniqueDestination(folder, src.get_basename()));
-                    if (mode === 'cut')
-                        src.move(dest, Gio.FileCopyFlags.NONE, null, null);
-                    else
-                        copyTree(src, dest);
-                } catch (e) {
-                    console.error(`Nebula Shell: no se pudo pegar ${uri}: ${e}`);
-                }
-            }
+            this._pasteUris(mode, uris);
         });
+    }
+
+    /** Pega en la carpeta del escritorio actual sin bloquear el Shell. Avisa los errores. */
+    async _pasteUris(mode, uris) {
+        const files = uris.map(uri => Gio.File.new_for_uri(uri));
+        const {errors, cancelled} = await pasteInto(mode, files, this._folderPath(), this._cancellable);
+        if (cancelled || this._destroyed)
+            return;
+        if (errors.length > 0)
+            this._notifyError(errors.length === 1 ? `No se pudo pegar ${errors[0].name}` : `No se pudieron pegar ${errors.length} elementos`,
+                errors.map(e => `${e.name}: ${e.message}`).join('\n'));
+    }
+
+    /** Error de una accion del usuario: al log y como notificacion (antes solo al log). */
+    _notifyError(title, detail) {
+        console.error(`Nebula Shell: ${title}: ${detail}`);
+        try {
+            Main.notify(title, String(detail));
+        } catch (e) {
+            console.error(`Nebula Shell: no se pudo mostrar la notificacion: ${e}`);
+        }
     }
 
     // --- dialogos: renombrar y carpeta nueva -------------------------
@@ -972,7 +960,7 @@ export class NebulaDesktopIcons {
                 this._refresh(false);
                 this._setSelection([renamed.get_basename()], renamed.get_basename());
             } catch (e) {
-                console.error(`Nebula Shell: no se pudo renombrar ${item.name}: ${e}`);
+                this._notifyError(`No se pudo renombrar ${item.name}`, e.message ?? e);
             }
         });
     }
@@ -982,7 +970,7 @@ export class NebulaDesktopIcons {
             try {
                 Gio.File.new_for_path(uniqueDestination(this._folderPath(), name)).make_directory(null);
             } catch (e) {
-                console.error(`Nebula Shell: no se pudo crear la carpeta ${name}: ${e}`);
+                this._notifyError(`No se pudo crear la carpeta ${name}`, e.message ?? e);
             }
         });
     }
@@ -1087,6 +1075,7 @@ export class NebulaDesktopIcons {
 
     destroy() {
         this._destroyed = true;
+        this._cancellable.cancel();
         this._edgeCancel();
         this._dialog?.close();
         this._dialog = null;

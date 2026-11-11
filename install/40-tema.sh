@@ -204,7 +204,7 @@ fi
 # Tipografias manuales: Space Grotesk + Nerd Font (idempotente via fc-list;
 # la Nerd Font puede ya estar si corrio 20-panel.sh antes).
 # ---------------------------------------------------------------------------
-if fc-list 2>/dev/null | grep -qi "Space Grotesk"; then
+if font_installed "Space Grotesk"; then
     info "Space Grotesk ya instalada"
 else
     tmp_zip="$(mktemp --suffix=.zip)"
@@ -221,7 +221,7 @@ else
     rm -f "$tmp_zip"
 fi
 
-if fc-list 2>/dev/null | grep -qi "JetBrainsMono Nerd Font"; then
+if font_installed "JetBrainsMono Nerd Font"; then
     info "Nerd Font ya instalada"
 else
     warn "Nerd Font no instalada todavia: la instala 20-panel.sh. Corre ese stage si saltaste directo a 40."

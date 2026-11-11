@@ -28,6 +28,7 @@ Convención de estado:
 - [2. Extensión GNOME (Nebula Shell, prototipo)](#2-extensión-gnome-nebula-shell-prototipo)
 - [3. Conocidos, no resueltos](#3-conocidos-no-resueltos)
 - [3d. Auditoría de estado (2026-10-03)](#3d-auditoría-de-estado-2026-10-03)
+- [3f. Auditoría de noviembre (2026-11-10)](#3f-auditoría-de-noviembre-2026-11-10)
 - [4. Sin verificar](#4-sin-verificar)
 
 ---
@@ -901,7 +902,7 @@ Diagnosticados pero pospuestos a propósito — no bloquean el uso diario.
 
 ### KNOWN-04 — "Clic afuera cierra" del lanzador GNOME está implementado pero deshabilitado desde la investigación de BUG-24
 - **Componente:** `extension/nebula-shell@nebula-os/launcher.js`
-- **Síntoma:** `docs/AUDIT.md`/`docs/FORENSIC_AUDIT.md` (`BUG-004`) detectaron que
+- **Síntoma:** `docs/archive/AUDIT.md`/`docs/archive/FORENSIC_AUDIT.md` (`BUG-004`) detectaron que
   `extension/README.md` y el comentario de cabecera de `launcher.js` prometían
   que un clic fuera del panel lo cierra, pero el código que lo hace
   (`_installStageCapture()`) nunca se invoca: las dos líneas que lo activarían
@@ -1275,6 +1276,79 @@ actualizado.
   (en el CI de la extensión). ⏳ Falta validarlo en la sesión real: recargar el
   Shell y hacer clics en la barra mientras otra ventana cambia de título (por
   ejemplo, OpenShot exportando).
+
+---
+
+## 3f. Auditoría de noviembre (2026-11-10)
+
+### BUG-43 — El Shell pisaba las ediciones externas de `shell-state.json`
+- **Componente:** `state.js`, `sidebar.js`.
+- **Cómo se encontró:** Steam no aparecía en Nebula: estaba en `ocultos`, y al
+  sacarlo a mano el Shell lo volvía a escribir.
+- **Causa raíz:** el estado se leía una sola vez y quedaba en caché; el
+  próximo guardado escribía la copia en memoria sobre el archivo editado.
+- **Corrección:** `state.js` vigila el archivo (`Gio.FileMonitor`), ignora sus
+  propias escrituras e invalida la caché; la sidebar repuebla.
+- **Estado:** ✅ Resuelto. Gate: `test-sidebar-core.sh` (ocultar/des-ocultar
+  en vivo, el próximo guardado no revive lo viejo). Nota: el primer test daba
+  falso OK porque `Eval` devuelve JSON y el `exec` llegaba entre comillas.
+
+### BUG-44 — Apps del grid de GNOME desaparecían de Nebula si su lanzador del `.toml` no estaba instalado
+- **Componente:** `model.js` (`uncategorizedApps`).
+- **Cómo se encontró:** el test de cobertura nuevo, en el runner de CI (sin
+  Alacritty): faltaban Vim y Htop.
+- **Causa raíz:** `categories.toml` las lista como `alacritty -e vim` y
+  `alacritty -e htop`. La clave después de `-e` las daba por categorizadas,
+  pero `buildModel` descarta esas entradas porque `alacritty` no está: la app
+  no quedaba ni en su categoría ni en "Otras aplicaciones".
+- **Variables:** cualquier entrada `X -e Y` con `X` sin instalar.
+- **Corrección:** una entrada solo cubre apps si está instalada.
+- **Estado:** ✅ Resuelto. Gate: `test-sidebar-core.sh` (entrada inyectada con
+  un lanzador inexistente).
+
+### BUG-45 — `gtk-launch <id>` se mostraba aunque ese `.desktop` no existiera
+- **Componente:** `model.js` (`isInstalled`).
+- **Causa raíz:** solo se miraba que exista el binario `gtk-launch`, que está
+  siempre. "Hero Editor" (Wine) aparecía en cualquier máquina.
+- **Corrección:** se resuelve el `.desktop` con `Gio.DesktopAppInfo`, igual
+  que con Flatpak.
+- **Estado:** ✅ Resuelto. Gate: `test-sidebar-core.sh` (id inexistente no se
+  muestra; uno existente sí).
+
+### BUG-46 — Pegar en el escritorio congelaba el Shell y podía copiar una carpeta dentro de sí misma
+- **Componente:** `desktop-icons.js` (`_paste`), ahora `file-ops.js`.
+- **Causa raíz:** `copyTree` y `move` eran sincrónicos (el compositor entero
+  esperaba a que terminara la copia), y no se comprobaba que el destino no
+  estuviera dentro del origen: copiar `~` o el propio escritorio y pegarlo
+  ahí no terminaba nunca. Los errores solo iban a `console.error`.
+- **Corrección:** `file-ops.js` (`pasteInto`, Gio asincrónico con
+  `Gio.Cancellable`), rechazo de "dentro de sí misma", cortar en el mismo
+  lugar no hace nada. Los errores de acciones del usuario (pegar, mover,
+  papelera, abrir, renombrar, carpeta nueva) se muestran con `Main.notify`.
+- **Estado:** ✅ Resuelto. Gates: `tools/test-file-ops.mjs` (en
+  `test-state-persistence.sh`) y `test-sidebar-core.sh`. ⏳ Falta probar en
+  la sesión real una copia grande.
+
+### BUG-47 — El instalador volvía a bajar la Nerd Font aunque ya estuviera
+- **Componente:** `install/20-panel.sh`, `install/40-tema.sh`.
+- **Causa raíz:** `fc-list | grep -qi ...` con `set -o pipefail`: `grep -q`
+  corta al encontrar, `fc-list` recibe SIGPIPE y la tubería da error, o sea
+  "no instalada". Con muchas fuentes pasa siempre (5/5 en la prueba).
+  Además, en `--dry-run` `fc-list` escribía su caché en `~/.cache`
+  (`install.bats:46`).
+- **Corrección:** `font_installed` en `lib/common.sh` (captura la salida
+  entera; en dry-run usa una caché temporal). La descarga de la fuente queda
+  fijada por SHA-256 (`download_verified`).
+- **Estado:** ✅ Resuelto. Gates: `tests/common.bats`, `tests/install.bats`.
+
+### KNOWN-05 — `nebula-gen-panel` con `NEBULA_LINK=symlink` escribe sobre el repo (BUG-002 del forense)
+- **Componente:** `bin/nebula-gen-panel` (sesión bspwm, congelada en features).
+- **Causa raíz:** regenera `~/.config/eww/eww.yuck`, que con dotfiles en modo
+  symlink es el archivo versionado del repo; lo regenera con `--installed`
+  (solo lo instalado en esa máquina), distinto del versionado (`--all`).
+- **Efecto:** el árbol de git queda modificado después de cada login.
+- **Estado:** 🟡 Conocido, no resuelto. Solo con `NEBULA_LINK=symlink` (el
+  default es `copy`).
 
 ---
 

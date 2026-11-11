@@ -67,3 +67,55 @@ setup() {
     [[ "$out" != *"NEBULA_PANEL"* ]]
     grep -q NEBULA_PANEL "$NEBULA_BACKUP_DIR/.xprofile"
 }
+
+@test "font_installed: encuentra la tipografia aunque fc-list liste mucho (sin falso negativo por SIGPIPE)" {
+    stub fc-list 'for i in $(seq 1 20000); do echo "/usr/share/fonts/x$i.ttf: Fuente $i"; done
+        echo "/f/jb.ttf: JetBrainsMono Nerd Font:style=Regular"
+        for i in $(seq 1 20000); do echo "/usr/share/fonts/y$i.ttf: Otra $i"; done'
+    set -o pipefail
+    font_installed "JetBrainsMono Nerd Font"
+    ! font_installed "Space Grotesk"
+}
+
+@test "font_installed: en dry-run fc-list usa una cache temporal, no la del HOME" {
+    stub fc-list 'echo "XDG_CACHE_HOME=$XDG_CACHE_HOME"'
+    NEBULA_DRY_RUN=1 font_installed "XDG_CACHE_HOME=/"
+    ! NEBULA_DRY_RUN=1 font_installed "XDG_CACHE_HOME=$HOME"
+}
+
+@test "download_verified: acepta el archivo con el SHA-256 esperado" {
+    stub curl 'while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && { printf hola > "$2"; shift; }; shift; done'
+    sum="$(printf hola | sha256sum | cut -d" " -f1)"
+    download_verified "https://x/y.zip" "$sum" "$HOME/y.zip"
+    [ "$(cat "$HOME/y.zip")" = hola ]
+}
+
+@test "download_verified: rechaza y borra un archivo con otro SHA-256" {
+    stub curl 'while [[ $# -gt 0 ]]; do [[ "$1" == -o ]] && { printf alterado > "$2"; shift; }; shift; done'
+    sum="$(printf hola | sha256sum | cut -d" " -f1)"
+    ! download_verified "https://x/y.zip" "$sum" "$HOME/y.zip" 2>/dev/null
+    [ ! -e "$HOME/y.zip" ]
+}
+
+@test "download_verified: en dry-run no baja nada" {
+    stub curl 'touch "$HOME/curl-corrio"'
+    NEBULA_DRY_RUN=1 download_verified "https://x/y.zip" "0000" "$HOME/y.zip" 2>/dev/null
+    [ ! -e "$HOME/curl-corrio" ] && [ ! -e "$HOME/y.zip" ]
+}
+
+@test "pkg_list: lee el manifiesto sin comentarios y en orden" {
+    printf '# cabecera\nbspwm sxhkd   # en linea\n\n  curl\n' > "$HOME/l.list"
+    [ "$(pkg_list "$HOME/l.list" | tr '\n' ' ')" = "bspwm sxhkd curl " ]
+}
+
+@test "pkg_list: es dato, no codigo (nada se ejecuta ni se expande)" {
+    printf 'curl $(touch %s/pwned) * `id` ok-pkg\n' "$HOME" > "$HOME/l.list"
+    out="$(pkg_list "$HOME/l.list" 2>/dev/null)"
+    [ ! -e "$HOME/pwned" ]
+    [ "$(echo "$out" | tr '\n' ' ')" = "curl ok-pkg " ]
+}
+
+@test "pkg_list: el manifiesto real tiene las deps base" {
+    out="$(pkg_list "$REPO/install/pkgs-base.list")"
+    for p in bspwm sxhkd curl unzip python3 x11-utils; do grep -qx "$p" <<<"$out"; done
+}

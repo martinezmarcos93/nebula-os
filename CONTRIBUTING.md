@@ -48,3 +48,19 @@ la libreria tapa al `run` de bats: llamar a las funciones directo.
 
 [Conventional Commits](https://www.conventionalcommits.org/es/): `feat:`,
 `fix:`, `docs:`, `refactor:`, `chore:`, `test:`. Commits atomicos.
+
+## Hook pre-commit (opcional)
+
+```bash
+make hooks       # git config core.hooksPath .githooks
+```
+
+Antes de cada commit corre lo rapido del CI: `make lint` (shellcheck),
+`nebula-categories check` sobre `categories.toml` y que `eww.yuck` este
+sincronizado con el `.toml` (si no, indica el comando para regenerarlo).
+Para un commit puntual: `git commit --no-verify`. Desactivarlo:
+`git config --unset core.hooksPath`.
+
+En un clon sobre NTFS/exFAT (montado por `fuseblk`) los archivos no tienen
+bit de ejecucion: git ignora el hook y `make test` da falsos "no ejecutable".
+Para trabajar y correr los tests usar un clon en ext4.

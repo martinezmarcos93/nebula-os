@@ -18,6 +18,7 @@ teardown() {
         bspc quit >/dev/null 2>&1 || kill "$WM_PID" 2>/dev/null || true
         wait "$WM_PID" 2>/dev/null || true
     fi
+    wait_rc   # un rc a medio correr lanzaria procesos despues del barrido
     kill_test_procs
     for p in "${XT_PIDS[@]:-}"; do kill "$p" 2>/dev/null || true; done
 }
@@ -30,7 +31,17 @@ start_wm() {   # start_wm [bspwmrc]  -> arranca bspwm y espera a que responda
     bspwm >/dev/null 2>&1 &
     WM_PID=$!
     for _ in $(seq 1 40); do bspc query -M >/dev/null 2>&1 && break; sleep 0.1; done
-    sleep 0.5   # que termine de correr el bspwmrc
+    wait_rc
+}
+
+# Espera a que termine el bspwmrc (no un tiempo fijo). Con la maquina cargada
+# tardaba mas de 0,5 s: el test media antes de tiempo y lo que el rc lanzaba
+# despues del teardown (alttab, copyq) quedaba vivo y colgaba a bats.
+wait_rc() {
+    for _ in $(seq 1 100); do
+        pgrep -f "$XDG_CONFIG_HOME/bspwm/bspwmrc" >/dev/null 2>&1 || return 0
+        sleep 0.1
+    done
 }
 
 XT_PIDS=()

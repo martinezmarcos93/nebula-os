@@ -92,6 +92,55 @@ run_root() {
 has_cmd()     { command -v "$1" >/dev/null 2>&1; }
 require_cmd() { has_cmd "$1" || die "Falta el comando requerido: $1"; }
 
+# pkg_list ARCHIVO -> un paquete por linea, sin comentarios. Es un manifiesto
+# de datos (antes se extraia PKGS_BASE de 10-base.sh y se le hacia eval).
+pkg_list() {
+    local f="$1" line p words
+    [[ -r "$f" ]] || { warn "no se puede leer $f"; return 1; }
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        read -ra words <<<"${line%%#*}"
+        for p in "${words[@]}"; do
+            if [[ "$p" =~ ^[a-z0-9][a-z0-9.+-]+$ ]]; then
+                printf '%s\n' "$p"
+            else
+                warn "pkg_list: nombre de paquete invalido en $f: $p (se ignora)"
+            fi
+        done
+    done <"$f"
+}
+
+# download_verified URL SHA256 DESTINO -> baja URL a DESTINO y exige ese SHA-256.
+# Si no coincide borra DESTINO y devuelve 1 (descarga cortada, release
+# re-subida o alterada). En dry-run solo muestra el curl.
+download_verified() {
+    local url="$1" sum="$2" dest="$3"
+    run curl -fsSL -o "$dest" "$url" || return 1
+    [[ "$NEBULA_DRY_RUN" == "1" ]] && return 0
+    if ! printf '%s  %s\n' "$sum" "$dest" | sha256sum -c --status 2>/dev/null; then
+        warn "SHA-256 inesperado para $url; se descarta la descarga"
+        rm -f "$dest"
+        return 1
+    fi
+}
+
+# font_installed NOMBRE -> 0 si fontconfig conoce una tipografia con ese nombre.
+# - fc-list escribe la cache de fontconfig en ~/.cache: en dry-run se usa una
+#   cache temporal para no tocar el HOME.
+# - La salida se captura entera: con pipefail, `fc-list | grep -q` puede dar
+#   "no instalada" si fc-list recibe SIGPIPE cuando grep ya encontro.
+font_installed() {
+    has_cmd fc-list || return 1
+    local fonts tmp=""
+    if [[ "$NEBULA_DRY_RUN" == "1" ]]; then
+        tmp="$(mktemp -d)"
+        fonts="$(XDG_CACHE_HOME="$tmp" fc-list 2>/dev/null || true)"
+        rm -rf "$tmp"
+    else
+        fonts="$(fc-list 2>/dev/null || true)"
+    fi
+    grep -qiF -- "$1" <<<"$fonts"
+}
+
 pkg_installed() {
     dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q 'install ok installed'
 }
