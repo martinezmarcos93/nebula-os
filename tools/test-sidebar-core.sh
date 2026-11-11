@@ -280,6 +280,9 @@ check_wait 'escritorios: sin la clave no hay capa de iconos' "!X._desktopIcons"
 e "globalThis.__bgN = $BG.get_n_children(); 1" >/dev/null
 e "$X X._settings.set_boolean('workspace-icons', true); 1" >/dev/null; sleep .8
 check_wait 'escritorios: con la clave la capa vive en el fondo, debajo de las ventanas' "(() => { $DI return !!DI && DI._layer.get_parent() === $BG; })()"
+# Se mide recien creada la capa: el doble clic simulado de mas abajo pasa por
+# _onPress, que toma el foco del escritorio a proposito.
+check 'teclado: sin clic previo en el escritorio las teclas no se roban' "(() => { $DI return DI._deskFocus === false; })()"
 check_wait 'escritorios: el escritorio 1 muestra su carpeta' "(() => { $DI return DI._workspace === 0 && DI._items.filter(i => !i.virtual).map(i => i.name).join() === 'uno.txt' && DI._boxes.size === 2; })()"
 goto_ws 1
 check_wait 'escritorios: el escritorio 2 muestra otros iconos' "(() => { $DI return DI._workspace === 1 && DI._items.filter(i => !i.virtual).map(i => i.name).join() === 'dos.txt,tres.txt'; })()"
@@ -305,7 +308,6 @@ check_wait 'grupo: soltar dos iconos los mueve juntos conservando la distancia' 
 e "$X $DI DI._setSelection([], null); 1" >/dev/null
 check 'seleccion: vaciarla desmarca los iconos' "(() => { $DI return DI._selection.size === 0 && !DI._boxes.get('uno.txt').has_style_pseudo_class('selected'); })()"
 # Teclado y menu del fondo (barrido 5).
-check 'teclado: sin clic previo en el escritorio las teclas no se roban' "(() => { $DI return DI._deskFocus === false; })()"
 e "$X $DI DI._setSelection(['/personal'], '/personal'); DI._deskFocus = true; DI._moveSelection('down'); 1" >/dev/null
 check 'teclado: las flechas mueven la seleccion a un vecino' "(() => { $DI return DI._selection.size === 1 && DI._anchor !== '/personal'; })()"
 e "$X $DI DI._deskFocus = false; DI._openBackgroundMenu(300, 300); 1" >/dev/null; sleep .5
