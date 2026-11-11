@@ -50,6 +50,14 @@ printf '#!/bin/sh\nexec gjs %s\n' "$T/testwin.js" > "$T/bin/nebtestwin"
 chmod +x "$T/bin/nebtestwin"
 printf '[Desktop Entry]\nType=Application\nName=Nebula Test Win\nExec=%s\n' "$T/bin/nebtestwin" \
   > "$XDG_DATA_HOME/applications/org.nebula.TestWin.desktop"
+# Cobertura con lanzador ausente (vim/htop en CI: el .toml los lista como
+# "alacritty -e vim" y sin alacritty desaparecian de Nebula). Una entrada cuyo
+# lanzador no esta instalado no puede tapar a la app del grid.
+printf '#!/bin/sh\nexit 0\n' > "$T/bin/nebtestcov"; chmod +x "$T/bin/nebtestcov"
+printf '[Desktop Entry]\nType=Application\nName=Nebula Test Cov\nExec=%s\n' "$T/bin/nebtestcov" \
+  > "$XDG_DATA_HOME/applications/org.nebula.TestCov.desktop"
+python3 -c 'import json,sys; p=sys.argv[1]; d=json.load(open(p,encoding="utf-8")); next(c for c in d["categoria"] if c.get("nombre") not in ("Favoritos","Recientes") and not c.get("tipo")).setdefault("app",[]).extend([{"nombre":"Cov sin lanzador","exec":"nebula-no-instalado -e nebtestcov"}]); json.dump(d, open(p,"w",encoding="utf-8"))' \
+  "$XDG_DATA_HOME/gnome-shell/extensions/nebula-shell@nebula-os/categories.json"
 
 cat > "$T/common.sh" <<'EOF'
 ok(){ printf '  OK   %s\n' "$*"; }
@@ -334,6 +342,7 @@ check_wait 'escritorios: apagar la clave quita la capa del fondo' "!X._desktopIc
 # el usuario la haya ocultado.
 e "$X globalThis.__miss = null; import('file://' + Main.extensionManager.lookup('nebula-shell@nebula-os').path + '/model.js').then(m => { globalThis.__miss = m.appsMissingFromModel(S._model); }).catch(err => { globalThis.__miss = ['ERROR ' + err]; }); 1" >/dev/null
 check_wait 'cobertura: todas las apps del grid de GNOME estan en Nebula' "globalThis.__miss !== null && globalThis.__miss.length === 0"
+check 'cobertura: un lanzador no instalado no tapa a la app (vim/htop sin alacritty)' "S._model.some(c => c.apps.some(a => (a.exec ?? '').endsWith('nebtestcov')))"
 [[ "$(e 'JSON.stringify(globalThis.__miss)')" == *'[]'* ]] || printf '  INFO faltan: %s\n' "$(e 'JSON.stringify(globalThis.__miss)')"
 # Estado editado desde afuera (a mano o por un script): el Shell lo relee en
 # vivo y no lo pisa en el proximo guardado. Antes quedaba con la copia vieja.
