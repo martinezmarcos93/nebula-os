@@ -79,7 +79,11 @@ check 'launcher creado' "!!L && !!L._panel"
 # esta encima: segun cuanto tarde el Shell en responder ya puede estar
 # colapsada. Lo que no puede pasar es que el actor y el estado no coincidan
 # (salvo durante los 180 ms de la animacion de retraer: ya colapsada, aun visible).
-check 'estado inicial coherente (visible <=> no colapsada)' "S._sidebar.visible === !S._collapsed || (S._collapsed && (S._sidebar.get_transition('translation_x') !== null || S._sidebar.translation_x < 0))"
+# Estado y condicion en la misma consulta: si falla, el INFO muestra que vio.
+ST0="$(e "$X (() => { const s = S._sidebar; const st = {colapsada: S._collapsed, visible: s.visible, anim: s.get_transition('translation_x') !== null, x: s.translation_x, fullscreen: S._inFullscreen, flecha: S._edgeArrow?.visible ?? null}; st.ok = s.visible === !S._collapsed || (S._collapsed && (st.anim || s.translation_x < 0)); return JSON.stringify(st); })()")"
+# gdbus devuelve las comillas escapadas (\\"ok\\":true): se busca sin ellas.
+[[ "$(tr -d '\\"' <<<"$ST0")" == *ok:true* ]] && ok 'estado inicial coherente (visible <=> no colapsada)' \
+  || { bad 'estado inicial coherente (visible <=> no colapsada)'; printf '  INFO estado inicial: %s\n' "$ST0"; }
 e "$X S._expand(); 1" >/dev/null; sleep .6
 # BUG-33: desplegar/colapsar no debe tocar el area de trabajo (DING reubica los
 # iconos y las ventanas maximizadas se redimensionan en cada workareas-changed).
