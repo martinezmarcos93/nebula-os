@@ -401,11 +401,11 @@ primero, lo que toca comportamiento global de todo el escritorio al final):
 | Fase | Contenido | Por qué en ese orden |
 |---|---|---|
 | **0** ✅ | Persistencia de estado de usuario (`state.js` + merge en `model.js`) | Base para favoritos/mover/ocultar (punto 4). Sin esto, esas acciones no sirven de nada. |
-| **1** ✅ | Auditoría de categorías: arreglar Heroic/Lutris (Flatpak), agregar categoría "Comunicación" (Discord + Thunderbird), sumar del resto de la tabla 1.b lo que confirmes | Bajo riesgo, sin dependencias, valor inmediato — son cambios solo en `categories.toml`. |
+| **1** ✅ | Auditoría de categorías (re-auditada el 2026-11-10 con `tools/audit-apps.sh` sobre las apps reales: 101 del grid de GNOME, 0 faltantes; las 4 sin categoría se sumaron al `.toml`): arreglar Heroic/Lutris (Flatpak), agregar categoría "Comunicación" (Discord + Thunderbird), sumar del resto de la tabla 1.b lo que confirmes | Bajo riesgo, sin dependencias, valor inmediato — son cambios solo en `categories.toml`. |
 | **2** ✅ | Buscador en la sidebar (atajo visual al lanzador existente) | Bajo riesgo, reusa infraestructura ya probada de `launcher.js`. |
-| **3** | Panel de accesos a discos/unidades (Google Drive vía GOA + disco NTFS) | Componente nuevo pero aislado, no modifica nada existente. |
-| **4** | Menú contextual (clic derecho): favoritos, mover, accesos directos, resto de opciones que confirmes | Depende de la Fase 0. Requiere resolver antes la pregunta de "subcategoría". |
-| **5** | Barra de tareas / lista de ventanas en `bottombar.js` (activar el incremento 5 + agregar el bloque nuevo) | Prepara el terreno para la Fase 6 (compensa perder Activities con un solo atajo). |
+| **3** ✅ | Panel de accesos a discos/unidades (categoría "Mis discos y nubes", BUG-41; gate en `test-sidebar-core.sh`) (Google Drive vía GOA + disco NTFS) | Componente nuevo pero aislado, no modifica nada existente. |
+| **4** ✅ | Menú contextual (clic derecho; `launcher.js`, panel "Mover a categoría"; gate en `test-sidebar-core.sh`): favoritos, mover, accesos directos, resto de opciones que confirmes | Depende de la Fase 0. Requiere resolver antes la pregunta de "subcategoría". |
+| **5** ✅ | Barra de tareas / lista de ventanas en `bottombar.js` (`window-list.js`, BUG-42; `tools/test-window-list.mjs`) (activar el incremento 5 + agregar el bloque nuevo) | Prepara el terreno para la Fase 6 (compensa perder Activities con un solo atajo). |
 | **6** ✅ | Tecla Super/Windows para la sidebar — cerrada por decisión (2026-10-04): Super queda para Activities, Nebula usa su atajo configurable (`toggle-sidebar`). Sin cambios de código | Al final: es lo que más impacto tiene fuera de Nebula (cambia comportamiento global de GNOME), conviene hacerlo con todo lo demás ya estable y con la Fase 5 como red de contención. |
 
 Cada fase se valida en vivo (con el aprendizaje de esta sesión:

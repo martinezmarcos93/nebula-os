@@ -4,8 +4,8 @@
 **Objetivo:** que Nebula OS funcione en cualquier Ubuntu 24.04, no solo en la
 máquina de desarrollo. Que cada promesa del README esté verificada
 automáticamente y que ningún bug conocido quede sin dueño.
-**Insumos:** [`AUDIT-FAILSAFE.md`](AUDIT-FAILSAFE.md) (FS-xx),
-[`AUDIT.md`](AUDIT.md) (AUD-xx/SEC-xx), [`FORENSIC_AUDIT.md`](FORENSIC_AUDIT.md)
+**Insumos:** [`archive/AUDIT-FAILSAFE.md`](archive/AUDIT-FAILSAFE.md) (FS-xx),
+[`archive/AUDIT.md`](archive/AUDIT.md) (AUD-xx/SEC-xx), [`archive/FORENSIC_AUDIT.md`](archive/FORENSIC_AUDIT.md)
 (BUG-0xx), [`BUGS.md`](BUGS.md) (BUG-xx/KNOWN-xx).
 
 Este documento **decide**, no ofrece opciones. Cada decisión trae su motivo
@@ -135,7 +135,7 @@ formalmente y R-302/R-311 pasan a la siguiente versión.
 | R-308 ✅ | `bottombar.js`: `Gio.Cancellable` en las llamadas D-Bus asíncronas (ListNames, DBusProxy.new) para que un callback no toque actores destruidos | Deshabilitar con un reproductor MPRIS abierto no deja warnings |
 | R-309 ✅ | Launch con `Gio.AppInfo`/`Shell.App` cuando existe `.desktop` (startup notification, scope de systemd); `spawn_command_line_async` queda solo como fallback | Las apps lanzadas aparecen en el dock como "en ejecución". Hecho: `model.js#launch()` (BUG-34) |
 | R-310 ✅ | `state.js`: validar el tipo de cada campo al cargar (un JSON con `favoritos` que no sea array hoy rompe `.includes`) | Test gjs con JSON corrupto. Hecho: `state.js#sanitize()` (BUG-29) |
-| R-311 ⏳ | `metadata.json`: `shell-version` 46 + **47/48** después de validar en esas versiones (Ubuntu 24.10/25.04), o documentar "solo 46" | CI ESLint + matriz documentada. **Abierta**: hoy `shell-version: ["46"]`, sin validar en 47/48 |
+| R-311 ✅ | `metadata.json`: `shell-version` 46 + **47/48** después de validar en esas versiones (Ubuntu 24.10/25.04), o documentar "solo 46" | CI ESLint + matriz documentada. **Cerrada 2026-11-10**: se documenta "solo 46" (matriz en `extension/README.md`, "Compatibilidad"); 47/48 se reabren cuando haya donde validarlas |
 | R-312 ✅ | Instalación de la extensión desde `install.sh` (stage opcional `70-extension.sh`, `NEBULA_EXTENSION=1`), que hoy es 100 % manual | `./install.sh --only 70` deja la extensión habilitada tras re-login |
 
 **Criterio de salida (v0.3.0):** el checklist de `extension/README.md` queda
@@ -151,7 +151,7 @@ formalmente y R-302/R-311 pasan a la siguiente versión.
 | R-402 ✅ | **ESLint** con la config oficial de GNOME Shell sobre `extension/` | CI verde |
 | R-403 ✅ | **E2E:** job en contenedor `ubuntu:24.04` con usuario no-root y sudo sin contraseña: `install.sh --yes` (`NEBULA_PANEL=polybar` para no compilar), después Xvfb + `nebula-session` y `60-postcheck.sh` **dentro** de la sesión | Postcheck FAIL=0 en CI |
 | R-404 ✅ | Job **semanal** (`schedule`) que compila eww con el mismo comando que `20-panel.sh` | Aviso automático si upstream rompe la compilación |
-| R-405 ⏳ | Hook `pre-commit` (opcional, documentado): shellcheck + `nebula-categories check` + diff de `eww.yuck` | `CONTRIBUTING.md` lo explica. **Abierta** |
+| R-405 ✅ | Hook `pre-commit` (opcional, documentado): shellcheck + `nebula-categories check` + diff de `eww.yuck` | `CONTRIBUTING.md` lo explica. **Cerrada 2026-11-10**: `.githooks/pre-commit`, se activa con `make hooks` |
 | R-406 ⏳ | Branch protection en `main`: CI obligatorio antes de mergear | Configuración del repo (acción del autor). **Abierta**: hoy se pushea directo a `main`; activarla obliga a pasar a PRs |
 
 ---
@@ -165,7 +165,7 @@ principal.
 | ID | Tarea | Aceptación |
 |---|---|---|
 | R-501 ⏳ | **`nebula-edged` en Rust (D15):** sustituye a `nebula-edge-sidebar` y `nebula-taskbar`. Puntero por XInput2 (eventos, no polling), taskbar por `bspc subscribe` nativo (socket), salida JSON para eww | CPU del daemon < 0,1 % en reposo; mismas features |
-| R-502 ⏳ | Consolidación documental (D12): hallazgos abiertos → `BUGS.md`; auditorías → `docs/archive/`; `README` "Estado" con la matriz real | Una sola lista de bugs abiertos |
+| R-502 ✅ | Consolidación documental (D12): hallazgos abiertos → `BUGS.md`; auditorías → `docs/archive/`; `README` "Estado" con la matriz real | Una sola lista de bugs abiertos. **Cerrada 2026-11-10**: cada ID de las auditorías (FS-, AUD-, SEC-, BUG-0xx) se cruzó contra el código; lo único abierto pasó a `BUGS.md` (KNOWN-05) o ya era una R abierta (FS-27 = R-503) |
 | R-503 ⏳ | Descongelar la sesión bspwm (D1): atajos coherentes con modo flotante (FS-27): `super+flechas` mueve ventanas flotantes, `super+m` pasa a maximizar | Matriz de atajos del README verificada con test |
 | R-504 ⏳ | `nebula-ai-chat`: guardar la conversación (hoy el historial solo registra el encabezado) y elegir modelo según la VRAM disponible | Historial completo en `ai-history/` |
 
