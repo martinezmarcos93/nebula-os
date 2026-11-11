@@ -105,6 +105,12 @@ exec   = "xterm"
 icono  = "terminal"
 multi  = true
 
+[[categoria.app]]
+nombre = "UXTerm"
+exec   = "uxterm"
+icono  = "terminal"
+multi  = true
+
 [[categoria]]
 nombre = "Navegadores"
 icono  = "globe"
@@ -394,6 +400,11 @@ exec   = "alacritty -e watch -n2 nvidia-smi"
 icono  = "gpu"
 
 [[categoria.app]]
+nombre = "Hanna"
+exec   = "hanna"
+icono  = "brain"
+
+[[categoria.app]]
 nombre = "Iniciar Ollama"
 exec   = "nebula-ai-chat --serve"
 icono  = "server"
@@ -405,6 +416,11 @@ icono  = "gamepad"
 [[categoria.app]]
 nombre = "Epic Games Store"
 exec   = "flatpak run net.lutris.Lutris lutris:rungameid/1"
+icono  = "gamepad"
+
+[[categoria.app]]
+nombre = "God of War III"
+exec   = "gtk-launch gow3"
 icono  = "gamepad"
 
 [[categoria.app]]
@@ -494,6 +510,11 @@ icono  = "folder"
 [[categoria.app]]
 nombre = "Archivos (Thunar)"
 exec   = "thunar"
+icono  = "folder"
+
+[[categoria.app]]
+nombre = "Double Commander"
+exec   = "doublecmd"
 icono  = "folder"
 
 [[categoria.app]]
