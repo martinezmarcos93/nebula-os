@@ -268,6 +268,10 @@ goto_ws(){
 # Ventanas ajenas (p. ej. un Archivos que abrio un test anterior y aparece
 # tarde) roban foco y cambian de escritorio en medio de la prueba: se cierran.
 e "global.get_window_actors().map(a => a.meta_window).filter(w => w.get_title() !== 'nebula-testwin' && w.get_window_type() === 0).forEach(w => w.delete(global.get_current_time())); 1" >/dev/null; sleep 1.5
+# Este bloque corre en cada fase con el mismo HOME: la fase X11 heredaba las
+# carpetas y posiciones que dejo la Wayland. Se arranca de cero.
+rm -rf "$HOME/Desktop" "$XDG_DATA_HOME/nebula/escritorios"
+python3 -c 'import json,sys,os; p=sys.argv[1]; d=json.load(open(p,encoding="utf-8")) if os.path.exists(p) else {}; d["iconos_escritorio"]={}; json.dump(d, open(p,"w",encoding="utf-8"))' "$XDG_CONFIG_HOME/nebula/shell-state.json"
 mkdir -p "$HOME/Desktop" "$XDG_DATA_HOME/nebula/escritorios/2"
 : > "$HOME/Desktop/uno.txt"; : > "$XDG_DATA_HOME/nebula/escritorios/2/dos.txt"; : > "$XDG_DATA_HOME/nebula/escritorios/2/tres.txt"
 BG="Main.layoutManager._backgroundGroup"
