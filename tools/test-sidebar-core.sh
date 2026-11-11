@@ -335,6 +335,14 @@ check_wait 'borde: el archivo soltado en el escritorio nuevo viaja a su carpeta'
 check_wait 'borde: queda en la celda donde se solto, en el escritorio nuevo' "(() => { $DI const b = DI._boxes.get('uno.txt'); return DI._workspace === 1 && !!b && b.x === Math.round(12 + DI._grid().stepX * 1) && b.y === Math.round(12 + DI._grid().stepY * 3); })()"
 goto_ws 0
 check_wait 'borde: el escritorio de origen ya no lo muestra' "(() => { $DI return !DI._boxes.has('uno.txt'); })()"
+# Pegar (file-ops.js): asincronico, recursivo y sin pegar una carpeta en si
+# misma; los errores se avisan al usuario, no solo al log.
+mkdir -p "$T/pegar/carpeta/sub"; echo x > "$T/pegar/carpeta/sub/x.txt"
+e "$X $DI globalThis.__notes = []; DI._notifyError = t => globalThis.__notes.push(t); DI._pasteUris('copy', ['file://$T/pegar/carpeta']); 1" >/dev/null
+check_wait 'pegar: copia una carpeta entera al escritorio' "(() => { $DI return imports.gi.GLib.file_test(DI._folderPath() + '/carpeta/sub/x.txt', imports.gi.GLib.FileTest.EXISTS); })()"
+e "$X $DI DI._pasteUris('copy', [imports.gi.Gio.File.new_for_path(DI._folderPath()).get_uri()]); 1" >/dev/null
+check_wait 'pegar: una carpeta dentro de si misma se rechaza y se avisa' "globalThis.__notes.length === 1 && globalThis.__notes[0].startsWith('No se pudo pegar')"
+e "$X $DI delete DI._notifyError; 1" >/dev/null
 e "$X X._settings.set_boolean('workspace-icons', false); 1" >/dev/null; sleep .5
 check_wait 'escritorios: apagar la clave quita la capa del fondo' "!X._desktopIcons && $BG.get_n_children() === globalThis.__bgN"
 
